@@ -33,7 +33,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="isMobile ? '95%' : '600px'" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <el-form :model="form" label-width="100px">
         <el-form-item label="学生">
           <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%">
@@ -94,6 +94,9 @@ const students = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加缴费')
 const selectedStudentPaymentType = ref('prepaid')
+
+const isMobile = computed(() => window.innerWidth < 768)
+
 const form = ref({
   studentId: '',
   paymentType: '现金',

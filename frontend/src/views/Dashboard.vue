@@ -1,5 +1,70 @@
 <template>
   <div class="dashboard">
+    <el-row :gutter="20" style="margin-bottom: 20px">
+      <el-col :xs="12" :sm="12" :md="12" :lg="12" :xl="12">
+        <el-card>
+          <template #header>
+            <span>今日课程</span>
+          </template>
+          <div v-if="todayCourses.length > 0" class="course-list">
+            <div v-for="course in todayCourses" :key="course._id" class="course-item">
+              <div class="course-info">
+                <div class="course-time">{{ formatTime(course.startTime) }}</div>
+                <div class="course-name">
+                  {{ course.studentId?.name || '未分配' }}
+                  <el-tag v-if="course.isGiftLesson" type="warning" size="small" style="margin-left: 8px">赠课</el-tag>
+                </div>
+              </div>
+              <div class="course-status">
+                <el-tag :type="getCourseStatusType(course.status)" size="small">
+                  {{ getCourseStatusText(course.status) }}
+                </el-tag>
+                <el-button 
+                  v-if="course.status === 'normal'" 
+                  type="primary" 
+                  size="small" 
+                  @click="handleAttendCourse(course)"
+                  style="margin-left: 8px">
+                  上课
+                </el-button>
+                <el-button 
+                  v-if="course.status === 'completed'" 
+                  type="danger" 
+                  size="small" 
+                  @click="handleCancelAttendCourse(course)"
+                  style="margin-left: 8px">
+                  取消上课
+                </el-button>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else description="暂无课程" />
+        </el-card>
+      </el-col>
+      
+      <el-col :xs="12" :sm="12" :md="12" :lg="12" :xl="12">
+        <el-card>
+          <template #header>
+            <span>近期提醒</span>
+          </template>
+          <div v-if="recentReminders.length > 0" class="reminder-list">
+            <div v-for="reminder in recentReminders" :key="reminder._id" class="reminder-item">
+              <div class="reminder-info">
+                <div class="reminder-title">{{ reminder.title }}</div>
+                <div class="reminder-date">{{ formatDate(reminder.reminderDate) }}</div>
+              </div>
+              <div class="reminder-status">
+                <el-tag :type="reminder.isCompleted ? 'success' : 'warning'" size="small">
+                  {{ reminder.isCompleted ? '已完成' : '待处理' }}
+                </el-tag>
+              </div>
+            </div>
+          </div>
+          <el-empty v-else description="暂无提醒" />
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-row :gutter="20">
       <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
@@ -96,71 +161,6 @@
               <div class="stat-label">预付费已消课时</div>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    
-    <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-        <el-card>
-          <template #header>
-            <span>今日课程</span>
-          </template>
-          <div v-if="todayCourses.length > 0" class="course-list">
-            <div v-for="course in todayCourses" :key="course._id" class="course-item">
-              <div class="course-info">
-                <div class="course-time">{{ formatTime(course.startTime) }}</div>
-                <div class="course-name">
-                  {{ course.studentId?.name || '未分配' }}
-                  <el-tag v-if="course.isGiftLesson" type="warning" size="small" style="margin-left: 8px">赠课</el-tag>
-                </div>
-              </div>
-              <div class="course-status">
-                <el-tag :type="getCourseStatusType(course.status)" size="small">
-                  {{ getCourseStatusText(course.status) }}
-                </el-tag>
-                <el-button 
-                  v-if="course.status === 'normal'" 
-                  type="primary" 
-                  size="small" 
-                  @click="handleAttendCourse(course)"
-                  style="margin-left: 8px">
-                  上课
-                </el-button>
-                <el-button 
-                  v-if="course.status === 'completed'" 
-                  type="danger" 
-                  size="small" 
-                  @click="handleCancelAttendCourse(course)"
-                  style="margin-left: 8px">
-                  取消上课
-                </el-button>
-              </div>
-            </div>
-          </div>
-          <el-empty v-else description="暂无课程" />
-        </el-card>
-      </el-col>
-      
-      <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-        <el-card>
-          <template #header>
-            <span>近期提醒</span>
-          </template>
-          <div v-if="recentReminders.length > 0" class="reminder-list">
-            <div v-for="reminder in recentReminders" :key="reminder._id" class="reminder-item">
-              <div class="reminder-info">
-                <div class="reminder-title">{{ reminder.title }}</div>
-                <div class="reminder-date">{{ formatDate(reminder.reminderDate) }}</div>
-              </div>
-              <div class="reminder-status">
-                <el-tag :type="reminder.isCompleted ? 'success' : 'warning'" size="small">
-                  {{ reminder.isCompleted ? '已完成' : '待处理' }}
-                </el-tag>
-              </div>
-            </div>
-          </div>
-          <el-empty v-else description="暂无提醒" />
         </el-card>
       </el-col>
     </el-row>
@@ -473,64 +473,42 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .course-item {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .course-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   
   .course-status {
-    margin-top: 10px;
-    width: 100%;
     display: flex;
-    justify-content: flex-end;
-  }
-}
-
-.course-info {
-  flex: 1;
-}
-
-.course-time {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 4px;
-}
-
-.course-name {
-  font-size: 16px;
-  color: #333;
-  font-weight: 500;
-}
-
-.course-status {
-  flex-shrink: 0;
-}
-
-.reminder-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.reminder-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-
-@media (max-width: 768px) {
-  .reminder-item {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  
+  .reminder-item {
+    flex-direction: row;
+    align-items: center;
   }
   
   .reminder-status {
-    margin-top: 10px;
-    width: 100%;
+    margin-top: 0;
+    margin-left: auto;
+    width: auto;
     display: flex;
     justify-content: flex-end;
+    flex-shrink: 0;
+  }
+  
+  .reminder-info {
+    flex: 1;
   }
 }
 

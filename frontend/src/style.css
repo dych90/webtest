@@ -80,14 +80,23 @@ button:focus-visible {
 
 /* 移动端对话框优化 */
 @media (max-width: 768px) {
-  .el-dialog {
+  .el-dialog,
+  .el-dialog[style*="width"] {
     width: 95% !important;
     margin: 5vh auto !important;
   }
 }
 
 @media (max-width: 480px) {
-  .el-dialog {
+  .el-dialog,
+  .el-dialog[style*="width"] {
+    width: 100% !important;
+    margin: 0 !important;
+    height: 100vh !important;
+    border-radius: 0;
+  }
+  
+  .el-dialog__wrapper .el-dialog {
     width: 100% !important;
     margin: 0 !important;
     height: 100vh !important;

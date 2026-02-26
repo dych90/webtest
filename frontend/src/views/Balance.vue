@@ -44,7 +44,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" title="更新课费余额" width="500px">
+    <el-dialog v-model="dialogVisible" title="更新课费余额" :width="isMobile ? '95%' : '500px'" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <el-form :model="form" label-width="100px">
         <el-form-item label="学生">
           <span>{{ form.studentName }}</span>
@@ -62,7 +62,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reportDialogVisible" title="上课情况报告" width="80%" :close-on-click-modal="false">
+    <el-dialog v-model="reportDialogVisible" title="上课情况报告" :width="isMobile ? '95%' : '80%'" :close-on-click-modal="false" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <el-form :model="reportForm" label-width="100px">
         <el-form-item label="学生">
           <span>{{ reportForm.studentName }}</span>
@@ -91,7 +91,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="reportImageDialogVisible" title="上课情况报告" width="90%" :close-on-click-modal="false">
+    <el-dialog v-model="reportImageDialogVisible" title="上课情况报告" :width="isMobile ? '95%' : '90%'" :close-on-click-modal="false" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <div ref="reportContainer" class="report-container">
         <div class="logo-container">
           <img src="/xianjingartlogo.png" alt="Logo" class="logo-image" />
@@ -162,7 +162,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 import html2canvas from 'html2canvas'
@@ -174,6 +174,9 @@ const reportDialogVisible = ref(false)
 const reportImageDialogVisible = ref(false)
 const reportImage = ref(null)
 const reportChartInstance = ref(null)
+
+const isMobile = computed(() => window.innerWidth < 768)
+
 const form = ref({
   studentId: '',
   studentName: '',

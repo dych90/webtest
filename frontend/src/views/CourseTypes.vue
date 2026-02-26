@@ -20,7 +20,7 @@
       </el-table>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="isMobile ? '95%' : '500px'" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <el-form :model="form" label-width="100px">
         <el-form-item label="名称">
           <el-input v-model="form.name" />
@@ -38,13 +38,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
 const courseTypes = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加课程类型')
+
+const isMobile = computed(() => window.innerWidth < 768)
+
 const form = ref({
   name: '',
   duration: 45
