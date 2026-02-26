@@ -41,6 +41,19 @@
             type="date"
             placeholder="选择日期"
             style="width: 100%"
+            :readonly="true"
+            :popper-options="{
+              placement: 'bottom-start',
+              strategy: 'fixed',
+              modifiers: [
+                {
+                  name: 'flip',
+                  options: {
+                    fallbackPlacements: ['bottom-start', 'top-start']
+                  }
+                }
+              ]
+            }"
           />
         </el-form-item>
         <el-form-item label="开始时间">
@@ -51,7 +64,7 @@
             end="22:00"
             placeholder="选择时间"
             style="width: 100%"
-            :readonly="isMobile"
+            :readonly="true"
             :popper-options="{
               placement: 'bottom-start',
               strategy: 'fixed',
