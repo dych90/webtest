@@ -1,0 +1,149 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      String   @default("admin")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id          Int      @id @default(autoincrement())
+  name        String
+  gender      String?
+  age         Int?
+  phone       String?
+  parentName  String?
+  parentPhone String?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payments          Payment[]
+  courses           Course[]
+  lessonRecords     LessonRecord[]
+  repertoire        Repertoire[]
+  lessonBalance     LessonBalance?
+  feeStandards      FeeStandard[]
+  reminders         Reminder[]
+}
+
+model CourseType {
+  id        Int      @id @default(autoincrement())
+  name      String
+  duration  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feeStandards FeeStandard[]
+  courses      Course[]
+}
+
+model FeeStandard {
+  id             Int       @id @default(autoincrement())
+  studentId      Int?
+  courseTypeId   Int
+  price          Decimal   @db.Decimal(10, 2)
+  effectiveDate  DateTime
+  expireDate     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  student    Student?    @relation(fields: [studentId], references: [id])
+  courseType CourseType  @relation(fields: [courseTypeId], references: [id])
+}
+
+model Payment {
+  id             Int      @id @default(autoincrement())
+  studentId      Int
+  paymentType    String
+  amount         Decimal   @db.Decimal(10, 2)
+  bonusLessons   Int      @default(0)
+  totalLessons   Decimal   @db.Decimal(10, 2)
+  unitPrice      Decimal   @db.Decimal(10, 2)
+  paymentDate    DateTime
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model Course {
+  id               Int      @id @default(autoincrement())
+  studentId        Int
+  courseTypeId     Int
+  startTime        DateTime
+  endTime          DateTime
+  isRecurring      Boolean  @default(false)
+  recurringPattern String?
+  status           String   @default("normal")
+  originalTime     DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  student    Student     @relation(fields: [studentId], references: [id])
+  courseType CourseType  @relation(fields: [courseTypeId], references: [id])
+  lessonRecords LessonRecord[]
+}
+
+model LessonRecord {
+  id              Int      @id @default(autoincrement())
+  courseId        Int
+  studentId       Int
+  lessonsConsumed Decimal  @db.Decimal(10, 2)
+  lessonContent   String?  @db.Text
+  isDeducted      Boolean  @default(false)
+  notes           String?  @db.Text
+  recordDate      DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  course  Course  @relation(fields: [courseId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model Repertoire {
+  id          Int      @id @default(autoincrement())
+  studentId   Int
+  pieceName   String
+  recordDate  DateTime @default(now())
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model LessonBalance {
+  id             Int      @id @default(autoincrement())
+  studentId      Int      @unique
+  remainingLessons Decimal @db.Decimal(10, 2) @default(0)
+  lastUpdated    DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id])
+}
+
+model Reminder {
+  id            Int      @id @default(autoincrement())
+  type          String
+  courseId      Int?
+  studentId     Int?
+  reminderTime  DateTime
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student Student? @relation(fields: [studentId], references: [id])
+}

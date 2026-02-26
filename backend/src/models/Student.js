@@ -1,0 +1,18 @@
+const mongoose = require('mongoose')
+
+const studentSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  gender: String,
+  age: Number,
+  phone: String,
+  parentName: String,
+  parentPhone: String,
+  defaultCourseTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseType' },
+  paymentType: { type: String, enum: ['prepaid', 'payPerLesson'], default: 'prepaid' },
+  practiceTeacher: String,
+  notes: String,
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+})
+
+module.exports = mongoose.model('Student', studentSchema)
