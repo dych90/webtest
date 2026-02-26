@@ -51,15 +51,15 @@
             end="22:00"
             placeholder="选择时间"
             style="width: 100%"
-            :popper-class="'time-picker-popper'"
+            :readonly="isMobile"
             :popper-options="{
-              placement: 'top-start',
+              placement: 'bottom-start',
               strategy: 'fixed',
               modifiers: [
                 {
                   name: 'flip',
                   options: {
-                    fallbackPlacements: ['top-start', 'bottom-start']
+                    fallbackPlacements: ['bottom-start', 'top-start']
                   }
                 }
               ]
@@ -605,13 +605,5 @@ const handleResize = () => {
     flex: 1;
     min-width: 0;
   }
-}
-
-:deep(.time-picker-popper) {
-  z-index: 9999 !important;
-}
-
-:deep(.el-dialog__body) {
-  overflow: visible;
 }
 </style>
