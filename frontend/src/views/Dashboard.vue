@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <el-row :gutter="20" style="margin-bottom: 20px">
-      <el-col :xs="12" :sm="12" :md="12" :lg="12" :xl="12">
+      <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
         <el-card>
           <template #header>
             <span>今日课程</span>
@@ -41,9 +41,11 @@
           <el-empty v-else description="暂无课程" />
         </el-card>
       </el-col>
-      
-      <el-col :xs="12" :sm="12" :md="12" :lg="12" :xl="12">
-        <el-card>
+    </el-row>
+
+    <el-row :gutter="20">
+      <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
+        <el-card class="reminder-card">
           <template #header>
             <span>近期提醒</span>
           </template>
@@ -471,6 +473,32 @@ onMounted(() => {
   border-radius: 4px;
 }
 
+.reminder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reminder-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  min-height: auto;
+}
+
+.course-name {
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
 @media (max-width: 768px) {
   .course-item {
     flex-direction: row;
@@ -529,5 +557,33 @@ onMounted(() => {
 
 .reminder-status {
   flex-shrink: 0;
+}
+
+:deep(.el-card) {
+  min-height: auto !important;
+}
+
+:deep(.el-card__body) {
+  min-height: auto !important;
+  padding: 12px;
+}
+
+:deep(.el-empty) {
+  padding: 5px 0;
+  min-height: auto !important;
+}
+
+:deep(.el-empty__image) {
+  width: 60px;
+  height: 60px;
+}
+
+:deep(.el-empty__description) {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.reminder-card {
+  margin-bottom: 20px;
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="statistics">
     <el-row :gutter="20">
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>学生总数</span>
@@ -9,7 +9,7 @@
           <div class="stat-value">{{ statistics.studentCount }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>总收入</span>
@@ -17,7 +17,7 @@
           <div class="stat-value">¥{{ statistics.totalRevenue }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>总课程数</span>
@@ -25,7 +25,7 @@
           <div class="stat-value">{{ statistics.totalCourses }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>已售课时</span>
@@ -33,7 +33,7 @@
           <div class="stat-value">{{ statistics.totalLessonsSold }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>已消课时</span>
@@ -41,7 +41,7 @@
           <div class="stat-value">{{ statistics.totalLessonsConsumed }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>总上课数</span>
@@ -49,7 +49,7 @@
           <div class="stat-value">{{ statistics.totalLessonsAttended }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>预付费已消课时</span>
@@ -57,7 +57,7 @@
           <div class="stat-value">{{ statistics.prepaidLessonsConsumed }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>剩余课时</span>
@@ -68,7 +68,7 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>本月预收入</span>
@@ -76,7 +76,7 @@
           <div class="stat-value revenue">¥{{ statistics.monthlyPrepaidRevenue }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>本月实际收入</span>
@@ -84,7 +84,7 @@
           <div class="stat-value actual-revenue">¥{{ statistics.monthlyActualRevenue }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>本月消课</span>
@@ -92,7 +92,7 @@
           <div class="stat-value">{{ statistics.monthlyLessonsConsumed }} 课时</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
             <span>本月上课数</span>
@@ -103,7 +103,7 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
         <el-card>
           <template #header>
             <span>收入统计</span>
@@ -112,7 +112,7 @@
         </el-card>
       </el-col>
       
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
         <el-card>
           <template #header>
             <span>本月消课统计</span>
@@ -307,12 +307,29 @@ const handleResize = () => {
 </script>
 
 <style scoped>
+.statistics {
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .statistics {
+    padding: 12px;
+  }
+}
+
 .stat-value {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: bold;
   color: #409eff;
   text-align: center;
-  padding: 20px 0;
+  padding: 12px 0;
+}
+
+@media (max-width: 768px) {
+  .stat-value {
+    font-size: 18px;
+    padding: 8px 0;
+  }
 }
 
 .stat-value.revenue {
@@ -321,5 +338,35 @@ const handleResize = () => {
 
 .stat-value.actual-revenue {
   color: #67c23a;
+}
+
+:deep(.el-card__header) {
+  padding: 12px 16px;
+}
+
+@media (max-width: 768px) {
+  :deep(.el-card__header) {
+    padding: 10px 12px;
+  }
+}
+
+:deep(.el-card__body) {
+  padding: 12px;
+}
+
+@media (max-width: 768px) {
+  :deep(.el-card__body) {
+    padding: 8px;
+  }
+}
+
+.el-col {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .el-col {
+    margin-bottom: 12px;
+  }
 }
 </style>
