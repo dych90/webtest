@@ -50,6 +50,18 @@
             format="HH:mm"
             value-format="HH:mm"
             style="width: 100%"
+            :popper-options="{
+              placement: 'bottom-start',
+              strategy: 'fixed',
+              modifiers: [
+                {
+                  name: 'flip',
+                  options: {
+                    fallbackPlacements: ['bottom-start', 'top-start']
+                  }
+                }
+              ]
+            }"
           />
         </el-form-item>
         <el-form-item label="是否重复">
