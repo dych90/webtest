@@ -13,7 +13,7 @@
           <template #eventContent="arg">
             <div class="event-content" :style="{ backgroundColor: arg.event.backgroundColor }">
               <div class="event-time">{{ formatTime(arg.event.start) }}</div>
-              <div class="event-student">{{ arg.event.title.split('<br>')[0].substring(0, 3) }}{{ arg.event.title.split('<br>')[0].length > 3 ? '...' : '' }}</div>
+              <div class="event-student">{{ arg.event.title.split('<br>')[0].substring(0, 3) }}{{ arg.event.title.split('<br>')[0].length > 3 ? '..' : '' }}</div>
             </div>
           </template>
         </FullCalendar>
@@ -612,6 +612,21 @@ const handleResize = () => {
 
 :deep(.fc-daygrid-event .event-student) {
   font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-daygrid-event .event-content) {
+    font-size: 10px;
+    padding: 1px 3px;
+  }
+  
+  :deep(.fc-daygrid-event .event-time) {
+    font-size: 9px;
+  }
+  
+  :deep(.fc-daygrid-event .event-student) {
+    font-size: 10px;
+  }
 }
 
 :deep(.el-dialog) {
