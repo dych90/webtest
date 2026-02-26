@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <el-row :gutter="20">
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #409eff">
@@ -15,7 +15,7 @@
         </el-card>
       </el-col>
       
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #67c23a">
@@ -29,7 +29,7 @@
         </el-card>
       </el-col>
       
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #e6a23c">
@@ -43,7 +43,7 @@
         </el-card>
       </el-col>
       
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #9b59b6">
@@ -57,7 +57,7 @@
         </el-card>
       </el-col>
       
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #f56c6c">
@@ -71,7 +71,7 @@
         </el-card>
       </el-col>
       
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #909399">
@@ -85,7 +85,7 @@
         </el-card>
       </el-col>
       
-      <el-col :xs="24" :sm="12" :md="8" :lg="6" :xl="6">
+      <el-col :xs="12" :sm="12" :md="8" :lg="6" :xl="6">
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background-color: #ff6b6b">
@@ -372,8 +372,20 @@ onMounted(() => {
   padding: 20px;
 }
 
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 12px;
+  }
+}
+
 .stat-card {
   margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .stat-card {
+    margin-bottom: 12px;
+  }
 }
 
 .stat-content {
@@ -384,13 +396,8 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .stat-content {
-    flex-direction: column;
-    text-align: center;
-  }
-  
-  .stat-info {
-    text-align: center;
-    margin-top: 10px;
+    justify-content: center;
+    gap: 12px;
   }
 }
 
@@ -403,10 +410,26 @@ onMounted(() => {
   justify-content: center;
   color: #fff;
   font-size: 24px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
 }
 
 .stat-info {
   text-align: right;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .stat-info {
+    text-align: center;
+  }
 }
 
 .stat-value {
@@ -415,10 +438,22 @@ onMounted(() => {
   color: #333;
 }
 
+@media (max-width: 768px) {
+  .stat-value {
+    font-size: 18px;
+  }
+}
+
 .stat-label {
   font-size: 14px;
   color: #666;
   margin-top: 5px;
+}
+
+@media (max-width: 768px) {
+  .stat-label {
+    font-size: 12px;
+  }
 }
 
 .course-list {

@@ -396,13 +396,196 @@ const handleResize = () => {
   align-items: center;
 }
 
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .card-header .el-button {
+    width: 100%;
+  }
+}
+
 .calendar-container {
   height: 600px;
 }
 
 @media (max-width: 768px) {
   .calendar-container {
+    height: 500px;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-container {
     height: 400px;
+  }
+}
+
+:deep(.fc) {
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc) {
+    font-size: 12px;
+  }
+}
+
+:deep(.fc-toolbar-title) {
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-toolbar-title) {
+    font-size: 14px;
+  }
+}
+
+:deep(.fc-button) {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-button) {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+:deep(.fc-header-toolbar) {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-header-toolbar) {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  :deep(.fc-toolbar-chunk) {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+:deep(.fc-col-header-cell) {
+  padding: 8px 4px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-col-header-cell) {
+    padding: 6px 2px;
+    font-size: 11px;
+  }
+}
+
+:deep(.fc-daygrid-day-number) {
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-daygrid-day-number) {
+    font-size: 12px;
+  }
+}
+
+:deep(.fc-timegrid-slot-label) {
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-timegrid-slot-label) {
+    font-size: 10px;
+  }
+}
+
+:deep(.fc-event-title) {
+  font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-event-title) {
+    font-size: 11px;
+  }
+}
+
+:deep(.el-dialog) {
+  border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+  :deep(.el-dialog) {
+    width: 95% !important;
+    margin: 5vh auto !important;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.el-dialog) {
+    width: 100% !important;
+    margin: 0 !important;
+    height: 100vh !important;
+    border-radius: 0;
+  }
+  
+  :deep(.el-dialog__header) {
+    padding: 16px;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 16px;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+  
+  :deep(.el-dialog__footer) {
+    padding: 16px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid #e6e6e6;
+  }
+}
+
+:deep(.el-form-item__label) {
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  :deep(.el-form-item__label) {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.el-form-item__label) {
+    width: 80px !important;
+    font-size: 12px;
+  }
+}
+
+:deep(.el-dialog__footer) {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  :deep(.el-dialog__footer) {
+    flex-wrap: wrap;
+  }
+  
+  :deep(.el-dialog__footer .el-button) {
+    flex: 1;
+    min-width: 0;
   }
 }
 </style>
