@@ -116,8 +116,7 @@ const form = ref({
   studentId: '',
   courseTypeId: '',
   date: '',
-  hour: 14,
-  minute: 0,
+  startTime: '',
   isRecurring: false,
   recurringPattern: '',
   status: 'normal'
@@ -152,6 +151,11 @@ const calendarOptions = ref({
   slotDuration: '00:15:00',
   height: 'auto',
   aspectRatio: 1.35,
+  eventLongPressDelay: 200,
+  longPressDelay: 200,
+  eventDragMinDistance: 10,
+  eventStartEditable: true,
+  eventDurationEditable: true,
   eventDrop: async (info) => {
     console.log('Event dropped:', info)
     console.log('Event start:', info.event.start)
@@ -239,13 +243,14 @@ const calendarOptions = ref({
     if (course) {
       dialogTitle.value = '编辑课程'
       const startTime = new Date(course.startTime)
+      const hours = startTime.getHours().toString().padStart(2, '0')
+      const minutes = startTime.getMinutes().toString().padStart(2, '0')
       form.value = {
         _id: course._id,
         studentId: course.studentId?._id || '',
         courseTypeId: course.courseTypeId?._id || '',
         date: new Date(course.startTime).toISOString().split('T')[0],
-        hour: startTime.getHours(),
-        minute: startTime.getMinutes(),
+        startTime: `${hours}:${minutes}`,
         isRecurring: course.isRecurring || false,
         recurringPattern: course.recurringPattern || '',
         status: course.status || 'normal'
@@ -316,11 +321,12 @@ const handleStudentChange = (studentId) => {
 
 const handleCourseTypeChange = (courseTypeId) => {
   const courseType = courseTypes.value.find(t => t._id === courseTypeId)
-  if (courseType && form.value.date && form.value.hour !== '' && form.value.minute !== '') {
+  if (courseType && form.value.date && form.value.startTime) {
     const date = new Date(form.value.date)
+    const [hours, minutes] = form.value.startTime.split(':')
     const startTime = new Date(date)
-    startTime.setHours(parseInt(form.value.hour))
-    startTime.setMinutes(parseInt(form.value.minute))
+    startTime.setHours(parseInt(hours))
+    startTime.setMinutes(parseInt(minutes))
     const endTime = new Date(startTime.getTime() + courseType.duration * 60000)
     form.value.startTime = startTime.toISOString()
     form.value.endTime = endTime.toISOString()
@@ -333,8 +339,7 @@ const handleAdd = () => {
     studentId: '',
     courseTypeId: '',
     date: new Date().toISOString().split('T')[0],
-    hour: 14,
-    minute: 0,
+    startTime: '',
     isRecurring: false,
     recurringPattern: '',
     status: 'normal'
@@ -363,17 +368,18 @@ const handleDelete = async () => {
 
 const handleSave = async () => {
   try {
-    if (!form.value.date || form.value.hour === '' || form.value.minute === '' || !form.value.courseTypeId) {
+    if (!form.value.date || !form.value.startTime || !form.value.courseTypeId) {
       ElMessage.error('请填写完整信息')
       return
     }
     
     const courseType = courseTypes.value.find(t => t._id === form.value.courseTypeId)
-    if (courseType && form.value.date && form.value.hour !== '' && form.value.minute !== '') {
+    if (courseType && form.value.date && form.value.startTime) {
       const date = new Date(form.value.date)
+      const [hours, minutes] = form.value.startTime.split(':')
       const startTime = new Date(date)
-      startTime.setHours(parseInt(form.value.hour))
-      startTime.setMinutes(parseInt(form.value.minute))
+      startTime.setHours(parseInt(hours))
+      startTime.setMinutes(parseInt(minutes))
       const endTime = new Date(startTime.getTime() + courseType.duration * 60000)
       form.value.startTime = startTime.toISOString()
       form.value.endTime = endTime.toISOString()
@@ -590,10 +596,25 @@ const handleResize = () => {
 
 :deep(.fc-event) {
   border: none !important;
+  cursor: pointer;
 }
 
 :deep(.fc-event-main) {
   padding: 0 !important;
+}
+
+@media (max-width: 768px) {
+  :deep(.fc-event) {
+    min-height: 44px !important;
+  }
+  
+  :deep(.fc-timegrid-event) {
+    min-height: 50px !important;
+  }
+  
+  :deep(.fc-event-main) {
+    padding: 8px !important;
+  }
 }
 
 :deep(.fc-daygrid-event) {
