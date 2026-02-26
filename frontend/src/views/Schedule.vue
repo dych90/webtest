@@ -9,7 +9,14 @@
       </template>
       
       <div class="calendar-container">
-        <FullCalendar :options="calendarOptions" />
+        <FullCalendar :options="calendarOptions">
+          <template #eventContent="arg">
+            <div class="event-content" :style="{ backgroundColor: arg.event.backgroundColor }">
+              <div class="event-time">{{ formatTime(arg.event.start) }}</div>
+              <div class="event-student">{{ arg.event.title.split('<br>')[0].substring(0, 3) }}{{ arg.event.title.split('<br>')[0].length > 3 ? '...' : '' }}</div>
+            </div>
+          </template>
+        </FullCalendar>
       </div>
     </el-card>
 
@@ -117,6 +124,14 @@ const form = ref({
 })
 
 const isMobile = computed(() => window.innerWidth < 768)
+
+const formatTime = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const hours = d.getHours().toString().padStart(2, '0')
+  const minutes = d.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -246,18 +261,18 @@ const fetchCourses = async () => {
     const response = await request.get('/courses')
     courses.value = response.data
     calendarOptions.value.events = response.data.map(course => {
-      let backgroundColor = '#409eff'
-      let title = `${course.studentId?.name || '未分配'} - ${course.courseTypeId?.name || '未分配'}`
+      let backgroundColor = '#3a8ee6'
+      let title = `${course.studentId?.name || '未分配'}<br>${formatTime(course.startTime)}`
       
       if (course.isGiftLesson) {
         title += ' [赠]'
-        backgroundColor = '#9b59b6'
+        backgroundColor = '#8e44ad'
       }
       
       if (course.status === 'cancelled') {
-        backgroundColor = '#f56c6c'
+        backgroundColor = '#e74c3c'
       } else if (course.status === 'completed') {
-        backgroundColor = '#67c23a'
+        backgroundColor = '#27ae60'
       }
       
       return {
@@ -446,9 +461,23 @@ const handleResize = () => {
   font-size: 14px;
 }
 
+:deep(.fc-event-title) {
+  white-space: normal;
+}
+
+:deep(.fc-event-main-frame) {
+  flex-direction: column;
+}
+
 @media (max-width: 768px) {
   :deep(.fc) {
     font-size: 12px;
+  }
+  
+  :deep(.fc-event-title) {
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-all;
   }
 }
 
@@ -531,6 +560,58 @@ const handleResize = () => {
   :deep(.fc-event-title) {
     font-size: 11px;
   }
+}
+
+.event-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+}
+
+.event-time {
+  font-size: 13px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.event-student {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.fc-event) {
+  border: none !important;
+}
+
+:deep(.fc-event-main) {
+  padding: 0 !important;
+}
+
+:deep(.fc-daygrid-event) {
+  margin: 1px 2px !important;
+}
+
+:deep(.fc-daygrid-event .event-content) {
+  font-size: 12px;
+  padding: 2px 4px;
+  min-height: auto;
+}
+
+:deep(.fc-daygrid-event .event-time) {
+  font-size: 11px;
+}
+
+:deep(.fc-daygrid-event .event-student) {
+  font-size: 12px;
 }
 
 :deep(.el-dialog) {
