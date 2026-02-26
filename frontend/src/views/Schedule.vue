@@ -44,12 +44,14 @@
           />
         </el-form-item>
         <el-form-item label="开始时间">
-          <el-time-picker
-            v-model="form.time"
-            placeholder="选择开始时间"
-            format="HH:mm"
-            value-format="HH:mm"
+          <el-time-select
+            v-model="form.startTime"
+            start="08:00"
+            step="00:15"
+            end="22:00"
+            placeholder="选择时间"
             style="width: 100%"
+            :readonly="isMobile"
             :popper-options="{
               placement: 'bottom-start',
               strategy: 'fixed',
@@ -88,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -107,11 +109,14 @@ const form = ref({
   studentId: '',
   courseTypeId: '',
   date: '',
-  time: '',
+  hour: 14,
+  minute: 0,
   isRecurring: false,
   recurringPattern: '',
   status: 'normal'
 })
+
+const isMobile = computed(() => window.innerWidth < 768)
 
 const calendarOptions = ref({
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
@@ -218,12 +223,14 @@ const calendarOptions = ref({
     const course = courses.value.find(c => c._id === courseId)
     if (course) {
       dialogTitle.value = '编辑课程'
+      const startTime = new Date(course.startTime)
       form.value = {
         _id: course._id,
         studentId: course.studentId?._id || '',
         courseTypeId: course.courseTypeId?._id || '',
         date: new Date(course.startTime).toISOString().split('T')[0],
-        time: new Date(course.startTime).toTimeString().substring(0, 5),
+        hour: startTime.getHours(),
+        minute: startTime.getMinutes(),
         isRecurring: course.isRecurring || false,
         recurringPattern: course.recurringPattern || '',
         status: course.status || 'normal'
@@ -294,12 +301,11 @@ const handleStudentChange = (studentId) => {
 
 const handleCourseTypeChange = (courseTypeId) => {
   const courseType = courseTypes.value.find(t => t._id === courseTypeId)
-  if (courseType && form.value.date && form.value.time) {
+  if (courseType && form.value.date && form.value.hour !== '' && form.value.minute !== '') {
     const date = new Date(form.value.date)
-    const [hours, minutes] = form.value.time.split(':')
     const startTime = new Date(date)
-    startTime.setHours(parseInt(hours))
-    startTime.setMinutes(parseInt(minutes))
+    startTime.setHours(parseInt(form.value.hour))
+    startTime.setMinutes(parseInt(form.value.minute))
     const endTime = new Date(startTime.getTime() + courseType.duration * 60000)
     form.value.startTime = startTime.toISOString()
     form.value.endTime = endTime.toISOString()
@@ -312,7 +318,8 @@ const handleAdd = () => {
     studentId: '',
     courseTypeId: '',
     date: new Date().toISOString().split('T')[0],
-    time: '',
+    hour: 14,
+    minute: 0,
     isRecurring: false,
     recurringPattern: '',
     status: 'normal'
@@ -341,18 +348,17 @@ const handleDelete = async () => {
 
 const handleSave = async () => {
   try {
-    if (!form.value.date || !form.value.time || !form.value.courseTypeId) {
+    if (!form.value.date || form.value.hour === '' || form.value.minute === '' || !form.value.courseTypeId) {
       ElMessage.error('请填写完整信息')
       return
     }
     
     const courseType = courseTypes.value.find(t => t._id === form.value.courseTypeId)
-    if (courseType && form.value.date && form.value.time) {
+    if (courseType && form.value.date && form.value.hour !== '' && form.value.minute !== '') {
       const date = new Date(form.value.date)
-      const [hours, minutes] = form.value.time.split(':')
       const startTime = new Date(date)
-      startTime.setHours(parseInt(hours))
-      startTime.setMinutes(parseInt(minutes))
+      startTime.setHours(parseInt(form.value.hour))
+      startTime.setMinutes(parseInt(form.value.minute))
       const endTime = new Date(startTime.getTime() + courseType.duration * 60000)
       form.value.startTime = startTime.toISOString()
       form.value.endTime = endTime.toISOString()
