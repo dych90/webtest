@@ -6,6 +6,7 @@ echo "========================================="
 
 echo ""
 echo "1. 拉取最新代码..."
+cd /www/webtest
 git pull origin main
 
 echo ""
@@ -19,23 +20,31 @@ cd ../frontend
 npm install
 
 echo ""
-echo "4. 构建前端..."
-npm run build
+echo "4. 停止所有相关进程..."
+pm2 stop piano-backend 2>/dev/null || true
+pm2 stop webtest-backend 2>/dev/null || true
+pm2 delete piano-backend 2>/dev/null || true
+pm2 delete webtest-backend 2>/dev/null || true
 
 echo ""
-echo "5. 重启后端服务..."
-cd ..
-if command -v pm2 &> /dev/null; then
-    echo "使用 PM2 重启服务..."
-    pm2 restart piano-backend || pm2 start backend/src/app.js --name piano-backend
+echo "5. 启动后端服务..."
+cd ../backend
+nohup npm start > backend.log 2>&1 &
+BACKEND_PID=$!
+
+echo ""
+echo "6. 等待后端启动..."
+sleep 5
+
+if ps -p $BACKEND_PID > /dev/null; then
+    echo "✅ 后端服务启动成功（PID: $BACKEND_PID）"
 else
-    echo "PM2 未安装，使用普通方式重启..."
-    echo "请手动重启后端服务: cd backend && npm start"
+    echo "❌ 后端服务启动失败"
+    cat backend.log
 fi
 
 echo ""
 echo "========================================="
 echo "更新完成！"
-echo "前端已构建到 frontend/dist 目录"
-echo "后端服务已重启"
+echo "后端服务已启动"
 echo "========================================="

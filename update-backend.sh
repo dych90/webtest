@@ -28,7 +28,7 @@ pm2 delete webtest-backend 2>/dev/null || true
 
 echo ""
 echo "5. 启动后端服务..."
-cd backend
+cd ../backend
 nohup npm start > backend.log 2>&1 &
 BACKEND_PID=$!
 
