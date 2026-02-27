@@ -1,45 +1,50 @@
 #!/bin/bash
 
 echo "========================================="
-echo "开始更新后端服务..."
+echo "开始更新钢琴工作室管理系统（前端+后端）..."
 echo "========================================="
 
 echo ""
 echo "1. 拉取最新代码..."
-cd /root/webtest
+cd /www/webtest
 git pull origin main
 
 echo ""
-echo "2. 安装依赖..."
+echo "2. 更新后端依赖..."
 cd backend
 npm install
 
 echo ""
-echo "3. 重启后端服务..."
-
-if command -v pm2 &> /dev/null; then
-    echo "使用 PM2 重启服务..."
-    pm2 restart piano-backend || pm2 start backend/src/app.js --name piano-backend
-    if [ $? -eq 0 ]; then
-        echo "✅ PM2 服务重启成功"
-    else
-        echo "❌ PM2 重启失败，尝试使用 npm start..."
-        cd backend
-        nohup npm start > backend.log 2>&1 &
-        echo "✅ 使用 npm start 启动服务"
-    fi
-else
-    echo "PM2 未安装，使用 npm start..."
-    cd backend
-    nohup npm start > backend.log 2>&1 &
-    echo "✅ 使用 npm start 启动服务"
-fi
+echo "3. 更新前端依赖..."
+cd ../frontend
+npm install
 
 echo ""
-echo "4. 查看服务状态..."
-pm2 logs piano-backend --lines 20
+echo "4. 停止所有相关进程..."
+pm2 stop piano-backend 2>/dev/null || true
+pm2 stop webtest-backend 2>/dev/null || true
+pm2 delete piano-backend 2>/dev/null || true
+pm2 delete webtest-backend 2>/dev/null || true
+
+echo ""
+echo "5. 启动后端服务..."
+cd backend
+nohup npm start > backend.log 2>&1 &
+BACKEND_PID=$!
+
+echo ""
+echo "6. 等待后端启动..."
+sleep 5
+
+if ps -p $BACKEND_PID > /dev/null; then
+    echo "✅ 后端服务启动成功（PID: $BACKEND_PID）"
+else
+    echo "❌ 后端服务启动失败"
+    cat backend.log
+fi
 
 echo ""
 echo "========================================="
 echo "更新完成！"
+echo "后端服务已启动"
 echo "========================================="
