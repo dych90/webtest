@@ -8,33 +8,72 @@
         </div>
       </template>
       
-      <el-table :data="teachers" style="width: 100%">
-        <el-table-column prop="username" label="用户名" min-width="100" />
-        <el-table-column prop="name" label="姓名" min-width="80" />
-        <el-table-column prop="phone" label="联系电话" min-width="120" />
-        <el-table-column prop="role" label="角色" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.role === 'admin' ? 'danger' : 'success'">
-              {{ row.role === 'admin' ? '管理员' : '教师' }}
+      <div class="desktop-table">
+        <el-table :data="teachers" style="width: 100%">
+          <el-table-column prop="username" label="用户名" min-width="100" />
+          <el-table-column prop="name" label="姓名" min-width="80" />
+          <el-table-column prop="phone" label="联系电话" min-width="120" />
+          <el-table-column prop="role" label="角色" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.role === 'admin' ? 'danger' : 'success'">
+                {{ row.role === 'admin' ? '管理员' : '教师' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createdAt" label="创建时间" min-width="160">
+            <template #default="{ row }">
+              {{ new Date(row.createdAt).toLocaleString() }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      
+      <div class="mobile-cards">
+        <div v-for="teacher in teachers" :key="teacher._id" class="teacher-card">
+          <div class="teacher-info">
+            <div class="teacher-name">{{ teacher.name || teacher.username }}</div>
+            <el-tag :type="teacher.role === 'admin' ? 'danger' : 'success'" size="small">
+              {{ teacher.role === 'admin' ? '管理员' : '教师' }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" min-width="160">
-          <template #default="{ row }">
-            {{ new Date(row.createdAt).toLocaleString() }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+          <div class="teacher-detail">
+            <div class="detail-item">
+              <span class="label">用户名:</span>
+              <span class="value">{{ teacher.username }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">联系电话:</span>
+              <span class="value">{{ teacher.phone || '未设置' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">创建时间:</span>
+              <span class="value">{{ new Date(teacher.createdAt).toLocaleDateString() }}</span>
+            </div>
+          </div>
+          <div class="teacher-actions">
+            <el-button size="small" @click="handleEdit(teacher)">编辑</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(teacher)">删除</el-button>
+          </div>
+        </div>
+        <div v-if="teachers.length === 0" class="empty-tip">
+          暂无教师数据
+        </div>
+      </div>
     </el-card>
     
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px">
-      <el-form :model="form" label-width="80px">
+    <el-dialog 
+      v-model="dialogVisible" 
+      :title="dialogTitle" 
+      :width="isMobile ? '95%' : '500px'"
+      :style="isMobile ? 'margin: 5vh auto;' : ''"
+    >
+      <el-form :model="form" :label-width="isMobile ? '80px' : '80px'">
         <el-form-item label="用户名">
           <el-input v-model="form.username" :disabled="!!form._id" />
         </el-form-item>
@@ -63,13 +102,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
 const teachers = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加教师')
+const windowWidth = ref(window.innerWidth)
+
+const isMobile = computed(() => windowWidth.value < 768)
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
+}
 
 const form = ref({
   _id: '',
@@ -170,6 +216,11 @@ const handleDelete = async (row) => {
 
 onMounted(() => {
   fetchTeachers()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -182,5 +233,81 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.mobile-cards {
+  display: none;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #999;
+  padding: 40px 0;
+}
+
+@media (max-width: 768px) {
+  .users {
+    padding: 12px;
+  }
+
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-cards {
+    display: block;
+  }
+
+  .teacher-card {
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .teacher-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e4e7ed;
+  }
+
+  .teacher-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #303133;
+  }
+
+  .teacher-detail {
+    margin-bottom: 12px;
+  }
+
+  .detail-item {
+    display: flex;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .detail-item .label {
+    color: #909399;
+    width: 70px;
+    flex-shrink: 0;
+  }
+
+  .detail-item .value {
+    color: #606266;
+  }
+
+  .teacher-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .teacher-actions .el-button {
+    flex: 1;
+  }
 }
 </style>
