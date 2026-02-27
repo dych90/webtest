@@ -1,11 +1,25 @@
 const Payment = require('../models/Payment')
 const Student = require('../models/Student')
 const LessonBalance = require('../models/LessonBalance')
+const User = require('../models/User')
 
 const getPayments = async (req, res) => {
   try {
     const { studentId } = req.query
-    const filter = studentId ? { studentId } : {}
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    let filter = {}
+    if (studentId) {
+      filter.studentId = studentId
+    }
+    
+    if (isTeacher) {
+      const students = await Student.find({ teacherId: req.userId })
+      const studentIds = students.map(s => s._id)
+      filter.studentId = studentId && studentIds.includes(studentId) ? studentId : { $in: studentIds }
+    }
+    
     const payments = await Payment.find(filter).sort({ paymentDate: -1 }).populate('studentId', 'name phone')
     
     res.json({
@@ -20,11 +34,22 @@ const getPayments = async (req, res) => {
 
 const createPayment = async (req, res) => {
   try {
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    const student = await Student.findById(req.body.studentId)
+    
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+    
+    if (isTeacher && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限为此学生创建缴费记录' })
+    }
+    
     const payment = await Payment.create(req.body)
     
-    const student = await Student.findById(payment.studentId)
-    
-    if (student && student.paymentType === 'prepaid') {
+    if (student.paymentType === 'prepaid') {
       console.log('创建缴费记录:', payment)
       console.log('准备更新课费余额，学生ID:', payment.studentId, '课时变化:', payment.totalLessons + payment.bonusLessons)
       await updateLessonBalance(payment.studentId, payment.totalLessons + payment.bonusLessons)
@@ -45,12 +70,20 @@ const createPayment = async (req, res) => {
 const updatePayment = async (req, res) => {
   try {
     const { id } = req.params
-    const oldPayment = await Payment.findById(id)
-    const payment = await Payment.findByIdAndUpdate(id, req.body, { new: true })
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
     
-    if (!payment) {
+    const oldPayment = await Payment.findById(id).populate('studentId')
+    
+    if (!oldPayment) {
       return res.status(404).json({ message: '缴费记录不存在' })
     }
+    
+    if (isTeacher && oldPayment.studentId.teacherId?.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限修改此缴费记录' })
+    }
+    
+    const payment = await Payment.findByIdAndUpdate(id, req.body, { new: true })
     
     const student = await Student.findById(payment.studentId)
     
@@ -72,14 +105,23 @@ const updatePayment = async (req, res) => {
 const deletePayment = async (req, res) => {
   try {
     const { id } = req.params
-    const payment = await Payment.findById(id)
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
     
-    if (payment) {
-      const student = await Student.findById(payment.studentId)
-      
-      if (student && student.paymentType === 'prepaid') {
-        await updateLessonBalance(payment.studentId, -(payment.totalLessons + payment.bonusLessons))
-      }
+    const payment = await Payment.findById(id).populate('studentId')
+    
+    if (!payment) {
+      return res.status(404).json({ message: '缴费记录不存在' })
+    }
+    
+    if (isTeacher && payment.studentId.teacherId?.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限删除此缴费记录' })
+    }
+    
+    const student = await Student.findById(payment.studentId._id)
+    
+    if (student && student.paymentType === 'prepaid') {
+      await updateLessonBalance(payment.studentId, -(payment.totalLessons + payment.bonusLessons))
     }
     
     await Payment.findByIdAndDelete(id)

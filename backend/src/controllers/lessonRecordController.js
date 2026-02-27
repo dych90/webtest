@@ -4,12 +4,26 @@ const Student = require('../models/Student')
 const Course = require('../models/Course')
 const Payment = require('../models/Payment')
 const FeeStandard = require('../models/FeeStandard')
+const User = require('../models/User')
 const mongoose = require('mongoose')
 
 const getLessonRecords = async (req, res) => {
   try {
     const { studentId } = req.query
-    const filter = studentId ? { studentId } : {}
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    let filter = {}
+    if (studentId) {
+      filter.studentId = studentId
+    }
+    
+    if (isTeacher) {
+      const students = await Student.find({ teacherId: req.userId })
+      const studentIds = students.map(s => s._id)
+      filter.studentId = studentId && studentIds.includes(studentId) ? studentId : { $in: studentIds }
+    }
+    
     const lessonRecords = await LessonRecord.find(filter)
       .sort({ recordDate: -1 })
       .populate('studentId', 'name phone')
@@ -29,16 +43,28 @@ const createLessonRecord = async (req, res) => {
   try {
     console.log('创建消课记录，请求体:', req.body)
     
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
     const student = await Student.findById(req.body.studentId)
+    
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+    
+    if (isTeacher && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限为此学生创建消课记录' })
+    }
+    
     let unitPrice = 0
     let isGiftLesson = false
     
-    if (student && student.paymentType === 'prepaid') {
+    if (student.paymentType === 'prepaid') {
       const paymentInfo = await calculateUnitPriceAndGiftStatus(req.body.studentId, req.body.lessonsConsumed || 1)
       unitPrice = paymentInfo.unitPrice
       isGiftLesson = paymentInfo.isGiftLesson
       console.log('预付费学生 - 单价:', unitPrice, '是否赠课:', isGiftLesson)
-    } else if (student && student.paymentType === 'payPerLesson') {
+    } else if (student.paymentType === 'payPerLesson') {
       let courseTypeId = null
       if (req.body.courseId) {
         const course = await Course.findById(req.body.courseId)
@@ -77,7 +103,7 @@ const createLessonRecord = async (req, res) => {
       console.log('更新课程赠课标记:', req.body.courseId, isGiftLesson)
     }
     
-    if (student && student.paymentType === 'prepaid') {
+    if (student.paymentType === 'prepaid') {
       if (lessonRecord.isDeducted) {
         console.log('扣减课时:', lessonRecord.studentId, -lessonRecord.lessonsConsumed)
         await updateLessonBalance(lessonRecord.studentId, -lessonRecord.lessonsConsumed)
@@ -85,7 +111,7 @@ const createLessonRecord = async (req, res) => {
         console.log('增加课时:', lessonRecord.studentId, lessonRecord.lessonsConsumed)
         await updateLessonBalance(lessonRecord.studentId, lessonRecord.lessonsConsumed)
       }
-    } else if (student && student.paymentType === 'payPerLesson' && lessonRecord.isDeducted) {
+    } else if (student.paymentType === 'payPerLesson' && lessonRecord.isDeducted) {
       console.log('单次付费学生上课，创建缴费记录')
       
       if (unitPrice > 0) {
@@ -192,15 +218,22 @@ const calculateUnitPriceAndGiftStatus = async (studentId, lessonsToConsume = 1) 
 const updateLessonRecord = async (req, res) => {
   try {
     const { id } = req.params
-    const oldRecord = await LessonRecord.findById(id)
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    const oldRecord = await LessonRecord.findById(id).populate('studentId')
     
     if (!oldRecord) {
       return res.status(404).json({ message: '消课记录不存在' })
     }
     
+    if (isTeacher && oldRecord.studentId.teacherId?.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限修改此消课记录' })
+    }
+    
     const lessonRecord = await LessonRecord.findByIdAndUpdate(id, req.body, { new: true })
     
-    const student = await Student.findById(oldRecord.studentId)
+    const student = await Student.findById(oldRecord.studentId._id)
     
     if (student && student.paymentType === 'prepaid') {
       if (oldRecord.isDeducted && !req.body.isDeducted) {
@@ -223,33 +256,42 @@ const updateLessonRecord = async (req, res) => {
 const deleteLessonRecord = async (req, res) => {
   try {
     const { id } = req.params
-    const record = await LessonRecord.findById(id)
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
     
-    if (record) {
-      const student = await Student.findById(record.studentId)
+    const record = await LessonRecord.findById(id).populate('studentId')
+    
+    if (!record) {
+      return res.status(404).json({ message: '消课记录不存在' })
+    }
+    
+    if (isTeacher && record.studentId.teacherId?.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限删除此消课记录' })
+    }
+    
+    const student = await Student.findById(record.studentId._id)
+    
+    if (student && student.paymentType === 'prepaid' && record.isDeducted) {
+      await updateLessonBalance(record.studentId, record.lessonsConsumed)
+    } else if (student && student.paymentType === 'payPerLesson' && record.isDeducted) {
+      console.log('删除单次付费学生的消课记录，查找并删除对应的缴费记录')
       
-      if (student && student.paymentType === 'prepaid' && record.isDeducted) {
-        await updateLessonBalance(record.studentId, record.lessonsConsumed)
-      } else if (student && student.paymentType === 'payPerLesson' && record.isDeducted) {
-        console.log('删除单次付费学生的消课记录，查找并删除对应的缴费记录')
-        
-        const payment = await Payment.findOne({
-          studentId: record.studentId,
-          notes: { $regex: `单次付费 - ${record.lessonsConsumed}节课`, $options: 'i' }
-        })
-        
-        if (payment) {
-          console.log('找到对应的缴费记录，删除:', payment._id)
-          await Payment.findByIdAndDelete(payment._id)
-        } else {
-          console.log('未找到对应的缴费记录')
-        }
-      }
+      const payment = await Payment.findOne({
+        studentId: record.studentId._id,
+        notes: { $regex: `单次付费 - ${record.lessonsConsumed}节课`, $options: 'i' }
+      })
       
-      if (record.courseId) {
-        await Course.findByIdAndUpdate(record.courseId, { isGiftLesson: false })
-        console.log('重置课程赠课标记:', record.courseId)
+      if (payment) {
+        console.log('找到对应的缴费记录，删除:', payment._id)
+        await Payment.findByIdAndDelete(payment._id)
+      } else {
+        console.log('未找到对应的缴费记录')
       }
+    }
+    
+    if (record.courseId) {
+      await Course.findByIdAndUpdate(record.courseId, { isGiftLesson: false })
+      console.log('重置课程赠课标记:', record.courseId)
     }
     
     await LessonRecord.findByIdAndDelete(id)

@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 
 const routes = [
   {
@@ -20,6 +20,12 @@ const routes = [
         name: 'Dashboard',
         component: () => import('@/views/Dashboard.vue'),
         meta: { title: '首页' }
+      },
+      {
+        path: '/users',
+        name: 'Users',
+        component: () => import('@/views/Users.vue'),
+        meta: { title: '教师管理', requiresAdmin: true }
       },
       {
         path: '/students',
@@ -96,6 +102,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !userStore.token) {
     next('/login')
   } else if (to.path === '/login' && userStore.token) {
+    next('/')
+  } else if (to.meta.requiresAdmin && !userStore.isAdmin()) {
     next('/')
   } else {
     next()

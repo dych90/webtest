@@ -11,6 +11,7 @@ const studentSchema = new mongoose.Schema({
   paymentType: { type: String, enum: ['prepaid', 'payPerLesson'], default: 'prepaid' },
   practiceTeacher: String,
   notes: String,
+  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 })

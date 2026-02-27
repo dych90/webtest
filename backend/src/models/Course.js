@@ -10,6 +10,7 @@ const courseSchema = new mongoose.Schema({
   status: { type: String, default: 'normal', enum: ['normal', 'cancelled', 'rescheduled', 'completed'] },
   isGiftLesson: { type: Boolean, default: false },
   originalTime: Date,
+  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 })

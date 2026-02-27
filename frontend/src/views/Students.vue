@@ -20,22 +20,20 @@
       </template>
       
       <el-table :data="students" style="width: 100%">
-        <el-table-column prop="name" label="姓名" />
-        <el-table-column prop="gender" label="性别" />
-        <el-table-column prop="age" label="年龄" />
-        <el-table-column prop="phone" label="联系电话" />
-        <el-table-column prop="parentName" label="家长姓名" />
-        <el-table-column prop="parentPhone" label="家长电话" />
-        <el-table-column prop="defaultCourseTypeName" label="默认课程类型" />
-        <el-table-column prop="paymentType" label="付费类型">
+        <el-table-column prop="name" label="姓名" min-width="80" />
+        <el-table-column prop="gender" label="性别" width="60" />
+        <el-table-column prop="age" label="年龄" width="60" />
+        <el-table-column prop="phone" label="联系电话" min-width="110" />
+        <el-table-column prop="defaultCourseTypeName" label="课程类型" min-width="100" />
+        <el-table-column prop="paymentType" label="付费类型" width="90">
           <template #default="{ row }">
             <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
               {{ row.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="practiceTeacher" label="陪练老师" />
-        <el-table-column label="操作" width="200">
+        <el-table-column prop="practiceTeacher" label="陪练老师" min-width="80" />
+        <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
@@ -57,12 +55,6 @@
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="form.phone" />
-        </el-form-item>
-        <el-form-item label="家长姓名">
-          <el-input v-model="form.parentName" />
-        </el-form-item>
-        <el-form-item label="家长电话">
-          <el-input v-model="form.parentPhone" />
         </el-form-item>
         <el-form-item label="默认课程类型">
           <el-select v-model="form.defaultCourseTypeId" placeholder="请选择默认课程类型" style="width: 100%">
@@ -113,8 +105,6 @@ const form = ref({
   gender: '',
   age: 0,
   phone: '',
-  parentName: '',
-  parentPhone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   practiceTeacher: '',
@@ -190,8 +180,6 @@ const handleAdd = () => {
     gender: '',
     age: 0,
     phone: '',
-    parentName: '',
-    parentPhone: '',
     defaultCourseTypeId: '',
     paymentType: 'prepaid',
     practiceTeacher: '',

@@ -1,11 +1,22 @@
 const Course = require('../models/Course')
 const Student = require('../models/Student')
 const CourseType = require('../models/CourseType')
+const User = require('../models/User')
 
 const getCourses = async (req, res) => {
   try {
     const { studentId, startTime, endTime } = req.query
-    const filter = studentId ? { studentId } : {}
+    const user = await User.findById(req.userId)
+    
+    const filter = {}
+    
+    if (user && user.role !== 'admin') {
+      filter.teacherId = req.userId
+    }
+    
+    if (studentId) {
+      filter.studentId = studentId
+    }
     
     if (startTime && endTime) {
       filter.startTime = {
@@ -20,13 +31,9 @@ const getCourses = async (req, res) => {
       .sort({ startTime: -1 })
       .populate('studentId', 'name phone')
       .populate('courseTypeId', 'name duration')
+      .populate('teacherId', 'name username')
     
     console.log('查询到的课程数量:', courses.length)
-    console.log('查询到的课程:', courses.map(c => ({
-      id: c._id,
-      startTime: c.startTime,
-      endTime: c.endTime
-    })))
     
     res.json({
       message: '获取成功',
@@ -40,7 +47,14 @@ const getCourses = async (req, res) => {
 
 const createCourse = async (req, res) => {
   try {
-    const course = await Course.create(req.body)
+    const user = await User.findById(req.userId)
+    
+    const courseData = {
+      ...req.body,
+      teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
+    }
+    
+    const course = await Course.create(courseData)
     
     res.json({
       message: '创建成功',
@@ -55,20 +69,28 @@ const createCourse = async (req, res) => {
 const updateCourse = async (req, res) => {
   try {
     const { id } = req.params
-    console.log('更新课程，ID:', id)
-    console.log('更新课程数据:', req.body)
+    const user = await User.findById(req.userId)
     
-    const course = await Course.findByIdAndUpdate(id, req.body, { new: true })
+    const course = await Course.findById(id)
     
     if (!course) {
       return res.status(404).json({ message: '课程不存在' })
     }
     
-    console.log('更新后的课程:', course)
+    if (user.role !== 'admin' && course.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限修改此课程' })
+    }
+    
+    console.log('更新课程，ID:', id)
+    console.log('更新课程数据:', req.body)
+    
+    const updatedCourse = await Course.findByIdAndUpdate(id, req.body, { new: true })
+    
+    console.log('更新后的课程:', updatedCourse)
     
     res.json({
       message: '更新成功',
-      data: course
+      data: updatedCourse
     })
   } catch (error) {
     console.error('更新课程错误:', error)
@@ -79,6 +101,18 @@ const updateCourse = async (req, res) => {
 const deleteCourse = async (req, res) => {
   try {
     const { id } = req.params
+    const user = await User.findById(req.userId)
+    
+    const course = await Course.findById(id)
+    
+    if (!course) {
+      return res.status(404).json({ message: '课程不存在' })
+    }
+    
+    if (user.role !== 'admin' && course.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限删除此课程' })
+    }
+    
     await Course.findByIdAndDelete(id)
     
     res.json({ message: '删除成功' })

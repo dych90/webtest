@@ -25,6 +25,11 @@
           <span>首页</span>
         </el-menu-item>
         
+        <el-menu-item v-if="userStore.isAdmin()" index="/users">
+          <el-icon><User /></el-icon>
+          <span>教师管理</span>
+        </el-menu-item>
+        
         <el-menu-item index="/students">
           <el-icon><User /></el-icon>
           <span>学生管理</span>
@@ -93,6 +98,11 @@
         <el-menu-item index="/dashboard">
           <el-icon><HomeFilled /></el-icon>
           <span>首页</span>
+        </el-menu-item>
+        
+        <el-menu-item v-if="userStore.isAdmin()" index="/users">
+          <el-icon><User /></el-icon>
+          <span>教师管理</span>
         </el-menu-item>
         
         <el-menu-item index="/students">
@@ -184,7 +194,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { Menu } from '@element-plus/icons-vue'
 
@@ -204,25 +214,11 @@ const handleMenuSelect = () => {
   drawerVisible.value = false
 }
 
-const handleLogout = async () => {
-  try {
-    await userStore.logout()
-    ElMessage.success('退出成功')
-    router.push('/login')
-  } catch (error) {
-    ElMessage.error('退出失败')
-  }
+const handleLogout = () => {
+  userStore.clear()
+  ElMessage.success('退出成功')
+  router.push('/login')
 }
-
-onMounted(async () => {
-  if (userStore.token && !userStore.userInfo) {
-    try {
-      await userStore.fetchUserInfo()
-    } catch (error) {
-      console.error('获取用户信息失败', error)
-    }
-  }
-})
 </script>
 
 <style scoped>

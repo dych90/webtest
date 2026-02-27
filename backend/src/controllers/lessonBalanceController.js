@@ -1,14 +1,27 @@
 const LessonBalance = require('../models/LessonBalance')
 const Student = require('../models/Student')
+const User = require('../models/User')
 
 const getLessonBalances = async (req, res) => {
   try {
     const { studentId } = req.query
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
     
-    const students = await Student.find(studentId ? { _id: studentId } : {})
+    let studentQuery = {}
+    if (isTeacher) {
+      studentQuery.teacherId = req.userId
+    }
+    if (studentId) {
+      studentQuery._id = studentId
+    }
+    
+    const students = await Student.find(studentQuery)
       .sort({ createdAt: -1 })
     
-    const balances = await LessonBalance.find({})
+    const studentIds = students.map(s => s._id)
+    const balanceQuery = isTeacher ? { studentId: { $in: studentIds } } : {}
+    const balances = await LessonBalance.find(balanceQuery)
     
     const result = students.map(student => {
       const balance = balances.find(b => b.studentId.toString() === student._id.toString())
@@ -36,7 +49,18 @@ const updateLessonBalance = async (req, res) => {
     
     const student = await Student.findById(studentId)
     
-    if (student && student.paymentType !== 'prepaid') {
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+    
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    if (isTeacher && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限更新此学生的课时余额' })
+    }
+    
+    if (student.paymentType !== 'prepaid') {
       return res.status(400).json({ message: '单次付费模式的学生不能更新课时余额' })
     }
     

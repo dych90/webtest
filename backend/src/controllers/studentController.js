@@ -1,13 +1,22 @@
 const Student = require('../models/Student')
+const User = require('../models/User')
 const xlsx = require('xlsx')
 const fs = require('fs')
 const path = require('path')
 
 const getStudents = async (req, res) => {
   try {
-    const students = await Student.find()
+    const user = await User.findById(req.userId)
+    const query = {}
+    
+    if (user && user.role !== 'admin') {
+      query.teacherId = req.userId
+    }
+    
+    const students = await Student.find(query)
       .sort({ createdAt: -1 })
       .populate('defaultCourseTypeId', 'name duration')
+      .populate('teacherId', 'name username')
     
     res.json({
       message: '获取成功',
@@ -21,7 +30,14 @@ const getStudents = async (req, res) => {
 
 const createStudent = async (req, res) => {
   try {
-    const student = await Student.create(req.body)
+    const user = await User.findById(req.userId)
+    
+    const studentData = {
+      ...req.body,
+      teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
+    }
+    
+    const student = await Student.create(studentData)
     
     res.json({
       message: '创建成功',
@@ -38,6 +54,8 @@ const importStudents = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: '请上传文件' })
     }
+
+    const user = await User.findById(req.userId)
 
     const workbook = xlsx.readFile(req.file.path)
     const sheetName = workbook.SheetNames[0]
@@ -60,7 +78,8 @@ const importStudents = async (req, res) => {
           parentPhone: row['家长电话'] || row['parentPhone'] || '',
           practiceTeacher: row['陪练老师'] || row['practiceTeacher'] || '',
           notes: row['备注'] || row['notes'] || '',
-          paymentType: 'prepaid'
+          paymentType: 'prepaid',
+          teacherId: req.userId
         }
 
         if (!studentData.name) {
@@ -99,15 +118,23 @@ const importStudents = async (req, res) => {
 const updateStudent = async (req, res) => {
   try {
     const { id } = req.params
-    const student = await Student.findByIdAndUpdate(id, req.body, { new: true })
+    const user = await User.findById(req.userId)
+    
+    const student = await Student.findById(id)
     
     if (!student) {
       return res.status(404).json({ message: '学生不存在' })
     }
     
+    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限修改此学生' })
+    }
+    
+    const updatedStudent = await Student.findByIdAndUpdate(id, req.body, { new: true })
+    
     res.json({
       message: '更新成功',
-      data: student
+      data: updatedStudent
     })
   } catch (error) {
     console.error('更新学生错误:', error)
@@ -118,6 +145,18 @@ const updateStudent = async (req, res) => {
 const deleteStudent = async (req, res) => {
   try {
     const { id } = req.params
+    const user = await User.findById(req.userId)
+    
+    const student = await Student.findById(id)
+    
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+    
+    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限删除此学生' })
+    }
+    
     await Student.findByIdAndDelete(id)
     
     res.json({ message: '删除成功' })

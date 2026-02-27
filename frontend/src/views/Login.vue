@@ -29,8 +29,9 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/store/user'
+import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
+import request from '@/utils/request'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -55,11 +56,16 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        await userStore.login(loginForm)
+        const response = await request.post('/login', loginForm)
+        const { token, user } = response.data
+        
+        userStore.setToken(token)
+        userStore.setUserInfo(user)
+        
         ElMessage.success('登录成功')
         router.push('/')
       } catch (error) {
-        ElMessage.error(error.message || '登录失败')
+        ElMessage.error(error.response?.data?.message || '登录失败')
       } finally {
         loading.value = false
       }

@@ -24,6 +24,7 @@ const lessonBalanceRoutes = require('./routes/lessonBalances')
 const statisticsRoutes = require('./routes/statistics')
 const feeStandardRoutes = require('./routes/feeStandards')
 const reminderRoutes = require('./routes/reminders')
+const userRoutes = require('./routes/users')
 
 app.use('/api', authRoutes)
 app.use('/api', studentRoutes)
@@ -36,6 +37,7 @@ app.use('/api', lessonBalanceRoutes)
 app.use('/api', statisticsRoutes)
 app.use('/api', feeStandardRoutes)
 app.use('/api', reminderRoutes)
+app.use('/api', userRoutes)
 
 const PORT = process.env.PORT || 3000
 
