@@ -4,7 +4,18 @@
       <template #header>
         <div class="card-header">
           <span>学生管理</span>
-          <el-button type="primary" @click="handleAdd">添加学生</el-button>
+          <div class="header-buttons">
+            <el-upload
+              ref="uploadRef"
+              :show-file-list="false"
+              :before-upload="beforeUpload"
+              :http-request="handleImport"
+              accept=".xlsx,.xls"
+            >
+              <el-button type="success">导入Excel</el-button>
+            </el-upload>
+            <el-button type="primary" @click="handleAdd">添加学生</el-button>
+          </div>
         </div>
       </template>
       
@@ -93,6 +104,7 @@ const students = ref([])
 const courseTypes = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加学生')
+const uploadRef = ref(null)
 
 const isMobile = computed(() => window.innerWidth < 768)
 
@@ -108,6 +120,47 @@ const form = ref({
   practiceTeacher: '',
   notes: ''
 })
+
+const beforeUpload = (file) => {
+  const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls')
+  if (!isExcel) {
+    ElMessage.error('只能上传 Excel 文件（.xlsx 或 .xls）')
+    return false
+  }
+  return true
+}
+
+const handleImport = async (options) => {
+  const formData = new FormData()
+  formData.append('file', options.file)
+  
+  try {
+    ElMessage.info('正在导入，请稍候...')
+    const response = await request.post('/students/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    
+    if (response.data) {
+      const { successCount, failCount, errors } = response.data
+      let message = `导入完成！成功：${successCount} 条`
+      if (failCount > 0) {
+        message += `，失败：${failCount} 条`
+      }
+      ElMessage.success(message)
+      
+      if (errors && errors.length > 0) {
+        console.log('导入错误详情：', errors)
+      }
+      
+      await fetchStudents()
+    }
+  } catch (error) {
+    console.error('导入失败', error)
+    ElMessage.error(error.response?.data?.message || '导入失败，请检查文件格式')
+  }
+}
 
 const fetchStudents = async () => {
   try {
@@ -193,5 +246,27 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .header-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .header-buttons .el-button {
+    width: 100%;
+  }
 }
 </style>

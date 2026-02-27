@@ -1,4 +1,7 @@
 const Student = require('../models/Student')
+const xlsx = require('xlsx')
+const fs = require('fs')
+const path = require('path')
 
 const getStudents = async (req, res) => {
   try {
@@ -27,6 +30,69 @@ const createStudent = async (req, res) => {
   } catch (error) {
     console.error('创建学生错误:', error)
     res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const importStudents = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: '请上传文件' })
+    }
+
+    const workbook = xlsx.readFile(req.file.path)
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    const data = xlsx.utils.sheet_to_json(worksheet)
+
+    const errors = []
+    let successCount = 0
+    let failCount = 0
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i]
+      try {
+        const studentData = {
+          name: row['姓名'] || row['name'] || '',
+          gender: row['性别'] || row['gender'] || '',
+          age: parseInt(row['年龄'] || row['age']) || 0,
+          phone: row['联系电话'] || row['phone'] || '',
+          parentName: row['家长姓名'] || row['parentName'] || '',
+          parentPhone: row['家长电话'] || row['parentPhone'] || '',
+          practiceTeacher: row['陪练老师'] || row['practiceTeacher'] || '',
+          notes: row['备注'] || row['notes'] || '',
+          paymentType: 'prepaid'
+        }
+
+        if (!studentData.name) {
+          errors.push(`第 ${i + 2} 行：姓名不能为空`)
+          failCount++
+          continue
+        }
+
+        await Student.create(studentData)
+        successCount++
+      } catch (error) {
+        errors.push(`第 ${i + 2} 行：${error.message}`)
+        failCount++
+      }
+    }
+
+    fs.unlinkSync(req.file.path)
+
+    res.json({
+      message: '导入完成',
+      data: {
+        successCount,
+        failCount,
+        errors
+      }
+    })
+  } catch (error) {
+    console.error('导入学生错误:', error)
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path)
+    }
+    res.status(500).json({ message: '导入失败: ' + error.message })
   }
 }
 
@@ -64,6 +130,7 @@ const deleteStudent = async (req, res) => {
 module.exports = {
   getStudents,
   createStudent,
+  importStudents,
   updateStudent,
   deleteStudent
 }
