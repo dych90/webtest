@@ -19,31 +19,78 @@
         </div>
       </template>
       
-      <el-table :data="students" style="width: 100%">
-        <el-table-column prop="name" label="姓名" min-width="80" />
-        <el-table-column prop="gender" label="性别" width="60" />
-        <el-table-column prop="age" label="年龄" width="60" />
-        <el-table-column prop="phone" label="联系电话" min-width="110" />
-        <el-table-column prop="defaultCourseTypeName" label="课程类型" min-width="100" />
-        <el-table-column prop="paymentType" label="付费类型" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
-              {{ row.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+      <div class="desktop-table">
+        <el-table :data="students" style="width: 100%">
+          <el-table-column prop="name" label="姓名" min-width="80" />
+          <el-table-column prop="gender" label="性别" width="60" />
+          <el-table-column prop="age" label="年龄" width="60" />
+          <el-table-column prop="phone" label="联系电话" min-width="110" />
+          <el-table-column prop="defaultCourseTypeName" label="课程类型" min-width="100" />
+          <el-table-column prop="paymentType" label="付费类型" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
+                {{ row.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="practiceTeacher" label="陪练老师" min-width="80" />
+          <el-table-column label="操作" width="160" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      
+      <div class="mobile-cards">
+        <div v-for="student in students" :key="student._id" class="student-card">
+          <div class="student-info">
+            <div class="student-name">{{ student.name }}</div>
+            <el-tag :type="student.paymentType === 'prepaid' ? 'primary' : 'success'" size="small">
+              {{ student.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="practiceTeacher" label="陪练老师" min-width="80" />
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+          <div class="student-detail">
+            <div class="detail-item">
+              <span class="label">性别:</span>
+              <span class="value">{{ student.gender || '未设置' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">年龄:</span>
+              <span class="value">{{ student.age || '未设置' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">联系电话:</span>
+              <span class="value">{{ student.phone || '未设置' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">课程类型:</span>
+              <span class="value">{{ student.defaultCourseTypeName }}</span>
+            </div>
+            <div class="detail-item" v-if="student.practiceTeacher">
+              <span class="label">陪练老师:</span>
+              <span class="value">{{ student.practiceTeacher }}</span>
+            </div>
+          </div>
+          <div class="student-actions">
+            <el-button size="small" @click="handleEdit(student)">编辑</el-button>
+            <el-button size="small" type="danger" @click="handleDelete(student)">删除</el-button>
+          </div>
+        </div>
+        <div v-if="students.length === 0" class="empty-tip">
+          暂无学生数据
+        </div>
+      </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="isMobile ? '95%' : '500px'" :style="isMobile ? 'margin: 5vh auto;' : ''">
-      <el-form :model="form" label-width="100px">
+    <el-dialog 
+      v-model="dialogVisible" 
+      :title="dialogTitle" 
+      :width="isMobile ? '95%' : '500px'" 
+      :style="isMobile ? 'margin: 5vh auto;' : ''"
+    >
+      <el-form :model="form" :label-width="isMobile ? '80px' : '100px'">
         <el-form-item label="姓名">
           <el-input v-model="form.name" />
         </el-form-item>
@@ -51,12 +98,12 @@
           <el-input v-model="form.gender" />
         </el-form-item>
         <el-form-item label="年龄">
-          <el-input-number v-model="form.age" :min="0" />
+          <el-input-number v-model="form.age" :min="0" style="width: 100%" />
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="form.phone" />
         </el-form-item>
-        <el-form-item label="默认课程类型">
+        <el-form-item label="课程类型">
           <el-select v-model="form.defaultCourseTypeId" placeholder="请选择默认课程类型" style="width: 100%">
             <el-option
               v-for="type in courseTypes"
@@ -88,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
 
@@ -97,8 +144,13 @@ const courseTypes = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加学生')
 const uploadRef = ref(null)
+const windowWidth = ref(window.innerWidth)
 
-const isMobile = computed(() => window.innerWidth < 768)
+const isMobile = computed(() => windowWidth.value < 768)
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
+}
 
 const form = ref({
   name: '',
@@ -226,10 +278,19 @@ const handleSave = async () => {
 onMounted(() => {
   fetchStudents()
   fetchCourseTypes()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
+.students {
+  padding: 20px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
@@ -241,7 +302,21 @@ onMounted(() => {
   gap: 10px;
 }
 
+.mobile-cards {
+  display: none;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #999;
+  padding: 40px 0;
+}
+
 @media (max-width: 768px) {
+  .students {
+    padding: 12px;
+  }
+
   .card-header {
     flex-direction: column;
     gap: 12px;
@@ -255,6 +330,66 @@ onMounted(() => {
   
   .header-buttons .el-button {
     width: 100%;
+  }
+
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-cards {
+    display: block;
+  }
+
+  .student-card {
+    background: #f5f7fa;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .student-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e4e7ed;
+  }
+
+  .student-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #303133;
+  }
+
+  .student-detail {
+    margin-bottom: 12px;
+  }
+
+  .detail-item {
+    display: flex;
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .detail-item .label {
+    color: #909399;
+    width: 70px;
+    flex-shrink: 0;
+  }
+
+  .detail-item .value {
+    color: #606266;
+  }
+
+  .student-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .student-actions .el-button {
+    flex: 1;
   }
 }
 </style>
