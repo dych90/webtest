@@ -169,12 +169,26 @@ const importFeeStandards = async (req, res) => {
           continue
         }
         
-        await FeeStandard.create({
-          ...feeStandardData,
+        const existingStandard = await FeeStandard.findOne({
           studentId: student._id,
           courseTypeId: courseTypeId
         })
-        successCount++
+        
+        if (existingStandard) {
+          await FeeStandard.findByIdAndUpdate(existingStandard._id, {
+            price: feeStandardData.price,
+            effectiveDate: feeStandardData.effectiveDate,
+            expireDate: feeStandardData.expireDate
+          })
+          successCount++
+        } else {
+          await FeeStandard.create({
+            ...feeStandardData,
+            studentId: student._id,
+            courseTypeId: courseTypeId
+          })
+          successCount++
+        }
       } catch (error) {
         console.error(`第 ${i + 2} 行错误:`, error)
         errors.push(`第 ${i + 2} 行：${error.message}`)

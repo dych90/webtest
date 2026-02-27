@@ -249,7 +249,13 @@ const handleAdd = () => {
 
 const handleEdit = (row) => {
   dialogTitle.value = '编辑收费标准'
-  form.value = { ...row }
+  form.value = {
+    studentId: row.studentId?._id || row.studentId || '',
+    courseTypeId: row.courseTypeId?._id || row.courseTypeId || '',
+    price: row.price,
+    effectiveDate: row.effectiveDate ? new Date(row.effectiveDate).toISOString().split('T')[0] : '',
+    expireDate: row.expireDate ? new Date(row.expireDate).toISOString().split('T')[0] : ''
+  }
   dialogVisible.value = true
 }
 
