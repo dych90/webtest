@@ -4,7 +4,7 @@
 
 ## 技术栈
 
-### 前端
+### 前端 (Web)
 - Vue 3
 - Vite
 - Element Plus
@@ -13,6 +13,11 @@
 - FullCalendar
 - ECharts
 - html2canvas
+
+### 小程序
+- uni-app
+- Vue 3
+- Pinia
 
 ### 后端
 - Node.js
@@ -30,7 +35,7 @@
 
 ```
 piano-studio-management/
-├── frontend/                 # 前端项目
+├── frontend/                 # Web前端项目
 │   ├── public/
 │   ├── src/
 │   │   ├── api/            # API接口
@@ -44,6 +49,23 @@ piano-studio-management/
 │   │   └── main.js
 │   ├── package.json
 │   └── vite.config.js
+├── miniprogram/              # 微信小程序项目
+│   ├── pages/               # 页面
+│   │   ├── login/          # 登录页
+│   │   ├── index/          # 首页
+│   │   ├── students/       # 学生管理
+│   │   ├── schedule/       # 排课管理
+│   │   ├── lessons/        # 消课管理
+│   │   ├── payments/       # 缴费管理
+│   │   ├── statistics/     # 数据统计
+│   │   └── mine/           # 我的
+│   ├── static/             # 静态资源
+│   ├── stores/             # 状态管理
+│   ├── utils/              # 工具函数
+│   ├── App.vue
+│   ├── main.js
+│   ├── manifest.json       # 应用配置
+│   └── pages.json          # 页面配置
 ├── backend/                 # 后端项目
 │   ├── src/
 │   │   ├── controllers/    # 控制器
@@ -79,6 +101,7 @@ piano-studio-management/
 
 - Node.js 18+
 - MySQL 8.0+
+- HBuilderX (小程序开发)
 
 ### 数据库配置
 
@@ -129,7 +152,7 @@ npm run dev
 - 用户名：admin
 - 密码：admin123
 
-### 前端启动
+### Web前端启动
 
 ```bash
 cd frontend
@@ -142,6 +165,14 @@ npm run dev
 ```
 
 访问 http://localhost:5173 即可使用系统。
+
+### 小程序启动
+
+1. 使用 HBuilderX 打开 `miniprogram` 目录
+2. 修改 `manifest.json` 中的 `appid` 为你的微信小程序 AppID
+3. 点击 运行 → 运行到小程序模拟器 → 微信开发者工具
+
+**注意**：需要在微信开发者工具中开启"不校验合法域名"选项（详情 → 本地设置）
 
 ## 部署
 
