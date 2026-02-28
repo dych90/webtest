@@ -87,19 +87,24 @@ const importStudents = async (req, res) => {
         }
         
         const courseTypeName = row['课程类型'] || row['courseType'] || row['默认课程类型'] || ''
+        console.log(`第 ${i + 2} 行 - 学生: ${studentData.name}, 课程类型: ${courseTypeName}`)
+        
         if (courseTypeName) {
           const CourseType = require('../models/CourseType')
           const courseType = await CourseType.findOne({ name: courseTypeName })
+          console.log(`查找课程类型结果:`, courseType ? courseType.name : '未找到')
           if (courseType) {
             studentData.defaultCourseTypeId = courseType._id
           }
         }
         
         const existingStudent = await Student.findOne({ name: studentData.name })
+        console.log(`学生是否存在:`, existingStudent ? '是' : '否')
         
         if (existingStudent) {
           const updateData = { ...studentData }
           delete updateData.teacherId
+          console.log(`更新数据:`, updateData)
           await Student.findByIdAndUpdate(existingStudent._id, updateData)
           successCount++
         } else {
