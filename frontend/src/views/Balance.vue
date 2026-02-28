@@ -9,16 +9,14 @@
       
       <el-table :data="balances" style="width: 100%">
         <el-table-column prop="studentName" label="学生" />
-        <el-table-column prop="parentName" label="家长姓名" />
-        <el-table-column prop="parentPhone" label="家长电话" />
-        <el-table-column prop="paymentType" label="付费类型">
+        <el-table-column prop="paymentType" label="付费类型" width="120">
           <template #default="{ row }">
             <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
               {{ row.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="remainingLessons" label="剩余课时/状态">
+        <el-table-column prop="remainingLessons" label="剩余课时" width="140">
           <template #default="{ row }">
             <template v-if="row.paymentType === 'prepaid'">
               <el-tag :type="row.remainingLessons > 10 ? 'success' : row.remainingLessons > 5 ? 'warning' : 'danger'">
@@ -30,7 +28,7 @@
             </template>
           </template>
         </el-table-column>
-        <el-table-column prop="lastUpdated" label="最后更新" width="180">
+        <el-table-column prop="lastUpdated" label="最后更新" width="120">
           <template #default="{ row }">
             {{ formatDate(row.lastUpdated) }}
           </template>
@@ -206,8 +204,6 @@ const fetchBalances = async () => {
     balances.value = response.data.map(item => ({
       ...item,
       studentName: item.studentId?.name || '未分配',
-      parentName: item.studentId?.parentName || '',
-      parentPhone: item.studentId?.parentPhone || '',
       paymentType: item.studentId?.paymentType || 'prepaid'
     }))
   } catch (error) {
