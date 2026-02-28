@@ -75,6 +75,10 @@ const importStudents = async (req, res) => {
 
     for (let i = 0; i < data.length; i++) {
       const row = data[i]
+      console.log(`=== 第 ${i + 2} 行原始数据 ===`)
+      console.log('所有列名:', Object.keys(row))
+      console.log('所有值:', row)
+      
       try {
         const studentData = {
           name: row['姓名'] || row['name'] || '',
@@ -87,14 +91,16 @@ const importStudents = async (req, res) => {
           teacherId: req.userId
         }
         
-        const paymentTypeValue = row['付费类型'] || row['paymentType'] || ''
+        const paymentTypeValue = row['付费类型'] || row['paymentType'] || row['付费方式'] || ''
+        console.log(`付费类型原始值:`, paymentTypeValue)
         if (paymentTypeValue) {
           if (paymentTypeValue === '预付费' || paymentTypeValue === 'prepaid') {
             studentData.paymentType = 'prepaid'
-          } else if (paymentTypeValue === '单次付费' || paymentTypeValue === 'single') {
+          } else if (paymentTypeValue === '单次付费' || paymentTypeValue === 'single' || paymentTypeValue === '单次') {
             studentData.paymentType = 'single'
           }
         }
+        console.log(`最终付费类型:`, studentData.paymentType)
         
         if (!studentData.name) {
           errors.push(`第 ${i + 2} 行：姓名不能为空`)
