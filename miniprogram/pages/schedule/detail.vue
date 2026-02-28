@@ -31,15 +31,40 @@
     </view>
     
     <view class="action-section">
-      <button class="btn-complete" @click="handleComplete" v-if="course.status === 'normal'">完成课程</button>
-      <button class="btn-cancel" @click="handleCancel" v-if="course.status === 'normal'">取消课程</button>
+      <button 
+        class="btn-attend" 
+        @click="handleAttend" 
+        v-if="course.status === 'normal'"
+      >
+        上课
+      </button>
+      <button 
+        class="btn-cancel-attend" 
+        @click="handleCancelAttend" 
+        v-if="course.status === 'completed'"
+      >
+        取消上课
+      </button>
+      <button 
+        class="btn-cancel" 
+        @click="handleCancel" 
+        v-if="course.status === 'normal'"
+      >
+        取消课程
+      </button>
+      <button 
+        class="btn-delete" 
+        @click="handleDelete"
+      >
+        删除课程
+      </button>
     </view>
   </view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { get, put } from '@/utils/request'
+import { get, put, post, del } from '@/utils/request'
 
 const course = ref({})
 const courseId = ref('')
@@ -78,14 +103,52 @@ const formatDateTime = (dateStr) => {
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-const handleComplete = async () => {
+const handleAttend = async () => {
   try {
     await put(`/courses/${courseId.value}`, { status: 'completed' })
-    uni.showToast({ title: '课程已完成', icon: 'success' })
+    await post('/lesson-records', {
+      studentId: course.value.studentId._id,
+      courseId: course.value._id,
+      courseStartTime: course.value.startTime,
+      lessonsConsumed: 1,
+      lessonContent: '',
+      isDeducted: true,
+      notes: '从课程详情上课'
+    })
+    uni.showToast({ title: '上课成功', icon: 'success' })
     fetchCourse()
   } catch (error) {
-    uni.showToast({ title: error.message || '操作失败', icon: 'none' })
+    uni.showToast({ title: error.message || '上课失败', icon: 'none' })
   }
+}
+
+const handleCancelAttend = async () => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要取消上课吗？这将撤销消课记录。',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await put(`/courses/${courseId.value}`, { status: 'normal' })
+          
+          const lessonRecords = await get('/lesson-records', {
+            courseId: course.value._id,
+            studentId: course.value.studentId._id
+          })
+          
+          if (lessonRecords.data && lessonRecords.data.length > 0) {
+            const latestRecord = lessonRecords.data[0]
+            await del(`/lesson-records/${latestRecord._id}`)
+          }
+          
+          uni.showToast({ title: '取消上课成功', icon: 'success' })
+          fetchCourse()
+        } catch (error) {
+          uni.showToast({ title: error.message || '取消上课失败', icon: 'none' })
+        }
+      }
+    }
+  })
 }
 
 const handleCancel = async () => {
@@ -100,6 +163,27 @@ const handleCancel = async () => {
           fetchCourse()
         } catch (error) {
           uni.showToast({ title: error.message || '操作失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+const handleDelete = async () => {
+  uni.showModal({
+    title: '确认删除',
+    content: '确定要删除这个课程吗？',
+    confirmColor: '#F56C6C',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await del(`/courses/${courseId.value}`)
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1000)
+        } catch (error) {
+          uni.showToast({ title: error.message || '删除失败', icon: 'none' })
         }
       }
     }
@@ -180,12 +264,14 @@ const handleCancel = async () => {
 
 .action-section {
   display: flex;
+  flex-wrap: wrap;
   gap: 20rpx;
   padding: 20rpx 0;
 }
 
-.btn-complete {
+.btn-attend {
   flex: 1;
+  min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
   background-color: #67C23A;
@@ -195,13 +281,38 @@ const handleCancel = async () => {
   font-size: 28rpx;
 }
 
+.btn-cancel-attend {
+  flex: 1;
+  min-width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #E6A23C;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
 .btn-cancel {
   flex: 1;
+  min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
   background-color: #fff;
   color: #F56C6C;
   border: 2rpx solid #F56C6C;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.btn-delete {
+  flex: 1;
+  min-width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #fff;
+  color: #909399;
+  border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
 }

@@ -54,7 +54,7 @@
             <text class="student-name">{{ course.studentId?.name || '未分配' }}</text>
             <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
           </view>
-          <view class="course-status">
+          <view class="course-actions">
             <text 
               class="status-tag" 
               :class="{
@@ -65,6 +65,20 @@
             >
               {{ getStatusText(course.status) }}
             </text>
+            <button 
+              v-if="course.status === 'normal'" 
+              class="btn-attend" 
+              @click="handleAttendCourse(course)"
+            >
+              上课
+            </button>
+            <button 
+              v-if="course.status === 'completed'" 
+              class="btn-cancel-attend" 
+              @click="handleCancelAttendCourse(course)"
+            >
+              取消
+            </button>
           </view>
         </view>
       </view>
@@ -96,8 +110,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
-import { get } from '@/utils/request'
+import { get, post, put, del } from '@/utils/request'
 
 const userStore = useUserStore()
 
@@ -145,8 +160,8 @@ const getStatusText = (status) => {
 const fetchTodayCourses = async () => {
   try {
     const today = new Date()
-    const startOfDay = new Date(today.setHours(0, 0, 0, 0))
-    const endOfDay = new Date(today.setHours(23, 59, 59, 999))
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
     
     const res = await get('/courses', {
       startTime: startOfDay.toISOString(),
@@ -176,6 +191,56 @@ const fetchStats = async () => {
   }
 }
 
+const handleAttendCourse = async (course) => {
+  try {
+    await put(`/courses/${course._id}`, { status: 'completed' })
+    await post('/lesson-records', {
+      studentId: course.studentId._id,
+      courseId: course._id,
+      courseStartTime: course.startTime,
+      lessonsConsumed: 1,
+      lessonContent: '',
+      isDeducted: true,
+      notes: '从首页直接上课'
+    })
+    uni.showToast({ title: '上课成功', icon: 'success' })
+    await fetchTodayCourses()
+    await fetchStats()
+  } catch (error) {
+    uni.showToast({ title: error.message || '上课失败', icon: 'none' })
+  }
+}
+
+const handleCancelAttendCourse = async (course) => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要取消上课吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await put(`/courses/${course._id}`, { status: 'normal' })
+          
+          const lessonRecords = await get('/lesson-records', {
+            courseId: course._id,
+            studentId: course.studentId._id
+          })
+          
+          if (lessonRecords.data && lessonRecords.data.length > 0) {
+            const latestRecord = lessonRecords.data[0]
+            await del(`/lesson-records/${latestRecord._id}`)
+          }
+          
+          uni.showToast({ title: '取消上课成功', icon: 'success' })
+          await fetchTodayCourses()
+          await fetchStats()
+        } catch (error) {
+          uni.showToast({ title: error.message || '取消上课失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
 const goToSchedule = () => {
   uni.switchTab({
     url: '/pages/schedule/schedule'
@@ -191,6 +256,11 @@ const goToPage = (url) => {
 }
 
 onMounted(() => {
+  fetchTodayCourses()
+  fetchStats()
+})
+
+onShow(() => {
   fetchTodayCourses()
   fetchStats()
 })
@@ -351,9 +421,11 @@ onMounted(() => {
   color: #909399;
 }
 
-.course-status {
-  width: 100rpx;
-  text-align: right;
+.course-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12rpx;
 }
 
 .status-tag {
@@ -376,6 +448,26 @@ onMounted(() => {
 .status-cancelled {
   background-color: #fef0f0;
   color: #F56C6C;
+}
+
+.btn-attend {
+  padding: 12rpx 24rpx;
+  background-color: #409EFF;
+  color: #fff;
+  font-size: 24rpx;
+  border: none;
+  border-radius: 8rpx;
+  line-height: 1.2;
+}
+
+.btn-cancel-attend {
+  padding: 12rpx 24rpx;
+  background-color: #fff;
+  color: #F56C6C;
+  font-size: 24rpx;
+  border: 2rpx solid #F56C6C;
+  border-radius: 8rpx;
+  line-height: 1.2;
 }
 
 .quick-actions {
