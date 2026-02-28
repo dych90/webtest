@@ -27,24 +27,21 @@ pm2 delete piano-backend 2>/dev/null || true
 pm2 delete webtest-backend 2>/dev/null || true
 
 echo ""
-echo "5. 启动后端服务..."
-cd ../backend
-nohup npm start > backend.log 2>&1 &
-BACKEND_PID=$!
+echo "5. 启动后端服务（PM2）..."
+cd /www/webtest/backend
+pm2 start src/app.js --name piano-backend
 
 echo ""
-echo "6. 等待后端启动..."
-sleep 5
+echo "6. 保存 PM2 配置..."
+pm2 save
 
-if ps -p $BACKEND_PID > /dev/null; then
-    echo "✅ 后端服务启动成功（PID: $BACKEND_PID）"
-else
-    echo "❌ 后端服务启动失败"
-    cat backend.log
-fi
+echo ""
+echo "7. 查看服务状态..."
+pm2 list
 
 echo ""
 echo "========================================="
 echo "更新完成！"
-echo "后端服务已启动"
+echo "后端服务已启动（PM2）"
+echo "查看日志: pm2 logs piano-backend"
 echo "========================================="
