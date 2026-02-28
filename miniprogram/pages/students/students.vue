@@ -54,6 +54,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get } from '@/utils/request'
 
@@ -97,6 +98,10 @@ const handleAdd = () => {
 }
 
 onMounted(() => {
+  fetchStudents()
+})
+
+onShow(() => {
   fetchStudents()
 })
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <view class="add-container">
+  <view class="edit-container">
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">学生姓名 *</text>
@@ -66,7 +66,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { get, post } from '@/utils/request'
+import { get, put } from '@/utils/request'
 
 const genders = ['未设置', '男', '女']
 const genderIndex = ref(0)
@@ -75,6 +75,7 @@ const paymentTypeIndex = ref(0)
 const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
 const courseTypeIndex = ref(0)
 const loading = ref(false)
+const studentId = ref('')
 
 const form = reactive({
   name: '',
@@ -88,14 +89,43 @@ const form = reactive({
 })
 
 onMounted(() => {
-  fetchCourseTypes()
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  studentId.value = currentPage.options?.id || ''
+  if (studentId.value) {
+    fetchStudent()
+    fetchCourseTypes()
+  }
 })
+
+const fetchStudent = async () => {
+  try {
+    const res = await get(`/students/${studentId.value}`)
+    const data = res.data || {}
+    form.name = data.name || ''
+    form.gender = data.gender || ''
+    form.age = data.age || ''
+    form.phone = data.phone || ''
+    form.defaultCourseTypeId = data.defaultCourseTypeId?._id || data.defaultCourseTypeId || ''
+    form.paymentType = data.paymentType || 'prepaid'
+    form.practiceTeacher = data.practiceTeacher || ''
+    form.notes = data.notes || ''
+    
+    genderIndex.value = data.gender === '男' ? 1 : (data.gender === '女' ? 2 : 0)
+    paymentTypeIndex.value = data.paymentType === 'payPerLesson' ? 1 : 0
+  } catch (error) {
+    uni.showToast({ title: '获取学生信息失败', icon: 'none' })
+  }
+}
 
 const fetchCourseTypes = async () => {
   try {
     const res = await get('/course-types')
     if (res.data && res.data.length > 0) {
       courseTypes.value = [{ name: '请选择课程类型', _id: '' }, ...res.data]
+      
+      const idx = courseTypes.value.findIndex(t => t._id === form.defaultCourseTypeId)
+      courseTypeIndex.value = idx >= 0 ? idx : 0
     }
   } catch (error) {
     console.error('获取课程类型失败', error)
@@ -138,13 +168,13 @@ const handleSubmit = async () => {
   }
   
   try {
-    await post('/students', submitData)
-    uni.showToast({ title: '添加成功', icon: 'success' })
+    await put(`/students/${studentId.value}`, submitData)
+    uni.showToast({ title: '更新成功', icon: 'success' })
     setTimeout(() => {
       uni.navigateBack()
     }, 1000)
   } catch (error) {
-    uni.showToast({ title: error.message || '添加失败', icon: 'none' })
+    uni.showToast({ title: error.message || '更新失败', icon: 'none' })
   } finally {
     loading.value = false
   }
@@ -152,7 +182,7 @@ const handleSubmit = async () => {
 </script>
 
 <style scoped>
-.add-container {
+.edit-container {
   padding: 20rpx;
   background-color: #f8f8f8;
   min-height: 100vh;

@@ -30,6 +30,33 @@ const getStudents = async (req, res) => {
   }
 }
 
+const getStudentById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(req.userId)
+    
+    const student = await Student.findById(id)
+      .populate('defaultCourseTypeId', 'name duration')
+      .populate('teacherId', 'name username')
+    
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+    
+    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限查看此学生' })
+    }
+    
+    res.json({
+      message: '获取成功',
+      data: student
+    })
+  } catch (error) {
+    console.error('获取学生详情错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 const createStudent = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
@@ -217,6 +244,7 @@ const deleteStudent = async (req, res) => {
 
 module.exports = {
   getStudents,
+  getStudentById,
   createStudent,
   importStudents,
   updateStudent,

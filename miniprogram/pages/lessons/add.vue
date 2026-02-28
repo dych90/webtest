@@ -12,10 +12,10 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">课程类型</text>
-        <picker :value="courseTypeIndex" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
+        <text class="form-label">课程</text>
+        <picker :value="courseIndex" :range="courseOptions" @change="onCourseChange">
           <view class="form-picker">
-            <text>{{ courseTypes[courseTypeIndex]?.name || '请选择课程类型' }}</text>
+            <text>{{ courseOptions[courseIndex] || '请选择课程' }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -37,6 +37,16 @@
       </view>
       
       <view class="form-item">
+        <text class="form-label">上课曲目</text>
+        <textarea class="form-textarea" v-model="form.lessonContent" placeholder="请输入上课曲目" />
+      </view>
+      
+      <view class="form-item switch-item">
+        <text class="form-label">是否扣费</text>
+        <switch :checked="form.isDeducted" @change="onDeductedChange" color="#409EFF" />
+      </view>
+      
+      <view class="form-item">
         <text class="form-label">备注</text>
         <textarea class="form-textarea" v-model="form.notes" placeholder="请输入备注信息" />
       </view>
@@ -50,28 +60,34 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { get, post } from '@/utils/request'
 
 const students = ref([])
 const studentIndex = ref(0)
-const courseTypes = ref([])
-const courseTypeIndex = ref(0)
+const courses = ref([])
+const courseIndex = ref(0)
 const loading = ref(false)
 
 const form = reactive({
   studentId: '',
-  courseTypeId: '',
+  courseId: '',
   recordDate: '',
   lessonsConsumed: '',
+  lessonContent: '',
+  isDeducted: true,
   notes: ''
+})
+
+const courseOptions = computed(() => {
+  return courses.value.map(c => `${c.studentId?.name || '未分配'} - ${c.courseTypeId?.name || '未设置'}`)
 })
 
 onMounted(() => {
   const today = new Date()
   form.recordDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   fetchStudents()
-  fetchCourseTypes()
+  fetchCourses()
 })
 
 const fetchStudents = async () => {
@@ -83,12 +99,12 @@ const fetchStudents = async () => {
   }
 }
 
-const fetchCourseTypes = async () => {
+const fetchCourses = async () => {
   try {
-    const res = await get('/course-types')
-    courseTypes.value = res.data || []
+    const res = await get('/courses')
+    courses.value = (res.data || []).filter(c => c.status === 'normal')
   } catch (error) {
-    console.error('获取课程类型失败', error)
+    console.error('获取课程列表失败', error)
   }
 }
 
@@ -97,13 +113,17 @@ const onStudentChange = (e) => {
   form.studentId = students.value[e.detail.value]?._id || ''
 }
 
-const onCourseTypeChange = (e) => {
-  courseTypeIndex.value = e.detail.value
-  form.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
+const onCourseChange = (e) => {
+  courseIndex.value = e.detail.value
+  form.courseId = courses.value[e.detail.value]?._id || ''
 }
 
 const onDateChange = (e) => {
   form.recordDate = e.detail.value
+}
+
+const onDeductedChange = (e) => {
+  form.isDeducted = e.detail.value
 }
 
 const handleCancel = () => {
@@ -121,14 +141,19 @@ const handleSubmit = async () => {
   }
   
   loading.value = true
+  
+  const submitData = {
+    studentId: form.studentId,
+    courseId: form.courseId || undefined,
+    recordDate: form.recordDate,
+    lessonsConsumed: Number(form.lessonsConsumed),
+    lessonContent: form.lessonContent,
+    isDeducted: form.isDeducted,
+    notes: form.notes
+  }
+  
   try {
-    await post('/lesson-records', {
-      studentId: form.studentId,
-      courseTypeId: form.courseTypeId,
-      recordDate: form.recordDate,
-      lessonsConsumed: Number(form.lessonsConsumed),
-      notes: form.notes
-    })
+    await post('/lesson-records', submitData)
     uni.showToast({ title: '添加成功', icon: 'success' })
     setTimeout(() => {
       uni.navigateBack()
@@ -200,6 +225,16 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.switch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.switch-item .form-label {
+  margin-bottom: 0;
 }
 
 .form-actions {

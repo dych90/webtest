@@ -33,7 +33,7 @@
       
       <view class="form-item">
         <text class="form-label">开始时间 *</text>
-        <picker mode="time" :value="form.startTime" @change="onStartTimeChange">
+        <picker mode="time" :value="form.startTime" start="08:00" end="22:00" @change="onStartTimeChange">
           <view class="form-picker">
             <text>{{ form.startTime || '请选择时间' }}</text>
             <text class="picker-arrow">▼</text>
@@ -42,10 +42,30 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">结束时间 *</text>
-        <picker mode="time" :value="form.endTime" @change="onEndTimeChange">
+        <text class="form-label">课程时长</text>
+        <picker :value="durationIndex" :range="durationOptions" @change="onDurationChange">
           <view class="form-picker">
-            <text>{{ form.endTime || '请选择时间' }}</text>
+            <text>{{ durationOptions[durationIndex] }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item switch-item">
+        <text class="form-label">是否重复</text>
+        <switch :checked="form.isRecurring" @change="onRecurringChange" color="#409EFF" />
+      </view>
+      
+      <view class="form-item" v-if="form.isRecurring">
+        <text class="form-label">重复模式</text>
+        <input class="form-input" v-model="form.recurringPattern" placeholder="例如：每周一、每周二" />
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">状态</text>
+        <picker :value="statusIndex" :range="statusOptions" @change="onStatusChange">
+          <view class="form-picker">
+            <text>{{ statusOptions[statusIndex] }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -65,13 +85,19 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { get, post } from '@/utils/request'
 
 const students = ref([])
 const studentIndex = ref(0)
 const courseTypes = ref([])
 const courseTypeIndex = ref(0)
+const durationOptions = ['30分钟', '45分钟', '60分钟', '90分钟', '120分钟']
+const durationIndex = ref(2)
+const durationValues = [30, 45, 60, 90, 120]
+const statusOptions = ['正常', '已取消', '已改期']
+const statusValues = ['normal', 'cancelled', 'rescheduled']
+const statusIndex = ref(0)
 const loading = ref(false)
 
 const form = reactive({
@@ -79,7 +105,10 @@ const form = reactive({
   courseTypeId: '',
   date: '',
   startTime: '',
-  endTime: '',
+  duration: 60,
+  isRecurring: false,
+  recurringPattern: '',
+  status: 'normal',
   notes: ''
 })
 
@@ -89,9 +118,23 @@ onMounted(() => {
   const date = currentPage.options?.date || ''
   if (date) {
     form.date = date
+  } else {
+    const today = new Date()
+    form.date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   }
   fetchStudents()
   fetchCourseTypes()
+})
+
+watch(() => form.studentId, (newStudentId) => {
+  const student = students.value.find(s => s._id === newStudentId)
+  if (student && student.defaultCourseTypeId) {
+    const idx = courseTypes.value.findIndex(t => t._id === student.defaultCourseTypeId._id || student.defaultCourseTypeId)
+    if (idx >= 0) {
+      courseTypeIndex.value = idx
+      form.courseTypeId = courseTypes.value[idx]._id
+    }
+  }
 })
 
 const fetchStudents = async () => {
@@ -130,8 +173,18 @@ const onStartTimeChange = (e) => {
   form.startTime = e.detail.value
 }
 
-const onEndTimeChange = (e) => {
-  form.endTime = e.detail.value
+const onDurationChange = (e) => {
+  durationIndex.value = e.detail.value
+  form.duration = durationValues[e.detail.value]
+}
+
+const onRecurringChange = (e) => {
+  form.isRecurring = e.detail.value
+}
+
+const onStatusChange = (e) => {
+  statusIndex.value = e.detail.value
+  form.status = statusValues[e.detail.value]
 }
 
 const handleCancel = () => {
@@ -143,23 +196,29 @@ const handleSubmit = async () => {
     uni.showToast({ title: '请选择学生', icon: 'none' })
     return
   }
-  if (!form.date || !form.startTime || !form.endTime) {
-    uni.showToast({ title: '请填写完整的课程时间', icon: 'none' })
+  if (!form.date || !form.startTime) {
+    uni.showToast({ title: '请填写完整的上课时间', icon: 'none' })
     return
   }
   
-  const startTime = new Date(`${form.date}T${form.startTime}:00`)
-  const endTime = new Date(`${form.date}T${form.endTime}:00`)
-  
   loading.value = true
+  
+  const startTime = new Date(`${form.date}T${form.startTime}:00`)
+  const endTime = new Date(startTime.getTime() + form.duration * 60000)
+  
+  const submitData = {
+    studentId: form.studentId,
+    courseTypeId: form.courseTypeId || undefined,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    isRecurring: form.isRecurring,
+    recurringPattern: form.recurringPattern,
+    status: form.status,
+    notes: form.notes
+  }
+  
   try {
-    await post('/courses', {
-      studentId: form.studentId,
-      courseTypeId: form.courseTypeId,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      notes: form.notes
-    })
+    await post('/courses', submitData)
     uni.showToast({ title: '添加成功', icon: 'success' })
     setTimeout(() => {
       uni.navigateBack()
@@ -197,6 +256,16 @@ const handleSubmit = async () => {
   margin-bottom: 12rpx;
 }
 
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
 .form-picker {
   display: flex;
   justify-content: space-between;
@@ -221,6 +290,16 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.switch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.switch-item .form-label {
+  margin-bottom: 0;
 }
 
 .form-actions {

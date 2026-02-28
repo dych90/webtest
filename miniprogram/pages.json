@@ -41,6 +41,14 @@
       }
     },
     {
+      "path": "pages/students/edit",
+      "style": {
+        "navigationBarTitleText": "编辑学生",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/schedule/schedule",
       "style": {
         "navigationBarTitleText": "排课管理",
