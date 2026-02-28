@@ -96,8 +96,8 @@ const importStudents = async (req, res) => {
         if (paymentTypeValue) {
           if (paymentTypeValue === '预付费' || paymentTypeValue === 'prepaid') {
             studentData.paymentType = 'prepaid'
-          } else if (paymentTypeValue === '单次付费' || paymentTypeValue === 'single' || paymentTypeValue === '单次') {
-            studentData.paymentType = 'single'
+          } else if (paymentTypeValue === '单次付费' || paymentTypeValue === 'payPerLesson' || paymentTypeValue === '单次') {
+            studentData.paymentType = 'payPerLesson'
           }
         }
         console.log(`最终付费类型:`, studentData.paymentType)
