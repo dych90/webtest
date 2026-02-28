@@ -50,17 +50,24 @@ const createStudent = async (req, res) => {
 }
 
 const importStudents = async (req, res) => {
+  console.log('=== 开始导入学生 ===')
+  console.log('文件信息:', req.file)
+  console.log('用户ID:', req.userId)
+  
   try {
     if (!req.file) {
+      console.log('错误: 没有上传文件')
       return res.status(400).json({ message: '请上传文件' })
     }
 
     const user = await User.findById(req.userId)
+    console.log('当前用户:', user ? user.username : '未找到')
 
     const workbook = xlsx.readFile(req.file.path)
     const sheetName = workbook.SheetNames[0]
     const worksheet = workbook.Sheets[sheetName]
     const data = xlsx.utils.sheet_to_json(worksheet)
+    console.log('读取到数据行数:', data.length)
 
     const errors = []
     let successCount = 0
