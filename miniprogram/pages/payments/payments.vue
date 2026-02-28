@@ -5,15 +5,23 @@
     </view>
     
     <view v-else class="payment-list">
-      <view v-for="payment in payments" :key="payment._id" class="payment-item">
+      <view v-for="payment in payments" :key="payment._id" class="payment-item" @click="handleDetail(payment)">
         <view class="payment-header">
           <text class="student-name">{{ payment.studentId?.name || '未知学生' }}</text>
           <text class="payment-amount">¥{{ payment.amount }}</text>
         </view>
         <view class="payment-body">
           <view class="payment-info">
-            <text class="info-label">课时数量：</text>
+            <text class="info-label">缴费类型：</text>
+            <text class="info-value">{{ payment.paymentType || '未设置' }}</text>
+          </view>
+          <view class="payment-info" v-if="payment.totalLessons">
+            <text class="info-label">预交课时：</text>
             <text class="info-value">{{ payment.totalLessons }} 课时</text>
+          </view>
+          <view class="payment-info" v-if="payment.bonusLessons">
+            <text class="info-label">赠送课时：</text>
+            <text class="info-value text-success">{{ payment.bonusLessons }} 课时</text>
           </view>
           <view class="payment-info">
             <text class="info-label">缴费日期：</text>
@@ -23,6 +31,10 @@
             <text class="info-label">备注：</text>
             <text class="info-value">{{ payment.notes }}</text>
           </view>
+        </view>
+        <view class="payment-actions">
+          <button class="btn-edit" @click.stop="handleEdit(payment)">编辑</button>
+          <button class="btn-delete" @click.stop="handleDelete(payment)">删除</button>
         </view>
       </view>
     </view>
@@ -36,7 +48,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { get } from '@/utils/request'
+import { get, del } from '@/utils/request'
 
 const payments = ref([])
 
@@ -61,6 +73,37 @@ const handleAdd = () => {
   })
 }
 
+const handleDetail = (payment) => {
+  uni.navigateTo({
+    url: `/pages/payments/detail?id=${payment._id}`
+  })
+}
+
+const handleEdit = (payment) => {
+  uni.navigateTo({
+    url: `/pages/payments/edit?id=${payment._id}`
+  })
+}
+
+const handleDelete = (payment) => {
+  uni.showModal({
+    title: '确认删除',
+    content: `确定要删除${payment.studentId?.name || '该学生'}的缴费记录吗？`,
+    confirmColor: '#F56C6C',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await del(`/payments/${payment._id}`)
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          fetchPayments()
+        } catch (error) {
+          uni.showToast({ title: error.message || '删除失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
 onMounted(() => {
   fetchPayments()
 })
@@ -75,6 +118,7 @@ onShow(() => {
   padding: 20rpx;
   background-color: #f8f8f8;
   min-height: 100vh;
+  padding-bottom: 140rpx;
 }
 
 .empty-tip {
@@ -101,6 +145,8 @@ onShow(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16rpx;
+  padding-bottom: 16rpx;
+  border-bottom: 1rpx solid #f0f0f0;
 }
 
 .student-name {
@@ -119,6 +165,7 @@ onShow(() => {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
+  margin-bottom: 16rpx;
 }
 
 .payment-info {
@@ -132,6 +179,39 @@ onShow(() => {
 
 .info-value {
   color: #333;
+}
+
+.text-success {
+  color: #67C23A;
+}
+
+.payment-actions {
+  display: flex;
+  gap: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.btn-edit {
+  flex: 1;
+  height: 60rpx;
+  line-height: 60rpx;
+  background-color: #409EFF;
+  color: #fff;
+  font-size: 24rpx;
+  border: none;
+  border-radius: 8rpx;
+}
+
+.btn-delete {
+  flex: 1;
+  height: 60rpx;
+  line-height: 60rpx;
+  background-color: #fff;
+  color: #F56C6C;
+  font-size: 24rpx;
+  border: 2rpx solid #F56C6C;
+  border-radius: 8rpx;
 }
 
 .add-btn {

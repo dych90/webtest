@@ -4,6 +4,7 @@ const lessonRecordController = require('../controllers/lessonRecordController')
 const { authenticateToken } = require('../middleware/auth')
 
 router.get('/lesson-records', authenticateToken, lessonRecordController.getLessonRecords)
+router.get('/lesson-records/:id', authenticateToken, lessonRecordController.getLessonRecordById)
 router.post('/lesson-records', authenticateToken, lessonRecordController.createLessonRecord)
 router.put('/lesson-records/:id', authenticateToken, lessonRecordController.updateLessonRecord)
 router.delete('/lesson-records/:id', authenticateToken, lessonRecordController.deleteLessonRecord)

@@ -89,6 +89,14 @@
       }
     },
     {
+      "path": "pages/lessons/edit",
+      "style": {
+        "navigationBarTitleText": "编辑消课",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/payments/payments",
       "style": {
         "navigationBarTitleText": "缴费管理",
@@ -100,6 +108,22 @@
       "path": "pages/payments/add",
       "style": {
         "navigationBarTitleText": "添加缴费",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/payments/detail",
+      "style": {
+        "navigationBarTitleText": "缴费详情",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/payments/edit",
+      "style": {
+        "navigationBarTitleText": "编辑缴费",
         "navigationBarBackgroundColor": "#409EFF",
         "navigationBarTextStyle": "white"
       }

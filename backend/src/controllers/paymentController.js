@@ -20,7 +20,7 @@ const getPayments = async (req, res) => {
       filter.studentId = studentId && studentIds.includes(studentId) ? studentId : { $in: studentIds }
     }
     
-    const payments = await Payment.find(filter).sort({ paymentDate: -1 }).populate('studentId', 'name phone')
+    const payments = await Payment.find(filter).sort({ paymentDate: -1 }).populate('studentId', 'name phone paymentType')
     
     res.json({
       message: '获取成功',
@@ -28,6 +28,35 @@ const getPayments = async (req, res) => {
     })
   } catch (error) {
     console.error('获取缴费列表错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const getPaymentById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    const payment = await Payment.findById(id).populate('studentId', 'name phone paymentType')
+    
+    if (!payment) {
+      return res.status(404).json({ message: '缴费记录不存在' })
+    }
+    
+    if (isTeacher) {
+      const student = await Student.findById(payment.studentId._id || payment.studentId)
+      if (!student || student.teacherId?.toString() !== req.userId) {
+        return res.status(403).json({ message: '无权限查看此缴费记录' })
+      }
+    }
+    
+    res.json({
+      message: '获取成功',
+      data: payment
+    })
+  } catch (error) {
+    console.error('获取缴费详情错误:', error)
     res.status(500).json({ message: '服务器错误' })
   }
 }
@@ -161,6 +190,7 @@ const updateLessonBalance = async (studentId, lessonsChange) => {
 
 module.exports = {
   getPayments,
+  getPaymentById,
   createPayment,
   updatePayment,
   deletePayment

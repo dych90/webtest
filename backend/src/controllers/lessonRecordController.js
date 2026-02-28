@@ -39,6 +39,37 @@ const getLessonRecords = async (req, res) => {
   }
 }
 
+const getLessonRecordById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    const record = await LessonRecord.findById(id)
+      .populate('studentId', 'name phone')
+      .populate('courseId', 'startTime endTime')
+    
+    if (!record) {
+      return res.status(404).json({ message: '消课记录不存在' })
+    }
+    
+    if (isTeacher) {
+      const student = await Student.findById(record.studentId._id || record.studentId)
+      if (!student || student.teacherId?.toString() !== req.userId) {
+        return res.status(403).json({ message: '无权限查看此消课记录' })
+      }
+    }
+    
+    res.json({
+      message: '获取成功',
+      data: record
+    })
+  } catch (error) {
+    console.error('获取消课记录详情错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 const createLessonRecord = async (req, res) => {
   try {
     console.log('创建消课记录，请求体:', req.body)
@@ -325,6 +356,7 @@ const updateLessonBalance = async (studentId, lessonsChange) => {
 
 module.exports = {
   getLessonRecords,
+  getLessonRecordById,
   createLessonRecord,
   updateLessonRecord,
   deleteLessonRecord
