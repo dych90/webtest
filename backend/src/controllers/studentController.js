@@ -87,6 +87,15 @@ const importStudents = async (req, res) => {
           teacherId: req.userId
         }
         
+        const paymentTypeValue = row['付费类型'] || row['paymentType'] || ''
+        if (paymentTypeValue) {
+          if (paymentTypeValue === '预付费' || paymentTypeValue === 'prepaid') {
+            studentData.paymentType = 'prepaid'
+          } else if (paymentTypeValue === '单次付费' || paymentTypeValue === 'single') {
+            studentData.paymentType = 'single'
+          }
+        }
+        
         if (!studentData.name) {
           errors.push(`第 ${i + 2} 行：姓名不能为空`)
           failCount++
