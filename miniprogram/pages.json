@@ -25,9 +25,41 @@
       }
     },
     {
+      "path": "pages/students/add",
+      "style": {
+        "navigationBarTitleText": "添加学生",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/students/detail",
+      "style": {
+        "navigationBarTitleText": "学生详情",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/schedule/schedule",
       "style": {
         "navigationBarTitleText": "排课管理",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/schedule/add",
+      "style": {
+        "navigationBarTitleText": "添加课程",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/schedule/detail",
+      "style": {
+        "navigationBarTitleText": "课程详情",
         "navigationBarBackgroundColor": "#409EFF",
         "navigationBarTextStyle": "white"
       }
@@ -41,9 +73,25 @@
       }
     },
     {
+      "path": "pages/lessons/add",
+      "style": {
+        "navigationBarTitleText": "添加消课",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/payments/payments",
       "style": {
         "navigationBarTitleText": "缴费管理",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/payments/add",
+      "style": {
+        "navigationBarTitleText": "添加缴费",
         "navigationBarBackgroundColor": "#409EFF",
         "navigationBarTextStyle": "white"
       }
