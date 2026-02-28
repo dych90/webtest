@@ -8,6 +8,11 @@ router.get('/courses', authenticateToken, (req, res, next) => {
   next()
 }, courseController.getCourses)
 
+router.get('/courses/:id', authenticateToken, (req, res, next) => {
+  console.log('GET /courses/:id - 获取课程详情，ID:', req.params.id)
+  next()
+}, courseController.getCourseById)
+
 router.post('/courses', authenticateToken, (req, res, next) => {
   console.log('POST /courses - 创建课程')
   next()

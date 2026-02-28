@@ -35,6 +35,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
 
 const payments = ref([])
@@ -61,6 +62,10 @@ const handleAdd = () => {
 }
 
 onMounted(() => {
+  fetchPayments()
+})
+
+onShow(() => {
   fetchPayments()
 })
 </script>

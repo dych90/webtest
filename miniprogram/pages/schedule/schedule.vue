@@ -76,8 +76,16 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
+
+function formatDateString(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 const currentWeekStart = ref(new Date())
 const selectedDate = ref(formatDateString(new Date()))
@@ -126,13 +134,6 @@ const dayCourses = computed(() => {
     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
 })
 
-function formatDateString(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function formatTime(dateStr) {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -175,11 +176,14 @@ const fetchCourses = async () => {
     end.setDate(end.getDate() + 7)
     end.setHours(23, 59, 59, 999)
     
+    console.log('查询课程时间范围:', start.toISOString(), '到', end.toISOString())
+    
     const res = await get('/courses', {
       startTime: start.toISOString(),
       endTime: end.toISOString()
     })
     
+    console.log('课程列表响应:', res)
     courses.value = res.data || []
   } catch (error) {
     console.error('获取课程列表失败', error)
@@ -204,6 +208,10 @@ onMounted(() => {
   currentWeekStart.value = new Date(today)
   currentWeekStart.value.setDate(today.getDate() - dayOfWeek)
   
+  fetchCourses()
+})
+
+onShow(() => {
   fetchCourses()
 })
 </script>

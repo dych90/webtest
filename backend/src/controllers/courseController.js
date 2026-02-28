@@ -8,6 +8,9 @@ const getCourses = async (req, res) => {
     const { studentId, startTime, endTime, teacherId } = req.query
     const user = await User.findById(req.userId)
     
+    console.log('课程查询参数:', req.query)
+    console.log('当前用户ID:', req.userId, '角色:', user?.role)
+    
     const filter = {}
     
     if (user && user.role !== 'admin') {
@@ -30,7 +33,7 @@ const getCourses = async (req, res) => {
     console.log('查询课程条件:', filter)
     
     const courses = await Course.find(filter)
-      .sort({ startTime: -1 })
+      .sort({ startTime: 1 })
       .populate('studentId', 'name phone')
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name username')
@@ -43,6 +46,36 @@ const getCourses = async (req, res) => {
     })
   } catch (error) {
     console.error('获取课程列表错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const getCourseById = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(req.userId)
+    
+    const course = await Course.findById(id)
+      .populate('studentId', 'name phone')
+      .populate('courseTypeId', 'name duration')
+      .populate('teacherId', 'name username')
+    
+    if (!course) {
+      return res.status(404).json({ message: '课程不存在' })
+    }
+    
+    const courseTeacherId = course.teacherId?._id?.toString() || course.teacherId?.toString()
+    
+    if (user.role !== 'admin' && courseTeacherId !== req.userId.toString()) {
+      return res.status(403).json({ message: '无权限查看此课程' })
+    }
+    
+    res.json({
+      message: '获取成功',
+      data: course
+    })
+  } catch (error) {
+    console.error('获取课程详情错误:', error)
     res.status(500).json({ message: '服务器错误' })
   }
 }
@@ -126,6 +159,7 @@ const deleteCourse = async (req, res) => {
 
 module.exports = {
   getCourses,
+  getCourseById,
   createCourse,
   updateCourse,
   deleteCourse

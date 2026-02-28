@@ -3,9 +3,9 @@
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">学生 *</text>
-        <picker :value="studentIndex" :range="students" range-key="name" @change="onStudentChange">
+        <picker :value="studentIndex >= 0 ? studentIndex : 0" :range="students" range-key="name" @change="onStudentChange">
           <view class="form-picker">
-            <text>{{ students[studentIndex]?.name || '请选择学生' }}</text>
+            <text>{{ studentIndex >= 0 ? students[studentIndex]?.name : '请选择学生' }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -13,9 +13,9 @@
       
       <view class="form-item">
         <text class="form-label">课程类型</text>
-        <picker :value="courseTypeIndex" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
+        <picker :value="courseTypeIndex >= 0 ? courseTypeIndex : 0" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
           <view class="form-picker">
-            <text>{{ courseTypes[courseTypeIndex]?.name || '请选择课程类型' }}</text>
+            <text>{{ courseTypeIndex >= 0 ? courseTypes[courseTypeIndex]?.name : '请选择课程类型' }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -89,9 +89,9 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { get, post } from '@/utils/request'
 
 const students = ref([])
-const studentIndex = ref(0)
+const studentIndex = ref(-1)
 const courseTypes = ref([])
-const courseTypeIndex = ref(0)
+const courseTypeIndex = ref(-1)
 const durationOptions = ['30分钟', '45分钟', '60分钟', '90分钟', '120分钟']
 const durationIndex = ref(2)
 const durationValues = [30, 45, 60, 90, 120]
