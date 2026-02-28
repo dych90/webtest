@@ -74,23 +74,40 @@ const importStudents = async (req, res) => {
           gender: row['性别'] || row['gender'] || '',
           age: parseInt(row['年龄'] || row['age']) || 0,
           phone: row['联系电话'] || row['phone'] || '',
-          parentName: row['家长姓名'] || row['parentName'] || '',
-          parentPhone: row['家长电话'] || row['parentPhone'] || '',
           practiceTeacher: row['陪练老师'] || row['practiceTeacher'] || '',
           notes: row['备注'] || row['notes'] || '',
           paymentType: 'prepaid',
           teacherId: req.userId
         }
-
+        
         if (!studentData.name) {
           errors.push(`第 ${i + 2} 行：姓名不能为空`)
           failCount++
           continue
         }
-
-        await Student.create(studentData)
-        successCount++
+        
+        const courseTypeName = row['课程类型'] || row['courseType'] || row['默认课程类型'] || ''
+        if (courseTypeName) {
+          const CourseType = require('../models/CourseType')
+          const courseType = await CourseType.findOne({ name: courseTypeName })
+          if (courseType) {
+            studentData.defaultCourseTypeId = courseType._id
+          }
+        }
+        
+        const existingStudent = await Student.findOne({ name: studentData.name })
+        
+        if (existingStudent) {
+          const updateData = { ...studentData }
+          delete updateData.teacherId
+          await Student.findByIdAndUpdate(existingStudent._id, updateData)
+          successCount++
+        } else {
+          await Student.create(studentData)
+          successCount++
+        }
       } catch (error) {
+        console.error(`第 ${i + 2} 行错误:`, error)
         errors.push(`第 ${i + 2} 行：${error.message}`)
         failCount++
       }
