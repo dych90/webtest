@@ -4,7 +4,24 @@
       <template #header>
         <div class="card-header">
           <span>排课管理</span>
-          <el-button type="primary" @click="handleAdd">添加课程</el-button>
+          <div class="header-buttons">
+            <el-select
+              v-if="userStore.isAdmin()"
+              v-model="selectedTeacherId"
+              placeholder="筛选教师"
+              clearable
+              style="width: 150px; margin-right: 10px;"
+              @change="handleTeacherChange"
+            >
+              <el-option
+                v-for="teacher in teachers"
+                :key="teacher._id"
+                :label="teacher.name"
+                :value="teacher._id"
+              />
+            </el-select>
+            <el-button v-if="!userStore.isAdmin()" type="primary" @click="handleAdd">添加课程</el-button>
+          </div>
         </div>
       </template>
       
@@ -105,10 +122,14 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import zhLocale from '@fullcalendar/core/locales/zh-cn'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const courses = ref([])
 const students = ref([])
 const courseTypes = ref([])
+const teachers = ref([])
+const selectedTeacherId = ref('')
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加课程')
 const form = ref({
@@ -263,7 +284,11 @@ const calendarOptions = ref({
 
 const fetchCourses = async () => {
   try {
-    const response = await request.get('/courses')
+    const params = {}
+    if (userStore.isAdmin() && selectedTeacherId.value) {
+      params.teacherId = selectedTeacherId.value
+    }
+    const response = await request.get('/courses', { params })
     courses.value = response.data
     calendarOptions.value.events = response.data.map(course => {
       let backgroundColor = '#3a8ee6'
@@ -295,11 +320,30 @@ const fetchCourses = async () => {
 
 const fetchStudents = async () => {
   try {
-    const response = await request.get('/students')
+    const params = {}
+    if (userStore.isAdmin() && selectedTeacherId.value) {
+      params.teacherId = selectedTeacherId.value
+    }
+    const response = await request.get('/students', { params })
     students.value = response.data
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
+}
+
+const fetchTeachers = async () => {
+  if (!userStore.isAdmin()) return
+  try {
+    const response = await request.get('/teachers')
+    teachers.value = response.data
+  } catch (error) {
+    console.error('获取教师列表失败', error)
+  }
+}
+
+const handleTeacherChange = () => {
+  fetchCourses()
+  fetchStudents()
 }
 
 const fetchCourseTypes = async () => {
@@ -413,6 +457,7 @@ onMounted(() => {
   fetchCourses()
   fetchStudents()
   fetchCourseTypes()
+  fetchTeachers()
   
   window.addEventListener('resize', handleResize)
 })

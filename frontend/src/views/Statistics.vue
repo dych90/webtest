@@ -1,5 +1,22 @@
 <template>
   <div class="statistics">
+    <div v-if="userStore.isAdmin()" style="margin-bottom: 20px;">
+      <el-select
+        v-model="selectedTeacherId"
+        placeholder="筛选教师"
+        clearable
+        style="width: 200px;"
+        @change="fetchStatistics"
+      >
+        <el-option
+          v-for="teacher in teachers"
+          :key="teacher._id"
+          :label="teacher.name"
+          :value="teacher._id"
+        />
+      </el-select>
+    </div>
+    
     <el-row :gutter="20">
       <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
@@ -128,7 +145,11 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
+const teachers = ref([])
+const selectedTeacherId = ref('')
 const statistics = ref({
   studentCount: 0,
   totalRevenue: 0,
@@ -153,13 +174,27 @@ let lessonChartInstance = null
 
 const fetchStatistics = async () => {
   try {
-    const response = await request.get('/statistics')
+    const params = {}
+    if (userStore.isAdmin() && selectedTeacherId.value) {
+      params.teacherId = selectedTeacherId.value
+    }
+    const response = await request.get('/statistics', { params })
     statistics.value = response.data
     
     updateIncomeChart()
     updateLessonChart()
   } catch (error) {
     console.error('获取统计数据失败', error)
+  }
+}
+
+const fetchTeachers = async () => {
+  if (!userStore.isAdmin()) return
+  try {
+    const response = await request.get('/teachers')
+    teachers.value = response.data
+  } catch (error) {
+    console.error('获取教师列表失败', error)
   }
 }
 
@@ -265,6 +300,7 @@ const updateLessonChart = () => {
 
 onMounted(() => {
   fetchStatistics()
+  fetchTeachers()
   
   setTimeout(() => {
     if (incomeChart.value) {

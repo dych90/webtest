@@ -5,7 +5,23 @@
         <div class="card-header">
           <span>学生管理</span>
           <div class="header-buttons">
+            <el-select
+              v-if="userStore.isAdmin()"
+              v-model="selectedTeacherId"
+              placeholder="筛选教师"
+              clearable
+              style="width: 150px; margin-right: 10px;"
+              @change="fetchStudents"
+            >
+              <el-option
+                v-for="teacher in teachers"
+                :key="teacher._id"
+                :label="teacher.name"
+                :value="teacher._id"
+              />
+            </el-select>
             <el-upload
+              v-if="!userStore.isAdmin()"
               ref="uploadRef"
               :show-file-list="false"
               :before-upload="beforeUpload"
@@ -14,7 +30,7 @@
             >
               <el-button type="success">导入Excel</el-button>
             </el-upload>
-            <el-button type="primary" @click="handleAdd">添加学生</el-button>
+            <el-button v-if="!userStore.isAdmin()" type="primary" @click="handleAdd">添加学生</el-button>
           </div>
         </div>
       </template>
@@ -36,8 +52,9 @@
           <el-table-column prop="practiceTeacher" label="陪练老师" min-width="80" />
           <el-table-column label="操作" width="160" fixed="right">
             <template #default="{ row }">
-              <el-button size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+              <el-button v-if="!userStore.isAdmin()" size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button v-if="!userStore.isAdmin()" size="small" type="danger" @click="handleDelete(row)">删除</el-button>
+              <span v-if="userStore.isAdmin()" style="color: #999;">仅查看</span>
             </template>
           </el-table-column>
         </el-table>
@@ -74,8 +91,9 @@
             </div>
           </div>
           <div class="student-actions">
-            <el-button size="small" @click="handleEdit(student)">编辑</el-button>
-            <el-button size="small" type="danger" @click="handleDelete(student)">删除</el-button>
+            <el-button v-if="!userStore.isAdmin()" size="small" @click="handleEdit(student)">编辑</el-button>
+            <el-button v-if="!userStore.isAdmin()" size="small" type="danger" @click="handleDelete(student)">删除</el-button>
+            <span v-if="userStore.isAdmin()" style="color: #999; font-size: 12px;">仅查看</span>
           </div>
         </div>
         <div v-if="students.length === 0" class="empty-tip">
@@ -138,9 +156,13 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const students = ref([])
 const courseTypes = ref([])
+const teachers = ref([])
+const selectedTeacherId = ref('')
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加学生')
 const uploadRef = ref(null)
@@ -206,13 +228,27 @@ const handleImport = async (options) => {
 
 const fetchStudents = async () => {
   try {
-    const response = await request.get('/students')
+    const params = {}
+    if (userStore.isAdmin() && selectedTeacherId.value) {
+      params.teacherId = selectedTeacherId.value
+    }
+    const response = await request.get('/students', { params })
     students.value = response.data.map(student => ({
       ...student,
       defaultCourseTypeName: student.defaultCourseTypeId?.name || '未设置'
     }))
   } catch (error) {
     console.error('获取学生列表失败', error)
+  }
+}
+
+const fetchTeachers = async () => {
+  if (!userStore.isAdmin()) return
+  try {
+    const response = await request.get('/teachers')
+    teachers.value = response.data
+  } catch (error) {
+    console.error('获取教师列表失败', error)
   }
 }
 
@@ -278,6 +314,7 @@ const handleSave = async () => {
 onMounted(() => {
   fetchStudents()
   fetchCourseTypes()
+  fetchTeachers()
   window.addEventListener('resize', handleResize)
 })
 

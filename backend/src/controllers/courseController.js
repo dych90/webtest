@@ -5,13 +5,15 @@ const User = require('../models/User')
 
 const getCourses = async (req, res) => {
   try {
-    const { studentId, startTime, endTime } = req.query
+    const { studentId, startTime, endTime, teacherId } = req.query
     const user = await User.findById(req.userId)
     
     const filter = {}
     
     if (user && user.role !== 'admin') {
       filter.teacherId = req.userId
+    } else if (user && user.role === 'admin' && teacherId) {
+      filter.teacherId = teacherId
     }
     
     if (studentId) {

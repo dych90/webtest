@@ -11,6 +11,8 @@ const getStudents = async (req, res) => {
     
     if (user && user.role !== 'admin') {
       query.teacherId = req.userId
+    } else if (user && user.role === 'admin' && req.query.teacherId) {
+      query.teacherId = req.query.teacherId
     }
     
     const students = await Student.find(query)

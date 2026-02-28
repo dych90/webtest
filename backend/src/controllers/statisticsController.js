@@ -9,10 +9,13 @@ const getStatistics = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
     const isTeacher = user && user.role !== 'admin'
+    const { teacherId } = req.query
     
     let studentQuery = {}
     if (isTeacher) {
       studentQuery.teacherId = req.userId
+    } else if (teacherId) {
+      studentQuery.teacherId = teacherId
     }
     
     const studentCount = await Student.countDocuments(studentQuery)
@@ -20,21 +23,21 @@ const getStatistics = async (req, res) => {
     const students = await Student.find(studentQuery)
     const studentIds = students.map(s => s._id)
     
-    const paymentQuery = isTeacher ? { studentId: { $in: studentIds } } : {}
+    const paymentQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
     const payments = await Payment.find(paymentQuery)
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0)
     const totalLessonsSold = payments.reduce((sum, p) => sum + p.totalLessons, 0)
     
-    const courseQuery = isTeacher ? { teacherId: req.userId } : {}
+    const courseQuery = (isTeacher || teacherId) ? { teacherId: teacherId || req.userId } : {}
     const courses = await Course.find(courseQuery)
     const totalCourses = courses.length
     
-    const lessonRecordQuery = isTeacher ? { studentId: { $in: studentIds } } : {}
+    const lessonRecordQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
     const totalLessonsConsumed = lessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
     const totalLessonsAttended = lessonRecords.length
     
-    const balanceQuery = isTeacher ? { studentId: { $in: studentIds } } : {}
+    const balanceQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
     const balances = await LessonBalance.find(balanceQuery)
     const totalRemainingLessons = balances.reduce((sum, b) => sum + b.remainingLessons, 0)
     

@@ -35,37 +35,37 @@
           <span>学生管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/course-types">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/course-types">
           <el-icon><Document /></el-icon>
           <span>课程类型</span>
         </el-menu-item>
         
-        <el-menu-item index="/fee-standards">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/fee-standards">
           <el-icon><Money /></el-icon>
           <span>收费标准</span>
         </el-menu-item>
         
-        <el-menu-item index="/payments">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/payments">
           <el-icon><Wallet /></el-icon>
           <span>缴费管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/schedule">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/schedule">
           <el-icon><Calendar /></el-icon>
           <span>排课管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/lessons">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/lessons">
           <el-icon><Edit /></el-icon>
           <span>消课管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/repertoire">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/repertoire">
           <el-icon><Headset /></el-icon>
           <span>曲目管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/balance">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/balance">
           <el-icon><DataAnalysis /></el-icon>
           <span>剩余课费</span>
         </el-menu-item>
@@ -75,7 +75,7 @@
           <span>数据统计</span>
         </el-menu-item>
         
-        <el-menu-item index="/reminders">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/reminders">
           <el-icon><Bell /></el-icon>
           <span>提醒管理</span>
         </el-menu-item>
@@ -110,37 +110,37 @@
           <span>学生管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/course-types">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/course-types">
           <el-icon><Document /></el-icon>
           <span>课程类型</span>
         </el-menu-item>
         
-        <el-menu-item index="/fee-standards">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/fee-standards">
           <el-icon><Money /></el-icon>
           <span>收费标准</span>
         </el-menu-item>
         
-        <el-menu-item index="/payments">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/payments">
           <el-icon><Wallet /></el-icon>
           <span>缴费管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/schedule">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/schedule">
           <el-icon><Calendar /></el-icon>
           <span>排课管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/lessons">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/lessons">
           <el-icon><Edit /></el-icon>
           <span>消课管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/repertoire">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/repertoire">
           <el-icon><Headset /></el-icon>
           <span>曲目管理</span>
         </el-menu-item>
         
-        <el-menu-item index="/balance">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/balance">
           <el-icon><DataAnalysis /></el-icon>
           <span>剩余课费</span>
         </el-menu-item>
@@ -150,7 +150,7 @@
           <span>数据统计</span>
         </el-menu-item>
         
-        <el-menu-item index="/reminders">
+        <el-menu-item v-if="!userStore.isAdmin()" index="/reminders">
           <el-icon><Bell /></el-icon>
           <span>提醒管理</span>
         </el-menu-item>
