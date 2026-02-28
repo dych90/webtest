@@ -43,7 +43,9 @@ const getStudentById = async (req, res) => {
       return res.status(404).json({ message: '学生不存在' })
     }
     
-    if (user.role !== 'admin' && student.teacherId && student.teacherId.toString() !== req.userId) {
+    const studentTeacherId = student.teacherId?._id?.toString() || student.teacherId?.toString()
+    
+    if (user.role !== 'admin' && studentTeacherId !== req.userId.toString()) {
       return res.status(403).json({ message: '无权限查看此学生' })
     }
     
