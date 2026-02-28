@@ -9,14 +9,7 @@
       
       <el-table :data="balances" style="width: 100%">
         <el-table-column prop="studentName" label="学生" />
-        <el-table-column prop="paymentType" label="付费类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
-              {{ row.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="remainingLessons" label="剩余课时" width="140">
+        <el-table-column prop="remainingLessons" label="剩余课时" width="100">
           <template #default="{ row }">
             <template v-if="row.paymentType === 'prepaid'">
               <el-tag :type="row.remainingLessons > 10 ? 'success' : row.remainingLessons > 5 ? 'warning' : 'danger'">
