@@ -98,7 +98,10 @@ const importStudents = async (req, res) => {
           }
         }
         
-        const existingStudent = await Student.findOne({ name: studentData.name })
+        const existingStudent = await Student.findOne({ 
+          name: studentData.name,
+          teacherId: req.userId
+        })
         console.log(`学生是否存在:`, existingStudent ? '是' : '否')
         
         if (existingStudent) {
