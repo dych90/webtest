@@ -42,6 +42,12 @@
           <el-table-column prop="age" label="年龄" width="60" />
           <el-table-column prop="phone" label="联系电话" min-width="110" />
           <el-table-column prop="defaultCourseTypeName" label="课程类型" min-width="100" />
+          <el-table-column label="课时单价" width="100">
+            <template #default="{ row }">
+              <span v-if="row.currentPrice" class="price-text">¥{{ row.currentPrice }}</span>
+              <span v-else class="no-price">未设置</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="paymentType" label="付费类型" width="90">
             <template #default="{ row }">
               <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
@@ -50,18 +56,18 @@
             </template>
           </el-table-column>
           <el-table-column prop="practiceTeacher" label="陪练老师" min-width="80" />
-          <el-table-column label="操作" width="160" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
+              <el-button size="small" @click="handleViewDetail(row)">详情</el-button>
               <el-button v-if="!userStore.isAdmin()" size="small" @click="handleEdit(row)">编辑</el-button>
               <el-button v-if="!userStore.isAdmin()" size="small" type="danger" @click="handleDelete(row)">删除</el-button>
-              <span v-if="userStore.isAdmin()" style="color: #999;">仅查看</span>
             </template>
           </el-table-column>
         </el-table>
       </div>
       
       <div class="mobile-cards">
-        <div v-for="student in students" :key="student._id" class="student-card">
+        <div v-for="student in students" :key="student._id" class="student-card" @click="handleViewDetail(student)">
           <div class="student-info">
             <div class="student-name">{{ student.name }}</div>
             <el-tag :type="student.paymentType === 'prepaid' ? 'primary' : 'success'" size="small">
@@ -70,30 +76,18 @@
           </div>
           <div class="student-detail">
             <div class="detail-item">
-              <span class="label">性别:</span>
-              <span class="value">{{ student.gender || '未设置' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">年龄:</span>
-              <span class="value">{{ student.age || '未设置' }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">联系电话:</span>
-              <span class="value">{{ student.phone || '未设置' }}</span>
+              <span class="label">课时单价:</span>
+              <span class="value price-text" v-if="student.currentPrice">¥{{ student.currentPrice }}</span>
+              <span class="value no-price" v-else>未设置</span>
             </div>
             <div class="detail-item">
               <span class="label">课程类型:</span>
               <span class="value">{{ student.defaultCourseTypeName }}</span>
             </div>
-            <div class="detail-item" v-if="student.practiceTeacher">
-              <span class="label">陪练老师:</span>
-              <span class="value">{{ student.practiceTeacher }}</span>
+            <div class="detail-item" v-if="student.phone">
+              <span class="label">联系电话:</span>
+              <span class="value">{{ student.phone }}</span>
             </div>
-          </div>
-          <div class="student-actions">
-            <el-button v-if="!userStore.isAdmin()" size="small" @click="handleEdit(student)">编辑</el-button>
-            <el-button v-if="!userStore.isAdmin()" size="small" type="danger" @click="handleDelete(student)">删除</el-button>
-            <span v-if="userStore.isAdmin()" style="color: #999; font-size: 12px;">仅查看</span>
           </div>
         </div>
         <div v-if="students.length === 0" class="empty-tip">
@@ -137,6 +131,18 @@
             <el-option label="单次付费" value="payPerLesson" />
           </el-select>
         </el-form-item>
+        <el-form-item label="课时单价">
+          <el-input-number 
+            v-model="form.currentPrice" 
+            :min="0" 
+            :precision="0"
+            :step="10"
+            style="width: 100%" 
+          />
+          <div v-if="dialogTitle === '编辑学生' && originalPrice && form.currentPrice !== originalPrice" class="price-hint">
+            原单价：¥{{ originalPrice }}，修改后将记录价格变更历史
+          </div>
+        </el-form-item>
         <el-form-item label="陪练老师">
           <el-input v-model="form.practiceTeacher" placeholder="请输入陪练老师姓名" />
         </el-form-item>
@@ -149,12 +155,77 @@
         <el-button type="primary" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog 
+      v-model="detailDialogVisible" 
+      title="学生详情" 
+      :width="isMobile ? '95%' : '600px'" 
+      :style="isMobile ? 'margin: 5vh auto;' : ''"
+    >
+      <div class="detail-content" v-if="currentStudent">
+        <div class="detail-header">
+          <div class="detail-avatar">{{ currentStudent.name?.charAt(0) || '学' }}</div>
+          <div class="detail-info">
+            <div class="detail-name">{{ currentStudent.name }}</div>
+            <el-tag :type="currentStudent.paymentType === 'prepaid' ? 'primary' : 'success'">
+              {{ currentStudent.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+            </el-tag>
+          </div>
+        </div>
+        
+        <el-descriptions :column="isMobile ? 1 : 2" border>
+          <el-descriptions-item label="性别">{{ currentStudent.gender || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="年龄">{{ currentStudent.age || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="课程类型">{{ currentStudent.defaultCourseTypeId?.name || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="课时单价">
+            <span class="price-text">¥{{ currentStudent.currentPrice || 0 }}/课时</span>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="currentStudent.paymentType === 'prepaid'" label="剩余课时">
+            <span class="remaining-lessons">{{ currentStudent.remainingLessons || 0 }} 课时</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="陪练老师">{{ currentStudent.practiceTeacher || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentStudent.notes" label="备注" :span="2">{{ currentStudent.notes }}</el-descriptions-item>
+        </el-descriptions>
+
+        <div v-if="priceHistory.length > 0" class="price-history">
+          <h4>价格变更历史</h4>
+          <el-timeline>
+            <el-timeline-item
+              v-for="(item, index) in priceHistory"
+              :key="item._id"
+              :type="index === 0 ? 'primary' : 'info'"
+              :hollow="index !== 0"
+            >
+              <div class="timeline-content">
+                <div class="timeline-price">
+                  <span class="price-value">¥{{ item.price }}</span>
+                  <span class="price-unit">/课时</span>
+                  <el-tag v-if="index === 0" type="success" size="small">当前</el-tag>
+                </div>
+                <div class="timeline-date">
+                  {{ formatDate(item.effectiveDate) }}
+                  <span v-if="item.expireDate"> - {{ formatDate(item.expireDate) }}</span>
+                </div>
+                <div v-if="item.courseTypeId?.name" class="timeline-course">
+                  {{ item.courseTypeId.name }}
+                </div>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button v-if="!userStore.isAdmin()" type="primary" @click="handleEditFromDetail">编辑</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 
@@ -167,6 +238,10 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('添加学生')
 const uploadRef = ref(null)
 const windowWidth = ref(window.innerWidth)
+const detailDialogVisible = ref(false)
+const currentStudent = ref(null)
+const priceHistory = ref([])
+const originalPrice = ref('')
 
 const isMobile = computed(() => windowWidth.value < 768)
 
@@ -181,6 +256,7 @@ const form = ref({
   phone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
+  currentPrice: 0,
   practiceTeacher: '',
   notes: ''
 })
@@ -261,6 +337,22 @@ const fetchCourseTypes = async () => {
   }
 }
 
+const fetchPriceHistory = async (studentId) => {
+  try {
+    const response = await request.get(`/students/${studentId}/price-history`)
+    priceHistory.value = response.data || []
+  } catch (error) {
+    console.error('获取价格历史失败', error)
+    priceHistory.value = []
+  }
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 const handleAdd = () => {
   dialogTitle.value = '添加学生'
   form.value = {
@@ -270,9 +362,11 @@ const handleAdd = () => {
     phone: '',
     defaultCourseTypeId: '',
     paymentType: 'prepaid',
+    currentPrice: 0,
     practiceTeacher: '',
     notes: ''
   }
+  originalPrice.value = ''
   dialogVisible.value = true
 }
 
@@ -282,16 +376,40 @@ const handleEdit = (row) => {
     ...row,
     defaultCourseTypeId: row.defaultCourseTypeId?._id || row.defaultCourseTypeId || ''
   }
+  originalPrice.value = row.currentPrice || ''
   dialogVisible.value = true
+}
+
+const handleViewDetail = async (row) => {
+  try {
+    const response = await request.get(`/students/${row._id}`)
+    currentStudent.value = response.data
+    detailDialogVisible.value = true
+    await fetchPriceHistory(row._id)
+  } catch (error) {
+    console.error('获取学生详情失败', error)
+  }
+}
+
+const handleEditFromDetail = () => {
+  detailDialogVisible.value = false
+  handleEdit(currentStudent.value)
 }
 
 const handleDelete = async (row) => {
   try {
+    await ElMessageBox.confirm(`确定要删除学生"${row.name}"吗？`, '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
     await request.delete(`/students/${row._id}`)
     ElMessage.success('删除成功')
     await fetchStudents()
   } catch (error) {
-    console.error('删除学生失败', error)
+    if (error !== 'cancel') {
+      console.error('删除学生失败', error)
+    }
   }
 }
 
@@ -339,6 +457,15 @@ onUnmounted(() => {
   gap: 10px;
 }
 
+.price-text {
+  color: #E6A23C;
+  font-weight: bold;
+}
+
+.no-price {
+  color: #c0c4cc;
+}
+
 .mobile-cards {
   display: none;
 }
@@ -347,6 +474,90 @@ onUnmounted(() => {
   text-align: center;
   color: #999;
   padding: 40px 0;
+}
+
+.price-hint {
+  font-size: 12px;
+  color: #E6A23C;
+  margin-top: 5px;
+}
+
+.detail-content {
+  padding: 10px 0;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.detail-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #409EFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  margin-right: 16px;
+}
+
+.detail-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 8px;
+}
+
+.remaining-lessons {
+  color: #409EFF;
+  font-weight: bold;
+}
+
+.price-history {
+  margin-top: 24px;
+}
+
+.price-history h4 {
+  margin-bottom: 16px;
+  color: #303133;
+}
+
+.timeline-content {
+  padding: 5px 0;
+}
+
+.timeline-price {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.price-unit {
+  font-size: 14px;
+  color: #909399;
+}
+
+.timeline-date {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.timeline-course {
+  font-size: 12px;
+  color: #c0c4cc;
+  margin-top: 2px;
 }
 
 @media (max-width: 768px) {
@@ -382,6 +593,7 @@ onUnmounted(() => {
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
+    cursor: pointer;
   }
 
   .student-info {
@@ -400,7 +612,7 @@ onUnmounted(() => {
   }
 
   .student-detail {
-    margin-bottom: 12px;
+    margin-bottom: 0;
   }
 
   .detail-item {
@@ -417,16 +629,6 @@ onUnmounted(() => {
 
   .detail-item .value {
     color: #606266;
-  }
-
-  .student-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-  }
-
-  .student-actions .el-button {
-    flex: 1;
   }
 }
 </style>
