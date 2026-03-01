@@ -32,6 +32,12 @@
     
     <view class="action-section">
       <button 
+        class="btn-edit" 
+        @click="handleEdit"
+      >
+        编辑课程
+      </button>
+      <button 
         class="btn-attend" 
         @click="handleAttend" 
         v-if="course.status === 'normal'"
@@ -59,6 +65,61 @@
         删除课程
       </button>
     </view>
+    
+    <view class="dialog-mask" v-if="editDialogVisible" @click="editDialogVisible = false">
+      <view class="dialog-content" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">编辑课程</text>
+          <text class="dialog-close" @click="editDialogVisible = false">×</text>
+        </view>
+        <view class="dialog-body">
+          <view class="form-item">
+            <text class="form-label">学生</text>
+            <picker :value="studentIndex" :range="students" range-key="name" @change="onStudentChange">
+              <view class="form-picker">
+                <text>{{ students[studentIndex]?.name || '请选择学生' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">课程类型</text>
+            <picker :value="courseTypeIndex" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
+              <view class="form-picker">
+                <text>{{ courseTypes[courseTypeIndex]?.name || '请选择课程类型' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">上课时间</text>
+            <picker mode="multiSelector" :value="startDateTimeIndex" :range="dateTimeRange" @change="onStartTimeChange" @columnchange="onStartColumnChange">
+              <view class="form-picker">
+                <text>{{ formatEditDateTime(editForm.startTime) || '请选择时间' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">结束时间</text>
+            <picker mode="multiSelector" :value="endDateTimeIndex" :range="dateTimeRange" @change="onEndTimeChange" @columnchange="onEndColumnChange">
+              <view class="form-picker">
+                <text>{{ formatEditDateTime(editForm.endTime) || '请选择时间' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">备注</text>
+            <textarea class="form-textarea" v-model="editForm.notes" placeholder="请输入备注" />
+          </view>
+        </view>
+        <view class="dialog-footer">
+          <button class="btn-dialog-cancel" @click="editDialogVisible = false">取消</button>
+          <button class="btn-dialog-save" @click="handleSaveEdit">保存</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -69,6 +130,24 @@ import { get, put, post, del } from '@/utils/request'
 
 const course = ref({})
 const courseId = ref('')
+const editDialogVisible = ref(false)
+const students = ref([{ name: '请选择学生', _id: '' }])
+const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
+const studentIndex = ref(0)
+const courseTypeIndex = ref(0)
+
+const editForm = ref({
+  studentId: '',
+  courseTypeId: '',
+  startTime: null,
+  endTime: null,
+  notes: ''
+})
+
+const startDateTimeIndex = ref([0, 0, 0, 0])
+const endDateTimeIndex = ref([0, 0, 0, 0])
+
+const dateTimeRange = ref([[], [], [], []])
 
 const statusText = computed(() => {
   const map = { normal: '待上课', completed: '已完成', cancelled: '已取消' }
@@ -87,6 +166,7 @@ onMounted(() => {
   if (courseId.value) {
     fetchCourse()
   }
+  initDateTimeRange()
 })
 
 onShow(() => {
@@ -94,6 +174,27 @@ onShow(() => {
     fetchCourse()
   }
 })
+
+const initDateTimeRange = () => {
+  const hours = []
+  for (let i = 6; i <= 23; i++) {
+    hours.push(`${i}时`)
+  }
+  const minutes = []
+  for (let i = 0; i < 60; i += 5) {
+    minutes.push(`${String(i).padStart(2, '0')}分`)
+  }
+  
+  const now = new Date()
+  const dates = []
+  for (let i = -7; i <= 30; i++) {
+    const date = new Date(now)
+    date.setDate(date.getDate() + i)
+    dates.push(`${date.getMonth() + 1}月${date.getDate()}日`)
+  }
+  
+  dateTimeRange.value = [dates, [''], hours, minutes]
+}
 
 const fetchCourse = async () => {
   try {
@@ -104,10 +205,145 @@ const fetchCourse = async () => {
   }
 }
 
+const fetchStudents = async () => {
+  try {
+    const res = await get('/students')
+    students.value = [{ name: '请选择学生', _id: '' }, ...(res.data || [])]
+    
+    const courseId = (course.value.studentId?._id || course.value.studentId || '').toString()
+    const idx = students.value.findIndex(s => (s._id || '').toString() === courseId)
+    studentIndex.value = idx >= 0 ? idx : 0
+  } catch (error) {
+    console.error('获取学生列表失败', error)
+  }
+}
+
+const fetchCourseTypes = async () => {
+  try {
+    const res = await get('/course-types')
+    courseTypes.value = [{ name: '请选择课程类型', _id: '' }, ...(res.data || [])]
+    
+    const courseTypeId = (course.value.courseTypeId?._id || course.value.courseTypeId || '').toString()
+    const idx = courseTypes.value.findIndex(t => (t._id || '').toString() === courseTypeId)
+    courseTypeIndex.value = idx >= 0 ? idx : 0
+  } catch (error) {
+    console.error('获取课程类型列表失败', error)
+  }
+}
+
 const formatDateTime = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const formatEditDateTime = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const onStudentChange = (e) => {
+  studentIndex.value = e.detail.value
+  editForm.value.studentId = students.value[e.detail.value]?._id || ''
+}
+
+const onCourseTypeChange = (e) => {
+  courseTypeIndex.value = e.detail.value
+  editForm.value.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
+}
+
+const onStartTimeChange = (e) => {
+  startDateTimeIndex.value = e.detail.value
+  updateStartTime()
+}
+
+const onStartColumnChange = (e) => {
+  startDateTimeIndex.value[e.detail.column] = e.detail.value
+}
+
+const onEndTimeChange = (e) => {
+  endDateTimeIndex.value = e.detail.value
+  updateEndTime()
+}
+
+const onEndColumnChange = (e) => {
+  endDateTimeIndex.value[e.detail.column] = e.detail.value
+}
+
+const updateStartTime = () => {
+  const [dateIdx, , hourIdx, minuteIdx] = startDateTimeIndex.value
+  const now = new Date()
+  const date = new Date(now)
+  date.setDate(date.getDate() - 7 + dateIdx)
+  const hour = 6 + hourIdx
+  const minute = minuteIdx * 5
+  
+  editForm.value.startTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute)
+}
+
+const updateEndTime = () => {
+  const [dateIdx, , hourIdx, minuteIdx] = endDateTimeIndex.value
+  const now = new Date()
+  const date = new Date(now)
+  date.setDate(date.getDate() - 7 + dateIdx)
+  const hour = 6 + hourIdx
+  const minute = minuteIdx * 5
+  
+  editForm.value.endTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute)
+}
+
+const handleEdit = async () => {
+  await fetchStudents()
+  await fetchCourseTypes()
+  
+  editForm.value = {
+    studentId: course.value.studentId?._id || '',
+    courseTypeId: course.value.courseTypeId?._id || '',
+    startTime: new Date(course.value.startTime),
+    endTime: new Date(course.value.endTime),
+    notes: course.value.notes || ''
+  }
+  
+  const startTime = new Date(course.value.startTime)
+  const endTime = new Date(course.value.endTime)
+  const now = new Date()
+  const startDateIdx = Math.floor((startTime - now) / (1000 * 60 * 60 * 24)) + 7
+  const endDateIdx = Math.floor((endTime - now) / (1000 * 60 * 60 * 24)) + 7
+  
+  startDateTimeIndex.value = [
+    Math.max(0, Math.min(startDateIdx, 37)),
+    0,
+    Math.max(0, startTime.getHours() - 6),
+    Math.floor(startTime.getMinutes() / 5)
+  ]
+  endDateTimeIndex.value = [
+    Math.max(0, Math.min(endDateIdx, 37)),
+    0,
+    Math.max(0, endTime.getHours() - 6),
+    Math.floor(endTime.getMinutes() / 5)
+  ]
+  
+  editDialogVisible.value = true
+}
+
+const handleSaveEdit = async () => {
+  try {
+    const updateData = {
+      studentId: editForm.value.studentId || null,
+      courseTypeId: editForm.value.courseTypeId || null,
+      startTime: editForm.value.startTime,
+      endTime: editForm.value.endTime,
+      notes: editForm.value.notes
+    }
+    
+    await put(`/courses/${courseId.value}`, updateData)
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    editDialogVisible.value = false
+    fetchCourse()
+  } catch (error) {
+    uni.showToast({ title: error.message || '保存失败', icon: 'none' })
+  }
 }
 
 const handleAttend = async () => {
@@ -280,6 +516,18 @@ const handleDelete = async () => {
   padding: 20rpx 0;
 }
 
+.btn-edit {
+  flex: 1;
+  min-width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #409EFF;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
 .btn-attend {
   flex: 1;
   min-width: 45%;
@@ -324,6 +572,118 @@ const handleDelete = async () => {
   background-color: #fff;
   color: #909399;
   border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.dialog-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.dialog-content {
+  width: 90%;
+  max-width: 600rpx;
+  background-color: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.dialog-close {
+  font-size: 40rpx;
+  color: #909399;
+}
+
+.dialog-body {
+  padding: 30rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.form-item {
+  margin-bottom: 24rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.form-picker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.picker-arrow {
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.form-textarea {
+  width: 100%;
+  height: 160rpx;
+  padding: 20rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 30rpx 30rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.btn-dialog-cancel {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #fff;
+  color: #606266;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.btn-dialog-save {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #409EFF;
+  color: #fff;
+  border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
 }

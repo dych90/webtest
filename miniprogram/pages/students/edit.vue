@@ -102,13 +102,13 @@ const form = reactive({
   notes: ''
 })
 
-onMounted(() => {
+onMounted(async () => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   studentId.value = currentPage.options?.id || ''
   if (studentId.value) {
-    fetchStudent()
-    fetchCourseTypes()
+    await fetchStudent()
+    await fetchCourseTypes()
   }
 })
 
