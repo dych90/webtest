@@ -46,7 +46,7 @@
         </picker>
       </view>
       
-      <view class="form-item" v-if="form.paymentType === 'prepaid'">
+      <view class="form-item">
         <text class="form-label">课时单价</text>
         <view class="price-input-wrapper">
           <text class="price-unit">¥</text>

@@ -28,7 +28,7 @@
           <text class="info-label">课程类型</text>
           <text class="info-value">{{ student.defaultCourseTypeId?.name || '未设置' }}</text>
         </view>
-        <view class="info-item" v-if="student.paymentType === 'prepaid'">
+        <view class="info-item">
           <text class="info-label">课时单价</text>
           <text class="info-value text-price">¥{{ student.currentPrice || 0 }}/课时</text>
         </view>
@@ -47,7 +47,7 @@
       </view>
     </view>
     
-    <view class="price-history-section" v-if="student.paymentType === 'prepaid' && priceHistory.length > 0">
+    <view class="price-history-section" v-if="priceHistory.length > 0">
       <view class="section-header">
         <text class="section-title">价格变更历史</text>
       </view>
