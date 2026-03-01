@@ -19,13 +19,13 @@
           <view class="action-icon schedule-icon">📅</view>
           <text class="action-text">排课管理</text>
         </view>
-        <view class="action-item" @click="goToPage('/pages/lessons/lessons')">
-          <view class="action-icon lesson-icon">📝</view>
-          <text class="action-text">消课管理</text>
-        </view>
         <view class="action-item" @click="goToPage('/pages/payments/payments')">
           <view class="action-icon payment-icon">💰</view>
           <text class="action-text">缴费管理</text>
+        </view>
+        <view class="action-item" @click="goToPage('/pages/balance/balance')">
+          <view class="action-icon balance-icon">🎫</view>
+          <text class="action-text">剩余课费</text>
         </view>
       </view>
     </view>
@@ -381,6 +381,10 @@ onShow(() => {
 
 .payment-icon {
   background-color: #fef0f0;
+}
+
+.balance-icon {
+  background-color: #fdf6ec;
 }
 
 .action-text {

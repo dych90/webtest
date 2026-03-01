@@ -112,7 +112,7 @@
           <text class="dialog-close" @click="reportDataVisible = false">×</text>
         </view>
         <scroll-view scroll-y class="report-scroll">
-          <view class="report-container">
+          <view class="report-container" id="reportContainer">
             <view class="report-header">
               <text class="report-title">「{{ reportForm.studentName }}」· 上课情况报告</text>
               <text class="report-subtitle">
@@ -152,9 +152,12 @@
         </scroll-view>
         <view class="dialog-footer">
           <button class="btn-cancel" @click="reportDataVisible = false">关闭</button>
+          <button class="btn-share" @click="handleShareReport">分享报告</button>
         </view>
       </view>
     </view>
+    
+    <canvas canvas-id="shareCanvas" class="share-canvas" :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }"></canvas>
   </view>
 </template>
 
@@ -167,6 +170,8 @@ const balances = ref([])
 const dialogVisible = ref(false)
 const reportDialogVisible = ref(false)
 const reportDataVisible = ref(false)
+const canvasWidth = ref(375)
+const canvasHeight = ref(800)
 
 const form = reactive({
   studentId: '',
@@ -299,6 +304,164 @@ const handleGenerateReportData = async () => {
   } catch (error) {
     uni.showToast({ title: error.message || '生成报告失败', icon: 'none' })
   }
+}
+
+const handleShareReport = () => {
+  uni.showActionSheet({
+    itemList: ['保存图片到相册', '复制报告内容'],
+    success: (res) => {
+      if (res.tapIndex === 0) {
+        saveReportImage()
+      } else if (res.tapIndex === 1) {
+        copyReportText()
+      }
+    }
+  })
+}
+
+const saveReportImage = () => {
+  uni.showLoading({ title: '生成图片中...' })
+  
+  const ctx = uni.createCanvasContext('shareCanvas')
+  const dpr = uni.getSystemInfoSync().pixelRatio || 2
+  const width = 375
+  const height = 600 + reportData.lessonDetails.length * 40
+  
+  canvasWidth.value = width * dpr
+  canvasHeight.value = height * dpr
+  ctx.scale(dpr, dpr)
+  
+  ctx.setFillStyle('#F9F7F2')
+  ctx.fillRect(0, 0, width, height)
+  
+  ctx.setFillStyle('#2C3E50')
+  ctx.setFontSize(18)
+  ctx.setTextAlign('center')
+  ctx.fillText(`「${reportForm.studentName}」· 上课情况报告`, width / 2, 40)
+  
+  ctx.setFillStyle('#909399')
+  ctx.setFontSize(12)
+  ctx.fillText(`时间范围：${formatDate(reportForm.startDate)} 至 ${formatDate(reportForm.endDate)}`, width / 2, 65)
+  
+  ctx.setFillStyle('#2C3E50')
+  const summaryY = 100
+  const summaryWidth = (width - 60) / 2
+  roundRect(ctx, 20, summaryY, summaryWidth - 10, 80, 8, '#2C3E50')
+  roundRect(ctx, summaryWidth + 30, summaryY, summaryWidth - 10, 80, 8, '#2C3E50')
+  
+  ctx.setFillStyle('#fff')
+  ctx.setFontSize(12)
+  ctx.setTextAlign('center')
+  ctx.fillText('已上课', 20 + (summaryWidth - 10) / 2, summaryY + 30)
+  ctx.setFontSize(28)
+  ctx.setFillStyle('#67C23A')
+  ctx.fillText(String(reportData.attendedLessons), 20 + (summaryWidth - 10) / 2, summaryY + 60)
+  
+  if (reportData.paymentType === 'prepaid') {
+    ctx.setFillStyle('#fff')
+    ctx.setFontSize(12)
+    ctx.fillText('剩余课时', summaryWidth + 30 + (summaryWidth - 10) / 2, summaryY + 30)
+    ctx.setFontSize(28)
+    ctx.setFillStyle('#E6A23C')
+    ctx.fillText(String(reportData.remainingLessons), summaryWidth + 30 + (summaryWidth - 10) / 2, summaryY + 60)
+  }
+  
+  ctx.setFillStyle('#2C3E50')
+  ctx.setFontSize(14)
+  ctx.setTextAlign('left')
+  ctx.fillText('上课明细', 20, 220)
+  
+  let y = 250
+  reportData.lessonDetails.forEach((lesson, index) => {
+    if (y > height - 50) return
+    
+    ctx.setFillStyle('#f5f7fa')
+    roundRect(ctx, 20, y, width - 40, 35, 6, '#f5f7fa')
+    
+    ctx.setFillStyle('#333')
+    ctx.setFontSize(12)
+    ctx.fillText(`${formatDate(lesson.date)} ${formatTime(lesson.startTime)}`, 30, y + 22)
+    
+    const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
+    const statusColor = lesson.isGiftLesson ? '#9b59b6' : (lesson.status === 'attended' ? '#67C23A' : '#F56C6C')
+    ctx.setFillStyle(statusColor)
+    ctx.setTextAlign('right')
+    ctx.fillText(statusText, width - 30, y + 22)
+    ctx.setTextAlign('left')
+    
+    y += 45
+  })
+  
+  ctx.draw(false, () => {
+    setTimeout(() => {
+      uni.canvasToTempFilePath({
+        canvasId: 'shareCanvas',
+        success: (res) => {
+          uni.saveImageToPhotosAlbum({
+            filePath: res.tempFilePath,
+            success: () => {
+              uni.hideLoading()
+              uni.showToast({ title: '已保存到相册', icon: 'success' })
+            },
+            fail: (err) => {
+              uni.hideLoading()
+              if (err.errMsg.includes('auth deny')) {
+                uni.showModal({
+                  title: '提示',
+                  content: '需要您授权保存图片到相册',
+                  confirmText: '去授权',
+                  success: (res) => {
+                    if (res.confirm) {
+                      uni.openSetting()
+                    }
+                  }
+                })
+              } else {
+                uni.showToast({ title: '保存失败', icon: 'none' })
+              }
+            }
+          })
+        },
+        fail: () => {
+          uni.hideLoading()
+          uni.showToast({ title: '生成图片失败', icon: 'none' })
+        }
+      })
+    }, 500)
+  })
+}
+
+const roundRect = (ctx, x, y, width, height, radius, color) => {
+  ctx.setFillStyle(color)
+  ctx.beginPath()
+  ctx.arc(x + radius, y + radius, radius, Math.PI, Math.PI * 1.5)
+  ctx.arc(x + width - radius, y + radius, radius, Math.PI * 1.5, Math.PI * 2)
+  ctx.arc(x + width - radius, y + height - radius, radius, 0, Math.PI * 0.5)
+  ctx.arc(x + radius, y + height - radius, radius, Math.PI * 0.5, Math.PI)
+  ctx.closePath()
+  ctx.fill()
+}
+
+const copyReportText = () => {
+  let text = `「${reportForm.studentName}」上课情况报告\n`
+  text += `时间范围：${formatDate(reportForm.startDate)} 至 ${formatDate(reportForm.endDate)}\n\n`
+  text += `已上课：${reportData.attendedLessons} 节\n`
+  if (reportData.paymentType === 'prepaid') {
+    text += `剩余课时：${reportData.remainingLessons} 课时\n`
+  }
+  text += `\n上课明细：\n`
+  
+  reportData.lessonDetails.forEach(lesson => {
+    const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
+    text += `${formatDate(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}\n`
+  })
+  
+  uni.setClipboardData({
+    data: text,
+    success: () => {
+      uni.showToast({ title: '已复制到剪贴板', icon: 'success' })
+    }
+  })
 }
 
 onMounted(() => {
@@ -570,6 +733,17 @@ onShow(() => {
   font-size: 28rpx;
 }
 
+.btn-share {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #67C23A;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
 .report-scroll {
   max-height: 60vh;
 }
@@ -692,5 +866,11 @@ onShow(() => {
 
 .status-tag.gift {
   background-color: #9b59b6;
+}
+
+.share-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: 0;
 }
 </style>
