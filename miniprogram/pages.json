@@ -153,6 +153,14 @@
       }
     },
     {
+      "path": "pages/balance/balance",
+      "style": {
+        "navigationBarTitleText": "剩余课费",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/mine/mine",
       "style": {
         "navigationBarTitleText": "我的",

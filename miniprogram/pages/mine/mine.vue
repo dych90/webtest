@@ -22,6 +22,11 @@
           <text class="menu-text">缴费管理</text>
           <text class="menu-arrow">›</text>
         </view>
+        <view class="menu-item" @click="goToPage('/pages/balance/balance')">
+          <view class="menu-icon">🎫</view>
+          <text class="menu-text">剩余课费</text>
+          <text class="menu-arrow">›</text>
+        </view>
         <view class="menu-item" @click="goToPage('/pages/statistics/statistics')">
           <view class="menu-icon">📊</view>
           <text class="menu-text">数据统计</text>

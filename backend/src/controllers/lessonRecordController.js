@@ -135,12 +135,13 @@ const createLessonRecord = async (req, res) => {
     }
     
     if (student.paymentType === 'prepaid') {
+      const studentIdStr = lessonRecord.studentId._id ? lessonRecord.studentId._id.toString() : lessonRecord.studentId.toString()
       if (lessonRecord.isDeducted) {
-        console.log('扣减课时:', lessonRecord.studentId, -lessonRecord.lessonsConsumed)
-        await updateLessonBalance(lessonRecord.studentId, -lessonRecord.lessonsConsumed)
+        console.log('扣减课时:', studentIdStr, -lessonRecord.lessonsConsumed)
+        await updateLessonBalance(studentIdStr, -lessonRecord.lessonsConsumed)
       } else {
-        console.log('增加课时:', lessonRecord.studentId, lessonRecord.lessonsConsumed)
-        await updateLessonBalance(lessonRecord.studentId, lessonRecord.lessonsConsumed)
+        console.log('增加课时:', studentIdStr, lessonRecord.lessonsConsumed)
+        await updateLessonBalance(studentIdStr, lessonRecord.lessonsConsumed)
       }
     } else if (student.paymentType === 'payPerLesson' && lessonRecord.isDeducted) {
       console.log('单次付费学生上课，创建缴费记录')
@@ -267,10 +268,11 @@ const updateLessonRecord = async (req, res) => {
     const student = await Student.findById(oldRecord.studentId._id)
     
     if (student && student.paymentType === 'prepaid') {
+      const studentIdStr = oldRecord.studentId._id ? oldRecord.studentId._id.toString() : oldRecord.studentId.toString()
       if (oldRecord.isDeducted && !req.body.isDeducted) {
-        await updateLessonBalance(oldRecord.studentId, oldRecord.lessonsConsumed)
+        await updateLessonBalance(studentIdStr, oldRecord.lessonsConsumed)
       } else if (!oldRecord.isDeducted && req.body.isDeducted) {
-        await updateLessonBalance(oldRecord.studentId, -req.body.lessonsConsumed)
+        await updateLessonBalance(studentIdStr, -req.body.lessonsConsumed)
       }
     }
     
@@ -302,8 +304,10 @@ const deleteLessonRecord = async (req, res) => {
     
     const student = await Student.findById(record.studentId._id)
     
+    const studentIdStr = record.studentId._id ? record.studentId._id.toString() : record.studentId.toString()
+    
     if (student && student.paymentType === 'prepaid' && record.isDeducted) {
-      await updateLessonBalance(record.studentId, record.lessonsConsumed)
+      await updateLessonBalance(studentIdStr, record.lessonsConsumed)
     } else if (student && student.paymentType === 'payPerLesson' && record.isDeducted) {
       console.log('删除单次付费学生的消课记录，查找并删除对应的缴费记录')
       
@@ -336,18 +340,32 @@ const deleteLessonRecord = async (req, res) => {
 
 const updateLessonBalance = async (studentId, lessonsChange) => {
   try {
-    const balance = await LessonBalance.findOne({ studentId })
+    console.log('updateLessonBalance 调用 - studentId:', studentId, 'lessonsChange:', lessonsChange)
+    
+    const mongoose = require('mongoose')
+    let studentObjectId
+    try {
+      studentObjectId = new mongoose.Types.ObjectId(studentId)
+    } catch (e) {
+      console.error('无效的 studentId:', studentId)
+      return
+    }
+    
+    const balance = await LessonBalance.findOne({ studentId: studentObjectId })
+    console.log('查找到的余额记录:', balance)
     
     if (balance) {
       balance.remainingLessons += lessonsChange
       balance.lastUpdated = new Date()
       await balance.save()
+      console.log('更新后余额:', balance.remainingLessons)
     } else {
-      await LessonBalance.create({
-        studentId,
+      const newBalance = await LessonBalance.create({
+        studentId: studentObjectId,
         remainingLessons: Math.max(0, lessonsChange),
         lastUpdated: new Date()
       })
+      console.log('创建新余额记录:', newBalance)
     }
   } catch (error) {
     console.error('更新课费余额错误:', error)
