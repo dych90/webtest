@@ -39,7 +39,7 @@
       </template>
       
       <div v-if="isSortMode" class="sort-tip">
-        <el-alert title="拖动学生行调整顺序，完成后点击"完成排序"保存" type="info" :closable="false" />
+        <el-alert title="拖动学生行调整顺序，完成后点击完成排序保存" type="info" :closable="false" />
       </div>
       
       <div class="desktop-table">
