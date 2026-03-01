@@ -1,23 +1,47 @@
 <template>
   <view class="course-types-container">
-    <view v-if="courseTypes.length === 0" class="empty-tip">
+    <view v-if="isSortMode" class="sort-tip">
+      <text>点击上下箭头调整顺序</text>
+      <text class="sort-done" @click="finishSort">完成</text>
+    </view>
+    
+    <view v-if="displayList.length === 0" class="empty-tip">
       暂无课程类型
     </view>
     
     <view v-else class="type-list">
-      <view v-for="type in courseTypes" :key="type._id" class="type-item">
-        <view class="type-header">
-          <text class="type-name">{{ type.name }}</text>
-          <text class="type-duration">{{ type.duration }}分钟</text>
+      <view 
+        v-for="(type, index) in displayList" 
+        :key="type._id" 
+        class="type-item"
+        :class="{ 'sort-active': isSortMode }"
+        @longpress="startSortMode"
+      >
+        <view v-if="isSortMode" class="sort-buttons">
+          <view class="sort-btn" :class="{ disabled: index === 0 }" @click.stop="moveUp(index)">
+            <text>↑</text>
+          </view>
+          <view class="sort-btn" :class="{ disabled: index === displayList.length - 1 }" @click.stop="moveDown(index)">
+            <text>↓</text>
+          </view>
         </view>
-        <view class="type-actions">
-          <button class="btn-edit" @click="handleEdit(type)">编辑</button>
-          <button class="btn-delete" @click="handleDelete(type)">删除</button>
+        <view class="type-index">
+          <text>{{ index + 1 }}</text>
+        </view>
+        <view class="type-content">
+          <view class="type-header">
+            <text class="type-name">{{ type.name }}</text>
+            <text class="type-duration">{{ type.duration }}分钟</text>
+          </view>
+          <view class="type-actions" v-if="!isSortMode">
+            <button class="btn-edit" @click="handleEdit(type)">编辑</button>
+            <button class="btn-delete" @click="handleDelete(type)">删除</button>
+          </view>
         </view>
       </view>
     </view>
     
-    <view class="add-btn" @click="handleAdd">
+    <view class="add-btn" @click="handleAdd" v-if="!isSortMode">
       <text>+</text>
     </view>
     
@@ -47,7 +71,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
 
@@ -55,6 +79,16 @@ const courseTypes = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加课程类型')
 const editingId = ref('')
+const isSortMode = ref(false)
+const sortList = ref([])
+const hasChanged = ref(false)
+
+const displayList = computed(() => {
+  if (isSortMode.value) {
+    return sortList.value
+  }
+  return courseTypes.value
+})
 
 const form = reactive({
   name: '',
@@ -68,6 +102,54 @@ const fetchCourseTypes = async () => {
   } catch (error) {
     console.error('获取课程类型失败', error)
   }
+}
+
+const startSortMode = () => {
+  sortList.value = [...courseTypes.value]
+  isSortMode.value = true
+  hasChanged.value = false
+  uni.vibrateShort()
+}
+
+const finishSort = async () => {
+  isSortMode.value = false
+  
+  if (hasChanged.value) {
+    try {
+      const courseTypeIds = sortList.value.map(t => t._id)
+      await post('/course-types/sort', { courseTypeIds })
+      courseTypes.value = [...sortList.value]
+      uni.showToast({ title: '排序已保存', icon: 'success' })
+    } catch (error) {
+      uni.showToast({ title: '保存排序失败', icon: 'none' })
+    }
+  }
+  
+  sortList.value = []
+}
+
+const moveUp = (index) => {
+  if (index === 0) return
+  hasChanged.value = true
+  
+  const newList = [...sortList.value]
+  const temp = newList[index]
+  newList[index] = newList[index - 1]
+  newList[index - 1] = temp
+  
+  sortList.value = newList
+}
+
+const moveDown = (index) => {
+  if (index === sortList.value.length - 1) return
+  hasChanged.value = true
+  
+  const newList = [...sortList.value]
+  const temp = newList[index]
+  newList[index] = newList[index + 1]
+  newList[index + 1] = temp
+  
+  sortList.value = newList
 }
 
 const handleAdd = () => {
@@ -141,7 +223,9 @@ onMounted(() => {
 })
 
 onShow(() => {
-  fetchCourseTypes()
+  if (!isSortMode.value) {
+    fetchCourseTypes()
+  }
 })
 </script>
 
@@ -151,6 +235,25 @@ onShow(() => {
   background-color: #f8f8f8;
   min-height: 100vh;
   padding-bottom: 140rpx;
+}
+
+.sort-tip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background-color: #ecf5ff;
+  border-radius: 12rpx;
+  margin-bottom: 20rpx;
+}
+
+.sort-tip text {
+  font-size: 26rpx;
+  color: #409EFF;
+}
+
+.sort-done {
+  font-weight: bold;
 }
 
 .empty-tip {
@@ -170,6 +273,61 @@ onShow(() => {
   background-color: #fff;
   border-radius: 16rpx;
   padding: 24rpx;
+  display: flex;
+  align-items: center;
+}
+
+.type-item.sort-active {
+  background-color: #f0f9eb;
+  border: 2rpx solid #67C23A;
+}
+
+.sort-buttons {
+  display: flex;
+  flex-direction: column;
+  margin-right: 16rpx;
+  gap: 8rpx;
+}
+
+.sort-btn {
+  width: 48rpx;
+  height: 48rpx;
+  background-color: #409EFF;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sort-btn text {
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+.sort-btn.disabled {
+  background-color: #c0c4cc;
+}
+
+.type-index {
+  width: 48rpx;
+  height: 48rpx;
+  background-color: #f5f7fa;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.type-index text {
+  font-size: 24rpx;
+  color: #909399;
+  font-weight: bold;
+}
+
+.type-content {
+  flex: 1;
 }
 
 .type-header {

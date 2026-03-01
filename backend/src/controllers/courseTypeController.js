@@ -2,7 +2,7 @@ const CourseType = require('../models/CourseType')
 
 const getCourseTypes = async (req, res) => {
   try {
-    const courseTypes = await CourseType.find().sort({ createdAt: -1 })
+    const courseTypes = await CourseType.find().sort({ sortOrder: 1, createdAt: -1 })
     
     res.json({
       message: '获取成功',
@@ -59,9 +59,31 @@ const deleteCourseType = async (req, res) => {
   }
 }
 
+const updateCourseTypesSort = async (req, res) => {
+  try {
+    const { courseTypeIds } = req.body
+    
+    if (!courseTypeIds || !Array.isArray(courseTypeIds)) {
+      return res.status(400).json({ message: '无效的排序数据' })
+    }
+    
+    const updatePromises = courseTypeIds.map((id, index) => {
+      return CourseType.findByIdAndUpdate(id, { sortOrder: index })
+    })
+    
+    await Promise.all(updatePromises)
+    
+    res.json({ message: '排序更新成功' })
+  } catch (error) {
+    console.error('更新排序错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 module.exports = {
   getCourseTypes,
   createCourseType,
   updateCourseType,
-  deleteCourseType
+  deleteCourseType,
+  updateCourseTypesSort
 }
