@@ -14,17 +14,27 @@ const getLessonRecords = async (req, res) => {
     const isTeacher = user && user.role !== 'admin'
     
     let filter = {}
-    if (studentId) {
-      filter.studentId = studentId
-    }
     if (courseId) {
       filter.courseId = courseId
     }
     
     if (isTeacher) {
       const students = await Student.find({ teacherId: req.userId })
-      const studentIds = students.map(s => s._id)
-      filter.studentId = studentId && studentIds.includes(studentId) ? studentId : { $in: studentIds }
+      const studentIds = students.map(s => s._id.toString())
+      
+      if (studentId) {
+        if (studentIds.includes(studentId)) {
+          filter.studentId = studentId
+        } else {
+          return res.json({ message: '获取成功', data: [] })
+        }
+      } else {
+        filter.studentId = { $in: students.map(s => s._id) }
+      }
+    } else {
+      if (studentId) {
+        filter.studentId = studentId
+      }
     }
     
     const lessonRecords = await LessonRecord.find(filter)
