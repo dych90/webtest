@@ -1,5 +1,7 @@
 const Student = require('../models/Student')
 const User = require('../models/User')
+const FeeStandard = require('../models/FeeStandard')
+const CourseType = require('../models/CourseType')
 const xlsx = require('xlsx')
 const fs = require('fs')
 const path = require('path')
@@ -68,7 +70,20 @@ const createStudent = async (req, res) => {
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
     }
     
+    if (req.body.currentPrice && req.body.currentPrice > 0) {
+      studentData.priceEffectiveDate = req.body.priceEffectiveDate || new Date()
+    }
+    
     const student = await Student.create(studentData)
+    
+    if (req.body.currentPrice && req.body.currentPrice > 0 && req.body.defaultCourseTypeId) {
+      await FeeStandard.create({
+        studentId: student._id,
+        courseTypeId: req.body.defaultCourseTypeId,
+        price: req.body.currentPrice,
+        effectiveDate: studentData.priceEffectiveDate
+      })
+    }
     
     res.json({
       message: '创建成功',
@@ -208,6 +223,29 @@ const updateStudent = async (req, res) => {
       return res.status(403).json({ message: '无权限修改此学生' })
     }
     
+    const oldPrice = student.currentPrice
+    const newPrice = req.body.currentPrice
+    const priceChanged = newPrice !== undefined && oldPrice !== newPrice
+    
+    if (priceChanged && newPrice > 0) {
+      req.body.priceEffectiveDate = req.body.priceEffectiveDate || new Date()
+      
+      const courseTypeId = req.body.defaultCourseTypeId || student.defaultCourseTypeId
+      if (courseTypeId) {
+        await FeeStandard.updateMany(
+          { studentId: id, expireDate: { $exists: false } },
+          { expireDate: new Date() }
+        )
+        
+        await FeeStandard.create({
+          studentId: id,
+          courseTypeId: courseTypeId,
+          price: newPrice,
+          effectiveDate: req.body.priceEffectiveDate
+        })
+      }
+    }
+    
     const updatedStudent = await Student.findByIdAndUpdate(id, req.body, { new: true })
     
     res.json({
@@ -244,11 +282,40 @@ const deleteStudent = async (req, res) => {
   }
 }
 
+const getStudentPriceHistory = async (req, res) => {
+  try {
+    const { id } = req.params
+    const user = await User.findById(req.userId)
+    
+    const student = await Student.findById(id)
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+    
+    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+      return res.status(403).json({ message: '无权限查看此学生' })
+    }
+    
+    const priceHistory = await FeeStandard.find({ studentId: id })
+      .sort({ effectiveDate: -1 })
+      .populate('courseTypeId', 'name')
+    
+    res.json({
+      message: '获取成功',
+      data: priceHistory
+    })
+  } catch (error) {
+    console.error('获取价格历史错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 module.exports = {
   getStudents,
   getStudentById,
   createStudent,
   importStudents,
   updateStudent,
-  deleteStudent
+  deleteStudent,
+  getStudentPriceHistory
 }

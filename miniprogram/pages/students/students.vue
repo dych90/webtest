@@ -34,10 +34,13 @@
             </text>
           </view>
           <view class="student-detail">
-            <text class="detail-item" v-if="student.phone">{{ student.phone }}</text>
+            <text class="detail-item price" v-if="student.currentPrice">
+              ¥{{ student.currentPrice }}/课时
+            </text>
             <text class="detail-item" v-if="student.defaultCourseTypeId?.name">
               {{ student.defaultCourseTypeId.name }}
             </text>
+            <text class="detail-item" v-if="student.phone">{{ student.phone }}</text>
           </view>
         </view>
         <view class="student-arrow">
@@ -207,6 +210,11 @@ onShow(() => {
 .detail-item {
   font-size: 24rpx;
   color: #909399;
+}
+
+.detail-item.price {
+  color: #E6A23C;
+  font-weight: bold;
 }
 
 .student-arrow {

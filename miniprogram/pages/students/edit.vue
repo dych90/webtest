@@ -46,6 +46,18 @@
         </picker>
       </view>
       
+      <view class="form-item" v-if="form.paymentType === 'prepaid'">
+        <text class="form-label">课时单价</text>
+        <view class="price-input-wrapper">
+          <text class="price-unit">¥</text>
+          <input class="form-input price-input" v-model="form.currentPrice" type="digit" placeholder="请输入单价" />
+          <text class="price-unit">/课时</text>
+        </view>
+        <text class="price-hint" v-if="originalPrice && form.currentPrice !== originalPrice">
+          原单价：¥{{ originalPrice }}，修改后将记录价格变更历史
+        </text>
+      </view>
+      
       <view class="form-item">
         <text class="form-label">陪练老师</text>
         <input class="form-input" v-model="form.practiceTeacher" placeholder="请输入陪练老师姓名" />
@@ -76,6 +88,7 @@ const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
 const courseTypeIndex = ref(0)
 const loading = ref(false)
 const studentId = ref('')
+const originalPrice = ref('')
 
 const form = reactive({
   name: '',
@@ -84,6 +97,7 @@ const form = reactive({
   phone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
+  currentPrice: '',
   practiceTeacher: '',
   notes: ''
 })
@@ -108,8 +122,11 @@ const fetchStudent = async () => {
     form.phone = data.phone || ''
     form.defaultCourseTypeId = data.defaultCourseTypeId?._id || data.defaultCourseTypeId || ''
     form.paymentType = data.paymentType || 'prepaid'
+    form.currentPrice = data.currentPrice || ''
     form.practiceTeacher = data.practiceTeacher || ''
     form.notes = data.notes || ''
+    
+    originalPrice.value = data.currentPrice || ''
     
     genderIndex.value = data.gender === '男' ? 1 : (data.gender === '女' ? 2 : 0)
     paymentTypeIndex.value = data.paymentType === 'payPerLesson' ? 1 : 0
@@ -165,6 +182,9 @@ const handleSubmit = async () => {
   }
   if (submitData.age) {
     submitData.age = Number(submitData.age)
+  }
+  if (submitData.currentPrice) {
+    submitData.currentPrice = Number(submitData.currentPrice)
   }
   
   try {
@@ -240,6 +260,32 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.price-input-wrapper {
+  display: flex;
+  align-items: center;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  padding-right: 20rpx;
+}
+
+.price-input {
+  border: none;
+  flex: 1;
+}
+
+.price-unit {
+  font-size: 28rpx;
+  color: #909399;
+  padding: 0 10rpx;
+}
+
+.price-hint {
+  display: block;
+  font-size: 22rpx;
+  color: #E6A23C;
+  margin-top: 8rpx;
 }
 
 .form-actions {

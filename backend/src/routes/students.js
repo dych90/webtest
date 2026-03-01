@@ -8,6 +8,7 @@ const upload = multer({ dest: 'uploads/' })
 
 router.get('/students', authenticateToken, studentController.getStudents)
 router.get('/students/:id', authenticateToken, studentController.getStudentById)
+router.get('/students/:id/price-history', authenticateToken, studentController.getStudentPriceHistory)
 router.post('/students', authenticateToken, studentController.createStudent)
 router.post('/students/import', authenticateToken, upload.single('file'), studentController.importStudents)
 router.put('/students/:id', authenticateToken, studentController.updateStudent)

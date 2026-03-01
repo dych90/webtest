@@ -46,6 +46,15 @@
         </picker>
       </view>
       
+      <view class="form-item" v-if="form.paymentType === 'prepaid'">
+        <text class="form-label">课时单价</text>
+        <view class="price-input-wrapper">
+          <text class="price-unit">¥</text>
+          <input class="form-input price-input" v-model="form.currentPrice" type="digit" placeholder="请输入单价" />
+          <text class="price-unit">/课时</text>
+        </view>
+      </view>
+      
       <view class="form-item">
         <text class="form-label">陪练老师</text>
         <input class="form-input" v-model="form.practiceTeacher" placeholder="请输入陪练老师姓名" />
@@ -83,6 +92,7 @@ const form = reactive({
   phone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
+  currentPrice: '',
   practiceTeacher: '',
   notes: ''
 })
@@ -135,6 +145,9 @@ const handleSubmit = async () => {
   }
   if (submitData.age) {
     submitData.age = Number(submitData.age)
+  }
+  if (submitData.currentPrice) {
+    submitData.currentPrice = Number(submitData.currentPrice)
   }
   
   try {
@@ -210,6 +223,25 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.price-input-wrapper {
+  display: flex;
+  align-items: center;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  padding-right: 20rpx;
+}
+
+.price-input {
+  border: none;
+  flex: 1;
+}
+
+.price-unit {
+  font-size: 28rpx;
+  color: #909399;
+  padding: 0 10rpx;
 }
 
 .form-actions {

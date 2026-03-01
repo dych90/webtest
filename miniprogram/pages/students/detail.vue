@@ -28,17 +28,46 @@
           <text class="info-label">课程类型</text>
           <text class="info-value">{{ student.defaultCourseTypeId?.name || '未设置' }}</text>
         </view>
+        <view class="info-item" v-if="student.paymentType === 'prepaid'">
+          <text class="info-label">课时单价</text>
+          <text class="info-value text-price">¥{{ student.currentPrice || 0 }}/课时</text>
+        </view>
+        <view class="info-item" v-if="student.paymentType === 'prepaid'">
+          <text class="info-label">剩余课时</text>
+          <text class="info-value text-primary">{{ student.remainingLessons || 0 }} 课时</text>
+        </view>
         <view class="info-item">
           <text class="info-label">陪练老师</text>
           <text class="info-value">{{ student.practiceTeacher || '未设置' }}</text>
         </view>
-        <view class="info-item">
-          <text class="info-label">剩余课时</text>
-          <text class="info-value text-primary">{{ student.remainingLessons || 0 }} 课时</text>
-        </view>
         <view class="info-item" v-if="student.notes">
           <text class="info-label">备注</text>
           <text class="info-value">{{ student.notes }}</text>
+        </view>
+      </view>
+    </view>
+    
+    <view class="price-history-section" v-if="student.paymentType === 'prepaid' && priceHistory.length > 0">
+      <view class="section-header">
+        <text class="section-title">价格变更历史</text>
+      </view>
+      <view class="price-timeline">
+        <view v-for="(item, index) in priceHistory" :key="item._id" class="timeline-item">
+          <view class="timeline-dot" :class="{ 'is-latest': index === 0 }"></view>
+          <view class="timeline-content">
+            <view class="timeline-price">
+              <text class="price-value">¥{{ item.price }}</text>
+              <text class="price-unit">/课时</text>
+              <text v-if="index === 0" class="current-tag">当前</text>
+            </view>
+            <text class="timeline-date">
+              {{ formatDate(item.effectiveDate) }}
+              <text v-if="item.expireDate"> - {{ formatDate(item.expireDate) }}</text>
+            </text>
+            <text class="timeline-course" v-if="item.courseTypeId?.name">
+              {{ item.courseTypeId.name }}
+            </text>
+          </view>
         </view>
       </view>
     </view>
@@ -57,6 +86,7 @@ import { get, del } from '@/utils/request'
 
 const student = ref({})
 const studentId = ref('')
+const priceHistory = ref([])
 
 onMounted(() => {
   const pages = getCurrentPages()
@@ -64,12 +94,14 @@ onMounted(() => {
   studentId.value = currentPage.options?.id || ''
   if (studentId.value) {
     fetchStudent()
+    fetchPriceHistory()
   }
 })
 
 onShow(() => {
   if (studentId.value) {
     fetchStudent()
+    fetchPriceHistory()
   }
 })
 
@@ -80,6 +112,21 @@ const fetchStudent = async () => {
   } catch (error) {
     uni.showToast({ title: '获取学生信息失败', icon: 'none' })
   }
+}
+
+const fetchPriceHistory = async () => {
+  try {
+    const res = await get(`/students/${studentId.value}/price-history`)
+    priceHistory.value = res.data || []
+  } catch (error) {
+    console.error('获取价格历史失败', error)
+  }
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 const handleEdit = () => {
@@ -186,6 +233,116 @@ const handleDelete = () => {
 .text-primary {
   color: #409EFF;
   font-weight: bold;
+}
+
+.text-price {
+  color: #E6A23C;
+  font-weight: bold;
+}
+
+.price-history-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-header {
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.price-timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-item {
+  display: flex;
+  position: relative;
+  padding-bottom: 24rpx;
+  padding-left: 32rpx;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 8rpx;
+  top: 24rpx;
+  bottom: 0;
+  width: 2rpx;
+  background-color: #e4e7ed;
+}
+
+.timeline-item:last-child::before {
+  display: none;
+}
+
+.timeline-dot {
+  position: absolute;
+  left: 0;
+  top: 8rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background-color: #dcdfe6;
+}
+
+.timeline-dot.is-latest {
+  background-color: #409EFF;
+}
+
+.timeline-content {
+  flex: 1;
+}
+
+.timeline-price {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+
+.price-value {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.price-unit {
+  font-size: 24rpx;
+  color: #909399;
+  margin-left: 4rpx;
+}
+
+.current-tag {
+  font-size: 20rpx;
+  color: #fff;
+  background-color: #67C23A;
+  padding: 2rpx 10rpx;
+  border-radius: 4rpx;
+  margin-left: 12rpx;
+}
+
+.timeline-date {
+  display: block;
+  font-size: 24rpx;
+  color: #909399;
+  margin-bottom: 4rpx;
+}
+
+.timeline-course {
+  display: block;
+  font-size: 22rpx;
+  color: #c0c4cc;
 }
 
 .action-section {
