@@ -162,6 +162,9 @@
             value-format="YYYY-MM-DD"
           />
         </el-form-item>
+        <el-form-item label="身份证号">
+          <el-input v-model="form.idCard" />
+        </el-form-item>
         <el-form-item label="家长姓名">
           <el-input v-model="form.parentName" />
         </el-form-item>
@@ -199,6 +202,21 @@
             原单价：¥{{ originalPrice }}，修改后将记录价格变更历史
           </div>
         </el-form-item>
+        <el-form-item label="学琴起始日期">
+          <el-date-picker 
+            v-model="form.pianoStartDate" 
+            type="date" 
+            placeholder="选择日期"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="学习进度">
+          <el-input v-model="form.learningProgress" type="textarea" :rows="3" />
+        </el-form-item>
+        <el-form-item label="学习计划">
+          <el-input v-model="form.learningPlan" type="textarea" :rows="3" />
+        </el-form-item>
         <el-form-item label="陪练老师">
           <el-input v-model="form.practiceTeacher" placeholder="请输入陪练老师姓名" />
         </el-form-item>
@@ -232,6 +250,7 @@
         <el-descriptions :column="isMobile ? 1 : 2" border>
           <el-descriptions-item label="性别">{{ currentStudent.gender || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="生日">{{ formatDate(currentStudent.birthday) || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="身份证号">{{ currentStudent.idCard || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="家长姓名">{{ currentStudent.parentName || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="家长电话">{{ currentStudent.parentPhone || '未设置' }}</el-descriptions-item>
@@ -242,7 +261,10 @@
           <el-descriptions-item v-if="currentStudent.paymentType === 'prepaid'" label="剩余课时">
             <span class="remaining-lessons">{{ currentStudent.remainingLessons || 0 }} 课时</span>
           </el-descriptions-item>
+          <el-descriptions-item label="学琴起始日期">{{ formatDate(currentStudent.pianoStartDate) || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="陪练老师">{{ currentStudent.practiceTeacher || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentStudent.learningProgress" label="学习进度" :span="2">{{ currentStudent.learningProgress }}</el-descriptions-item>
+          <el-descriptions-item v-if="currentStudent.learningPlan" label="学习计划" :span="2">{{ currentStudent.learningPlan }}</el-descriptions-item>
           <el-descriptions-item v-if="currentStudent.notes" label="备注" :span="2">{{ currentStudent.notes }}</el-descriptions-item>
         </el-descriptions>
 
@@ -315,12 +337,16 @@ const form = ref({
   name: '',
   gender: '',
   birthday: '',
+  idCard: '',
   parentName: '',
   phone: '',
   parentPhone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: 0,
+  pianoStartDate: '',
+  learningProgress: '',
+  learningPlan: '',
   practiceTeacher: '',
   notes: ''
 })
@@ -471,12 +497,16 @@ const handleAdd = () => {
     name: '',
     gender: '',
     birthday: '',
+    idCard: '',
     parentName: '',
     phone: '',
     parentPhone: '',
     defaultCourseTypeId: '',
     paymentType: 'prepaid',
     currentPrice: 0,
+    pianoStartDate: '',
+    learningProgress: '',
+    learningPlan: '',
     practiceTeacher: '',
     notes: ''
   }
@@ -489,7 +519,8 @@ const handleEdit = (row) => {
   form.value = {
     ...row,
     defaultCourseTypeId: row.defaultCourseTypeId?._id || row.defaultCourseTypeId || '',
-    birthday: row.birthday ? formatDate(row.birthday) : ''
+    birthday: row.birthday ? formatDate(row.birthday) : '',
+    pianoStartDate: row.pianoStartDate ? formatDate(row.pianoStartDate) : ''
   }
   originalPrice.value = row.currentPrice || ''
   dialogVisible.value = true
@@ -533,6 +564,9 @@ const handleSave = async () => {
     const submitData = { ...form.value }
     if (submitData.birthday) {
       submitData.birthday = new Date(submitData.birthday)
+    }
+    if (submitData.pianoStartDate) {
+      submitData.pianoStartDate = new Date(submitData.pianoStartDate)
     }
     
     if (dialogTitle.value === '添加学生') {

@@ -27,6 +27,11 @@
       </view>
       
       <view class="form-item">
+        <text class="form-label">身份证号</text>
+        <input class="form-input" v-model="form.idCard" placeholder="请输入身份证号" />
+      </view>
+      
+      <view class="form-item">
         <text class="form-label">家长姓名</text>
         <input class="form-input" v-model="form.parentName" placeholder="请输入家长姓名" />
       </view>
@@ -74,6 +79,26 @@
       </view>
       
       <view class="form-item">
+        <text class="form-label">学琴起始日期</text>
+        <picker mode="date" :value="form.pianoStartDate" @change="onPianoStartDateChange">
+          <view class="form-picker">
+            <text>{{ form.pianoStartDate || '请选择日期' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">学习进度</text>
+        <textarea class="form-textarea" v-model="form.learningProgress" placeholder="请输入学习进度" />
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">学习计划</text>
+        <textarea class="form-textarea" v-model="form.learningPlan" placeholder="请输入学习计划" />
+      </view>
+      
+      <view class="form-item">
         <text class="form-label">陪练老师</text>
         <input class="form-input" v-model="form.practiceTeacher" placeholder="请输入陪练老师姓名" />
       </view>
@@ -109,12 +134,16 @@ const form = reactive({
   name: '',
   gender: '',
   birthday: '',
+  idCard: '',
   parentName: '',
   phone: '',
   parentPhone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: '',
+  pianoStartDate: '',
+  learningProgress: '',
+  learningPlan: '',
   practiceTeacher: '',
   notes: ''
 })
@@ -136,12 +165,16 @@ const fetchStudent = async () => {
     form.name = data.name || ''
     form.gender = data.gender || ''
     form.birthday = data.birthday ? formatDate(data.birthday) : ''
+    form.idCard = data.idCard || ''
     form.parentName = data.parentName || ''
     form.phone = data.phone || ''
     form.parentPhone = data.parentPhone || ''
     form.defaultCourseTypeId = data.defaultCourseTypeId?._id || data.defaultCourseTypeId || ''
     form.paymentType = data.paymentType || 'prepaid'
     form.currentPrice = data.currentPrice || ''
+    form.pianoStartDate = data.pianoStartDate ? formatDate(data.pianoStartDate) : ''
+    form.learningProgress = data.learningProgress || ''
+    form.learningPlan = data.learningPlan || ''
     form.practiceTeacher = data.practiceTeacher || ''
     form.notes = data.notes || ''
     
@@ -193,6 +226,10 @@ const onPaymentTypeChange = (e) => {
   form.paymentType = e.detail.value === 0 ? 'prepaid' : 'payPerLesson'
 }
 
+const onPianoStartDateChange = (e) => {
+  form.pianoStartDate = e.detail.value
+}
+
 const handleCancel = () => {
   uni.navigateBack()
 }
@@ -214,6 +251,9 @@ const handleSubmit = async () => {
   }
   if (submitData.birthday) {
     submitData.birthday = new Date(submitData.birthday)
+  }
+  if (submitData.pianoStartDate) {
+    submitData.pianoStartDate = new Date(submitData.pianoStartDate)
   }
   
   try {

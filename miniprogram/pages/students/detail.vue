@@ -21,6 +21,10 @@
           <text class="info-value">{{ formatDate(student.birthday) || '未设置' }}</text>
         </view>
         <view class="info-item">
+          <text class="info-label">身份证号</text>
+          <text class="info-value">{{ student.idCard || '未设置' }}</text>
+        </view>
+        <view class="info-item">
           <text class="info-label">联系电话</text>
           <text class="info-value">{{ student.phone || '未设置' }}</text>
         </view>
@@ -45,13 +49,40 @@
           <text class="info-value text-primary">{{ student.remainingLessons || 0 }} 课时</text>
         </view>
         <view class="info-item">
+          <text class="info-label">学琴起始日期</text>
+          <text class="info-value">{{ formatDate(student.pianoStartDate) || '未设置' }}</text>
+        </view>
+        <view class="info-item">
           <text class="info-label">陪练老师</text>
           <text class="info-value">{{ student.practiceTeacher || '未设置' }}</text>
         </view>
-        <view class="info-item" v-if="student.notes">
-          <text class="info-label">备注</text>
-          <text class="info-value">{{ student.notes }}</text>
-        </view>
+      </view>
+    </view>
+    
+    <view class="info-section" v-if="student.learningProgress">
+      <view class="section-header">
+        <text class="section-title">学习进度</text>
+      </view>
+      <view class="section-content">
+        <text>{{ student.learningProgress }}</text>
+      </view>
+    </view>
+    
+    <view class="info-section" v-if="student.learningPlan">
+      <view class="section-header">
+        <text class="section-title">学习计划</text>
+      </view>
+      <view class="section-content">
+        <text>{{ student.learningPlan }}</text>
+      </view>
+    </view>
+    
+    <view class="info-section" v-if="student.notes">
+      <view class="section-header">
+        <text class="section-title">备注</text>
+      </view>
+      <view class="section-content">
+        <text>{{ student.notes }}</text>
       </view>
     </view>
     
@@ -248,21 +279,27 @@ const handleDelete = () => {
   font-weight: bold;
 }
 
-.price-history-section {
-  background-color: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 20rpx;
-}
-
 .section-header {
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
 }
 
 .section-title {
   font-size: 30rpx;
   font-weight: bold;
   color: #333;
+}
+
+.section-content {
+  font-size: 28rpx;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.price-history-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .price-timeline {
