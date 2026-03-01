@@ -52,6 +52,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { get, del } from '@/utils/request'
 
 const student = ref({})
@@ -61,6 +62,12 @@ onMounted(() => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   studentId.value = currentPage.options?.id || ''
+  if (studentId.value) {
+    fetchStudent()
+  }
+})
+
+onShow(() => {
   if (studentId.value) {
     fetchStudent()
   }

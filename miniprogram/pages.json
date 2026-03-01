@@ -137,6 +137,22 @@
       }
     },
     {
+      "path": "pages/course-types/course-types",
+      "style": {
+        "navigationBarTitleText": "课程类型",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/fee-standards/fee-standards",
+      "style": {
+        "navigationBarTitleText": "收费标准",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/mine/mine",
       "style": {
         "navigationBarTitleText": "我的",

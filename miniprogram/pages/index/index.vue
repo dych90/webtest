@@ -1,31 +1,31 @@
 <template>
   <view class="index-container">
-    <view class="welcome-section">
-      <view class="welcome-text">
-        <text class="greeting">{{ greeting }}</text>
-        <text class="name">{{ userStore.userInfo?.name || '老师' }}</text>
+    <view class="header-section">
+      <view class="header-left">
+        <text class="greeting">{{ greeting }}，{{ userStore.userInfo?.name || '老师' }}</text>
       </view>
-      <text class="date">{{ currentDate }}</text>
+      <view class="header-right">
+        <text class="date">{{ currentDate }}</text>
+      </view>
     </view>
     
-    <view class="stats-section">
-      <view class="stats-title">今日概览</view>
-      <view class="stats-grid">
-        <view class="stat-card">
-          <text class="stat-value">{{ stats.todayCourses }}</text>
-          <text class="stat-label">今日课程</text>
+    <view class="quick-actions">
+      <view class="action-grid">
+        <view class="action-item" @click="goToPage('/pages/students/students')">
+          <view class="action-icon student-icon">👤</view>
+          <text class="action-text">学生管理</text>
         </view>
-        <view class="stat-card">
-          <text class="stat-value">{{ stats.todayStudents }}</text>
-          <text class="stat-label">上课学生</text>
+        <view class="action-item" @click="goToPage('/pages/schedule/schedule')">
+          <view class="action-icon schedule-icon">📅</view>
+          <text class="action-text">排课管理</text>
         </view>
-        <view class="stat-card">
-          <text class="stat-value">{{ stats.totalStudents }}</text>
-          <text class="stat-label">学生总数</text>
+        <view class="action-item" @click="goToPage('/pages/lessons/lessons')">
+          <view class="action-icon lesson-icon">📝</view>
+          <text class="action-text">消课管理</text>
         </view>
-        <view class="stat-card">
-          <text class="stat-value">{{ stats.pendingReminders }}</text>
-          <text class="stat-label">待处理提醒</text>
+        <view class="action-item" @click="goToPage('/pages/payments/payments')">
+          <view class="action-icon payment-icon">💰</view>
+          <text class="action-text">缴费管理</text>
         </view>
       </view>
     </view>
@@ -84,24 +84,54 @@
       </view>
     </view>
     
-    <view class="quick-actions">
-      <view class="section-title">快捷操作</view>
-      <view class="action-grid">
-        <view class="action-item" @click="goToPage('/pages/students/students')">
-          <view class="action-icon student-icon">👤</view>
-          <text class="action-text">学生管理</text>
+    <view class="stats-section">
+      <view class="section-title">本月数据</view>
+      <view class="stats-grid">
+        <view class="stat-card">
+          <text class="stat-value warning">¥{{ statistics.monthlyPrepaidRevenue }}</text>
+          <text class="stat-label">本月预收入</text>
         </view>
-        <view class="action-item" @click="goToPage('/pages/schedule/schedule')">
-          <view class="action-icon schedule-icon">📅</view>
-          <text class="action-text">排课管理</text>
+        <view class="stat-card">
+          <text class="stat-value success">¥{{ statistics.monthlyActualRevenue }}</text>
+          <text class="stat-label">本月实际收入</text>
         </view>
-        <view class="action-item" @click="goToPage('/pages/lessons/lessons')">
-          <view class="action-icon lesson-icon">📝</view>
-          <text class="action-text">消课管理</text>
+        <view class="stat-card">
+          <text class="stat-value">{{ statistics.monthlyLessonsConsumed }}</text>
+          <text class="stat-label">本月消课</text>
         </view>
-        <view class="action-item" @click="goToPage('/pages/payments/payments')">
-          <view class="action-icon payment-icon">💰</view>
-          <text class="action-text">缴费管理</text>
+        <view class="stat-card">
+          <text class="stat-value">{{ statistics.monthlyLessonsAttended }}</text>
+          <text class="stat-label">本月上课数</text>
+        </view>
+      </view>
+    </view>
+    
+    <view class="stats-section">
+      <view class="section-title">总体数据</view>
+      <view class="stats-grid">
+        <view class="stat-card">
+          <text class="stat-value">{{ statistics.studentCount }}</text>
+          <text class="stat-label">学生总数</text>
+        </view>
+        <view class="stat-card">
+          <text class="stat-value revenue">¥{{ statistics.totalRevenue }}</text>
+          <text class="stat-label">总收入</text>
+        </view>
+        <view class="stat-card">
+          <text class="stat-value">{{ statistics.totalLessonsAttended }}</text>
+          <text class="stat-label">总上课数</text>
+        </view>
+        <view class="stat-card">
+          <text class="stat-value">{{ statistics.prepaidLessonsConsumed }}</text>
+          <text class="stat-label">预付费已消课时</text>
+        </view>
+        <view class="stat-card">
+          <text class="stat-value">{{ statistics.totalLessonsConsumed }}</text>
+          <text class="stat-label">已消课时</text>
+        </view>
+        <view class="stat-card">
+          <text class="stat-value warning">{{ statistics.totalRemainingLessons }}</text>
+          <text class="stat-label">剩余课时</text>
         </view>
       </view>
     </view>
@@ -116,11 +146,19 @@ import { get, post, put, del } from '@/utils/request'
 
 const userStore = useUserStore()
 
-const stats = ref({
-  todayCourses: 0,
-  todayStudents: 0,
-  totalStudents: 0,
-  pendingReminders: 0
+const statistics = ref({
+  studentCount: 0,
+  totalRevenue: 0,
+  totalLessonsSold: 0,
+  totalCourses: 0,
+  totalLessonsConsumed: 0,
+  totalLessonsAttended: 0,
+  totalRemainingLessons: 0,
+  prepaidLessonsConsumed: 0,
+  monthlyPrepaidRevenue: 0,
+  monthlyActualRevenue: 0,
+  monthlyLessonsConsumed: 0,
+  monthlyLessonsAttended: 0
 })
 
 const todayCourses = ref([])
@@ -139,7 +177,7 @@ const greeting = computed(() => {
 const currentDate = computed(() => {
   const now = new Date()
   const weekDays = ['日', '一', '二', '三', '四', '五', '六']
-  return `${now.getMonth() + 1}月${now.getDate()}日 星期${weekDays[now.getDay()]}`
+  return `${now.getMonth() + 1}月${now.getDate()}日 周${weekDays[now.getDay()]}`
 })
 
 const formatTime = (dateStr) => {
@@ -169,23 +207,18 @@ const fetchTodayCourses = async () => {
     })
     
     todayCourses.value = res.data || []
-    stats.value.todayCourses = todayCourses.value.length
-    
-    const uniqueStudents = new Set(
-      todayCourses.value
-        .filter(c => c.studentId?._id)
-        .map(c => c.studentId._id)
-    )
-    stats.value.todayStudents = uniqueStudents.size
   } catch (error) {
     console.error('获取今日课程失败', error)
   }
 }
 
-const fetchStats = async () => {
+const fetchStatistics = async () => {
   try {
     const res = await get('/statistics')
-    stats.value.totalStudents = res.data?.studentCount || 0
+    statistics.value = {
+      ...statistics.value,
+      ...res.data
+    }
   } catch (error) {
     console.error('获取统计数据失败', error)
   }
@@ -205,7 +238,7 @@ const handleAttendCourse = async (course) => {
     })
     uni.showToast({ title: '上课成功', icon: 'success' })
     await fetchTodayCourses()
-    await fetchStats()
+    await fetchStatistics()
   } catch (error) {
     uni.showToast({ title: error.message || '上课失败', icon: 'none' })
   }
@@ -232,7 +265,7 @@ const handleCancelAttendCourse = async (course) => {
           
           uni.showToast({ title: '取消上课成功', icon: 'success' })
           await fetchTodayCourses()
-          await fetchStats()
+          await fetchStatistics()
         } catch (error) {
           uni.showToast({ title: error.message || '取消上课失败', icon: 'none' })
         }
@@ -257,12 +290,12 @@ const goToPage = (url) => {
 
 onMounted(() => {
   fetchTodayCourses()
-  fetchStats()
+  fetchStatistics()
 })
 
 onShow(() => {
   fetchTodayCourses()
-  fetchStats()
+  fetchStatistics()
 })
 </script>
 
@@ -273,232 +306,61 @@ onShow(() => {
   min-height: 100vh;
 }
 
-.welcome-section {
-  background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
-  border-radius: 20rpx;
-  padding: 40rpx;
-  margin-bottom: 20rpx;
-  color: #fff;
-}
-
-.welcome-text {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 16rpx;
-}
-
-.greeting {
-  font-size: 32rpx;
-  margin-right: 16rpx;
-}
-
-.name {
-  font-size: 40rpx;
-  font-weight: bold;
-}
-
-.date {
-  font-size: 26rpx;
-  opacity: 0.8;
-}
-
-.stats-section {
-  background-color: #fff;
-  border-radius: 20rpx;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-}
-
-.stats-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-  margin-bottom: 24rpx;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20rpx;
-}
-
-.stat-card {
-  background-color: #f5f7fa;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  text-align: center;
-}
-
-.stat-value {
-  display: block;
-  font-size: 48rpx;
-  font-weight: bold;
-  color: #409EFF;
-  margin-bottom: 8rpx;
-}
-
-.stat-label {
-  font-size: 24rpx;
-  color: #909399;
-}
-
-.schedule-section {
-  background-color: #fff;
-  border-radius: 20rpx;
-  padding: 30rpx;
-  margin-bottom: 20rpx;
-}
-
-.section-header {
+.header-section {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24rpx;
+  padding: 16rpx 0;
+  margin-bottom: 16rpx;
 }
 
-.section-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.section-more {
-  font-size: 26rpx;
-  color: #409EFF;
-}
-
-.empty-tip {
-  text-align: center;
-  padding: 40rpx 0;
-  color: #909399;
-  font-size: 28rpx;
-}
-
-.course-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
-.course-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx;
-  background-color: #f5f7fa;
-  border-radius: 16rpx;
-  border-left: 6rpx solid #409EFF;
-}
-
-.course-item.course-completed {
-  opacity: 0.6;
-  border-left-color: #67C23A;
-}
-
-.course-time {
-  width: 100rpx;
-}
-
-.time {
-  font-size: 28rpx;
-  font-weight: bold;
-  color: #333;
-}
-
-.course-info {
+.header-left {
   flex: 1;
-  padding: 0 20rpx;
 }
 
-.student-name {
-  display: block;
-  font-size: 30rpx;
+.greeting {
+  font-size: 28rpx;
   color: #333;
-  margin-bottom: 8rpx;
 }
 
-.course-type {
+.header-right {
+  text-align: right;
+}
+
+.date {
   font-size: 24rpx;
   color: #909399;
-}
-
-.course-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 12rpx;
-}
-
-.status-tag {
-  display: inline-block;
-  padding: 8rpx 16rpx;
-  border-radius: 8rpx;
-  font-size: 22rpx;
-}
-
-.status-normal {
-  background-color: #ecf5ff;
-  color: #409EFF;
-}
-
-.status-completed {
-  background-color: #f0f9eb;
-  color: #67C23A;
-}
-
-.status-cancelled {
-  background-color: #fef0f0;
-  color: #F56C6C;
-}
-
-.btn-attend {
-  padding: 12rpx 24rpx;
-  background-color: #409EFF;
-  color: #fff;
-  font-size: 24rpx;
-  border: none;
-  border-radius: 8rpx;
-  line-height: 1.2;
-}
-
-.btn-cancel-attend {
-  padding: 12rpx 24rpx;
-  background-color: #fff;
-  color: #F56C6C;
-  font-size: 24rpx;
-  border: 2rpx solid #F56C6C;
-  border-radius: 8rpx;
-  line-height: 1.2;
 }
 
 .quick-actions {
   background-color: #fff;
-  border-radius: 20rpx;
-  padding: 30rpx;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
 }
 
 .action-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20rpx;
-  margin-top: 24rpx;
+  gap: 16rpx;
 }
 
 .action-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20rpx;
+  padding: 16rpx;
 }
 
 .action-icon {
-  width: 80rpx;
-  height: 80rpx;
-  border-radius: 20rpx;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40rpx;
-  margin-bottom: 12rpx;
+  font-size: 36rpx;
+  margin-bottom: 8rpx;
 }
 
 .student-icon {
@@ -518,7 +380,180 @@ onShow(() => {
 }
 
 .action-text {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #606266;
+}
+
+.schedule-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.section-more {
+  font-size: 24rpx;
+  color: #409EFF;
+}
+
+.empty-tip {
+  text-align: center;
+  padding: 32rpx 0;
+  color: #909399;
+  font-size: 26rpx;
+}
+
+.course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.course-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
+  background-color: #f5f7fa;
+  border-radius: 12rpx;
+  border-left: 6rpx solid #409EFF;
+}
+
+.course-item.course-completed {
+  opacity: 0.6;
+  border-left-color: #67C23A;
+}
+
+.course-time {
+  width: 90rpx;
+}
+
+.time {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.course-info {
+  flex: 1;
+  padding: 0 16rpx;
+}
+
+.student-name {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 4rpx;
+}
+
+.course-type {
+  font-size: 22rpx;
+  color: #909399;
+}
+
+.course-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 6rpx 12rpx;
+  border-radius: 6rpx;
+  font-size: 20rpx;
+}
+
+.status-normal {
+  background-color: #ecf5ff;
+  color: #409EFF;
+}
+
+.status-completed {
+  background-color: #f0f9eb;
+  color: #67C23A;
+}
+
+.status-cancelled {
+  background-color: #fef0f0;
+  color: #F56C6C;
+}
+
+.btn-attend {
+  padding: 10rpx 20rpx;
+  background-color: #409EFF;
+  color: #fff;
+  font-size: 22rpx;
+  border: none;
+  border-radius: 6rpx;
+  line-height: 1.2;
+}
+
+.btn-cancel-attend {
+  padding: 10rpx 20rpx;
+  background-color: #fff;
+  color: #F56C6C;
+  font-size: 22rpx;
+  border: 2rpx solid #F56C6C;
+  border-radius: 6rpx;
+  line-height: 1.2;
+}
+
+.stats-section {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+
+.stat-card {
+  background-color: #f5f7fa;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #409EFF;
+  margin-bottom: 6rpx;
+}
+
+.stat-value.revenue {
+  color: #E6A23C;
+}
+
+.stat-value.warning {
+  color: #E6A23C;
+}
+
+.stat-value.success {
+  color: #67C23A;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #909399;
 }
 </style>

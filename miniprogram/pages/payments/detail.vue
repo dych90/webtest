@@ -39,6 +39,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { get, del } from '@/utils/request'
 
 const payment = ref({})
@@ -48,6 +49,12 @@ onMounted(() => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   paymentId.value = currentPage.options?.id || ''
+  if (paymentId.value) {
+    fetchPayment()
+  }
+})
+
+onShow(() => {
   if (paymentId.value) {
     fetchPayment()
   }
