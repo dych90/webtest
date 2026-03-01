@@ -230,7 +230,7 @@ const periodText = computed(() => {
     const year = currentMonth.value.getFullYear()
     const month = currentMonth.value.getMonth() + 1
     return `${year}年${month}月`
-  } else {
+  } else if (viewMode.value === 'week') {
     const start = currentWeekStart.value
     const end = new Date(start)
     end.setDate(end.getDate() + 6)
@@ -242,6 +242,10 @@ const periodText = computed(() => {
       return `${startMonth}月${start.getDate()}日 - ${end.getDate()}日`
     }
     return `${startMonth}月${start.getDate()}日 - ${endMonth}月${end.getDate()}日`
+  } else {
+    const date = new Date(selectedDate.value)
+    const weekDay = dayNames[date.getDay()]
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 周${weekDay}`
   }
 })
 
@@ -282,10 +286,14 @@ const prevPeriod = () => {
     const newDate = new Date(currentMonth.value)
     newDate.setMonth(newDate.getMonth() - 1)
     currentMonth.value = newDate
-  } else {
+  } else if (viewMode.value === 'week') {
     const newDate = new Date(currentWeekStart.value)
     newDate.setDate(newDate.getDate() - 7)
     currentWeekStart.value = newDate
+  } else if (viewMode.value === 'day') {
+    const current = new Date(selectedDate.value)
+    current.setDate(current.getDate() - 1)
+    selectedDate.value = formatDateString(current)
   }
   fetchCourses()
 }
@@ -295,10 +303,14 @@ const nextPeriod = () => {
     const newDate = new Date(currentMonth.value)
     newDate.setMonth(newDate.getMonth() + 1)
     currentMonth.value = newDate
-  } else {
+  } else if (viewMode.value === 'week') {
     const newDate = new Date(currentWeekStart.value)
     newDate.setDate(newDate.getDate() + 7)
     currentWeekStart.value = newDate
+  } else if (viewMode.value === 'day') {
+    const current = new Date(selectedDate.value)
+    current.setDate(current.getDate() + 1)
+    selectedDate.value = formatDateString(current)
   }
   fetchCourses()
 }
@@ -319,9 +331,6 @@ const selectDate = (day) => {
     currentMonth.value = new Date(date.getFullYear(), date.getMonth(), 1)
   }
   selectedDate.value = day.date
-  if (viewMode.value === 'month') {
-    viewMode.value = 'day'
-  }
 }
 
 const fetchCourses = async () => {
@@ -333,14 +342,21 @@ const fetchCourses = async () => {
       start.setDate(start.getDate() - start.getDay())
       end = new Date(start)
       end.setDate(end.getDate() + 42)
-    } else {
+    } else if (viewMode.value === 'week') {
       start = new Date(currentWeekStart.value)
       start.setHours(0, 0, 0, 0)
       end = new Date(start)
       end.setDate(end.getDate() + 7)
+    } else if (viewMode.value === 'day') {
+      start = new Date(selectedDate.value)
+      start.setHours(0, 0, 0, 0)
+      end = new Date(start)
+      end.setHours(23, 59, 59, 999)
     }
     
-    end.setHours(23, 59, 59, 999)
+    if (viewMode.value !== 'day') {
+      end.setHours(23, 59, 59, 999)
+    }
     
     const res = await get('/courses', {
       startTime: start.toISOString(),

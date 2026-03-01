@@ -1,13 +1,35 @@
 const FeeStandard = require('../models/FeeStandard')
 const Student = require('../models/Student')
 const CourseType = require('../models/CourseType')
+const User = require('../models/User')
 const xlsx = require('xlsx')
 const fs = require('fs')
 
 const getFeeStandards = async (req, res) => {
   try {
     const { studentId } = req.query
-    const filter = studentId ? { studentId } : {}
+    const user = await User.findById(req.userId)
+    const isTeacher = user && user.role !== 'admin'
+    
+    let filter = {}
+    if (studentId) {
+      filter.studentId = studentId
+    }
+    
+    if (isTeacher) {
+      const students = await Student.find({ teacherId: req.userId })
+      const studentIds = students.map(s => s._id)
+      if (studentId) {
+        if (studentIds.some(id => id.toString() === studentId)) {
+          filter.studentId = studentId
+        } else {
+          return res.json({ message: '获取成功', data: [] })
+        }
+      } else {
+        filter.studentId = { $in: studentIds }
+      }
+    }
+    
     const feeStandards = await FeeStandard.find(filter)
       .sort({ effectiveDate: -1 })
       .populate('studentId', 'name phone')
