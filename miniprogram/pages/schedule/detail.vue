@@ -136,17 +136,21 @@ const handleCancelAttend = async () => {
     success: async (res) => {
       if (res.confirm) {
         try {
-          await put(`/courses/${courseId.value}`, { status: 'normal' })
-          
           const lessonRecords = await get('/lesson-records', {
-            courseId: course.value._id,
-            studentId: course.value.studentId._id
+            courseId: courseId.value
           })
           
           if (lessonRecords.data && lessonRecords.data.length > 0) {
-            const latestRecord = lessonRecords.data[0]
-            await del(`/lesson-records/${latestRecord._id}`)
+            const courseIdStr = courseId.value.toString ? courseId.value.toString() : courseId.value
+            const record = lessonRecords.data.find(r => {
+              const rCourseId = r.courseId?._id ? r.courseId._id : r.courseId
+              return (rCourseId?.toString ? rCourseId.toString() : rCourseId) === courseIdStr
+            }) || lessonRecords.data[0]
+            
+            await del(`/lesson-records/${record._id}`)
           }
+          
+          await put(`/courses/${courseId.value}`, { status: 'normal' })
           
           uni.showToast({ title: '取消上课成功', icon: 'success' })
           fetchCourse()

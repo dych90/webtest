@@ -9,13 +9,16 @@ const mongoose = require('mongoose')
 
 const getLessonRecords = async (req, res) => {
   try {
-    const { studentId } = req.query
+    const { studentId, courseId } = req.query
     const user = await User.findById(req.userId)
     const isTeacher = user && user.role !== 'admin'
     
     let filter = {}
     if (studentId) {
       filter.studentId = studentId
+    }
+    if (courseId) {
+      filter.courseId = courseId
     }
     
     if (isTeacher) {
