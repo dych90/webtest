@@ -18,7 +18,7 @@ const getStudents = async (req, res) => {
     }
     
     const students = await Student.find(query)
-      .sort({ createdAt: -1 })
+      .sort({ sortOrder: 1, createdAt: -1 })
       .populate('defaultCourseTypeId', 'name duration')
       .populate('teacherId', 'name username')
     
@@ -319,6 +319,28 @@ const getStudentPriceHistory = async (req, res) => {
   }
 }
 
+const updateStudentsSort = async (req, res) => {
+  try {
+    const { studentIds } = req.body
+    const user = await User.findById(req.userId)
+    
+    if (!studentIds || !Array.isArray(studentIds)) {
+      return res.status(400).json({ message: '无效的排序数据' })
+    }
+    
+    const updatePromises = studentIds.map((id, index) => {
+      return Student.findByIdAndUpdate(id, { sortOrder: index })
+    })
+    
+    await Promise.all(updatePromises)
+    
+    res.json({ message: '排序更新成功' })
+  } catch (error) {
+    console.error('更新排序错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 module.exports = {
   getStudents,
   getStudentById,
@@ -326,5 +348,6 @@ module.exports = {
   importStudents,
   updateStudent,
   deleteStudent,
-  getStudentPriceHistory
+  getStudentPriceHistory,
+  updateStudentsSort
 }

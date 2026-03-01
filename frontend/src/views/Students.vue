@@ -5,12 +5,15 @@
         <div class="card-header">
           <span>学生管理</span>
           <div class="header-buttons">
+            <el-button v-if="!isSortMode" type="warning" @click="startSortMode">排序模式</el-button>
+            <el-button v-if="isSortMode" type="success" @click="finishSort">完成排序</el-button>
+            <el-button v-if="isSortMode" @click="cancelSort">取消</el-button>
             <el-select
-              v-if="userStore.isAdmin()"
+              v-if="userStore.isAdmin() && !isSortMode"
               v-model="selectedTeacherId"
               placeholder="筛选教师"
               clearable
-              style="width: 150px; margin-right: 10px;"
+              style="width: 150px; margin-left: 10px;"
               @change="fetchStudents"
             >
               <el-option
@@ -21,7 +24,7 @@
               />
             </el-select>
             <el-upload
-              v-if="!userStore.isAdmin()"
+              v-if="!userStore.isAdmin() && !isSortMode"
               ref="uploadRef"
               :show-file-list="false"
               :before-upload="beforeUpload"
@@ -30,16 +33,45 @@
             >
               <el-button type="success">导入Excel</el-button>
             </el-upload>
-            <el-button v-if="!userStore.isAdmin()" type="primary" @click="handleAdd">添加学生</el-button>
+            <el-button v-if="!userStore.isAdmin() && !isSortMode" type="primary" @click="handleAdd">添加学生</el-button>
           </div>
         </div>
       </template>
       
+      <div v-if="isSortMode" class="sort-tip">
+        <el-alert title="拖动学生行调整顺序，完成后点击"完成排序"保存" type="info" :closable="false" />
+      </div>
+      
       <div class="desktop-table">
-        <el-table :data="students" style="width: 100%">
-          <el-table-column prop="name" label="姓名" min-width="80" />
+        <el-table 
+          :data="students" 
+          style="width: 100%"
+          row-key="_id"
+          :class="{ 'sort-mode': isSortMode }"
+        >
+          <el-table-column prop="name" label="姓名" min-width="80">
+            <template #default="{ row, $index }">
+              <div 
+                class="name-cell"
+                :class="{ draggable: isSortMode }"
+                draggable="true"
+                @dragstart="handleDragStart($event, $index)"
+                @dragover.prevent="handleDragOver($event, $index)"
+                @drop="handleDrop($event, $index)"
+                @dragend="handleDragEnd"
+              >
+                <el-icon v-if="isSortMode" class="drag-icon"><Rank /></el-icon>
+                <span>{{ row.name }}</span>
+              </div>
+            </template>
+          </el-table-column>
           <el-table-column prop="gender" label="性别" width="60" />
-          <el-table-column prop="age" label="年龄" width="60" />
+          <el-table-column label="生日" width="100">
+            <template #default="{ row }">
+              {{ formatDate(row.birthday) || '-' }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="parentName" label="家长姓名" min-width="80" />
           <el-table-column prop="phone" label="联系电话" min-width="110" />
           <el-table-column prop="defaultCourseTypeName" label="课程类型" min-width="100" />
           <el-table-column label="课时单价" width="100">
@@ -56,7 +88,7 @@
             </template>
           </el-table-column>
           <el-table-column prop="practiceTeacher" label="陪练老师" min-width="80" />
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right" v-if="!isSortMode">
             <template #default="{ row }">
               <el-button size="small" @click="handleViewDetail(row)">详情</el-button>
               <el-button v-if="!userStore.isAdmin()" size="small" @click="handleEdit(row)">编辑</el-button>
@@ -67,7 +99,19 @@
       </div>
       
       <div class="mobile-cards">
-        <div v-for="student in students" :key="student._id" class="student-card" @click="handleViewDetail(student)">
+        <div 
+          v-for="(student, index) in students" 
+          :key="student._id" 
+          class="student-card"
+          :class="{ 'sort-mode': isSortMode }"
+          @click="!isSortMode && handleViewDetail(student)"
+          draggable="true"
+          @dragstart="handleDragStart($event, index)"
+          @dragover.prevent="handleDragOver($event, index)"
+          @drop="handleDrop($event, index)"
+          @dragend="handleDragEnd"
+        >
+          <el-icon v-if="isSortMode" class="drag-icon-mobile"><Rank /></el-icon>
           <div class="student-info">
             <div class="student-name">{{ student.name }}</div>
             <el-tag :type="student.paymentType === 'prepaid' ? 'primary' : 'success'" size="small">
@@ -109,11 +153,23 @@
         <el-form-item label="性别">
           <el-input v-model="form.gender" />
         </el-form-item>
-        <el-form-item label="年龄">
-          <el-input-number v-model="form.age" :min="0" style="width: 100%" />
+        <el-form-item label="生日">
+          <el-date-picker 
+            v-model="form.birthday" 
+            type="date" 
+            placeholder="选择生日"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="家长姓名">
+          <el-input v-model="form.parentName" />
         </el-form-item>
         <el-form-item label="联系电话">
           <el-input v-model="form.phone" />
+        </el-form-item>
+        <el-form-item label="家长电话">
+          <el-input v-model="form.parentPhone" />
         </el-form-item>
         <el-form-item label="课程类型">
           <el-select v-model="form.defaultCourseTypeId" placeholder="请选择默认课程类型" style="width: 100%">
@@ -175,8 +231,10 @@
         
         <el-descriptions :column="isMobile ? 1 : 2" border>
           <el-descriptions-item label="性别">{{ currentStudent.gender || '未设置' }}</el-descriptions-item>
-          <el-descriptions-item label="年龄">{{ currentStudent.age || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="生日">{{ formatDate(currentStudent.birthday) || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="家长姓名">{{ currentStudent.parentName || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="家长电话">{{ currentStudent.parentPhone || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="课程类型">{{ currentStudent.defaultCourseTypeId?.name || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="课时单价">
             <span class="price-text">¥{{ currentStudent.currentPrice || 0 }}/课时</span>
@@ -226,6 +284,7 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Rank } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 
@@ -242,6 +301,9 @@ const detailDialogVisible = ref(false)
 const currentStudent = ref(null)
 const priceHistory = ref([])
 const originalPrice = ref('')
+const isSortMode = ref(false)
+const originalStudents = ref([])
+const draggedIndex = ref(null)
 
 const isMobile = computed(() => windowWidth.value < 768)
 
@@ -252,8 +314,10 @@ const handleResize = () => {
 const form = ref({
   name: '',
   gender: '',
-  age: 0,
+  birthday: '',
+  parentName: '',
   phone: '',
+  parentPhone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: 0,
@@ -353,13 +417,63 @@ const formatDate = (dateStr) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+const startSortMode = () => {
+  isSortMode.value = true
+  originalStudents.value = [...students.value]
+}
+
+const cancelSort = () => {
+  isSortMode.value = false
+  students.value = [...originalStudents.value]
+}
+
+const finishSort = async () => {
+  try {
+    const studentIds = students.value.map(s => s._id)
+    await request.post('/students/sort', { studentIds })
+    ElMessage.success('排序保存成功')
+    isSortMode.value = false
+  } catch (error) {
+    console.error('保存排序失败', error)
+    ElMessage.error('保存排序失败')
+  }
+}
+
+const handleDragStart = (e, index) => {
+  if (!isSortMode.value) return
+  draggedIndex.value = index
+  e.dataTransfer.effectAllowed = 'move'
+}
+
+const handleDragOver = (e, index) => {
+  if (!isSortMode.value || draggedIndex.value === null) return
+  e.dataTransfer.dropEffect = 'move'
+}
+
+const handleDrop = (e, index) => {
+  if (!isSortMode.value || draggedIndex.value === null || draggedIndex.value === index) return
+  
+  const newStudents = [...students.value]
+  const [draggedItem] = newStudents.splice(draggedIndex.value, 1)
+  newStudents.splice(index, 0, draggedItem)
+  students.value = newStudents
+  
+  draggedIndex.value = null
+}
+
+const handleDragEnd = () => {
+  draggedIndex.value = null
+}
+
 const handleAdd = () => {
   dialogTitle.value = '添加学生'
   form.value = {
     name: '',
     gender: '',
-    age: 0,
+    birthday: '',
+    parentName: '',
     phone: '',
+    parentPhone: '',
     defaultCourseTypeId: '',
     paymentType: 'prepaid',
     currentPrice: 0,
@@ -374,7 +488,8 @@ const handleEdit = (row) => {
   dialogTitle.value = '编辑学生'
   form.value = {
     ...row,
-    defaultCourseTypeId: row.defaultCourseTypeId?._id || row.defaultCourseTypeId || ''
+    defaultCourseTypeId: row.defaultCourseTypeId?._id || row.defaultCourseTypeId || '',
+    birthday: row.birthday ? formatDate(row.birthday) : ''
   }
   originalPrice.value = row.currentPrice || ''
   dialogVisible.value = true
@@ -415,11 +530,16 @@ const handleDelete = async (row) => {
 
 const handleSave = async () => {
   try {
+    const submitData = { ...form.value }
+    if (submitData.birthday) {
+      submitData.birthday = new Date(submitData.birthday)
+    }
+    
     if (dialogTitle.value === '添加学生') {
-      await request.post('/students', form.value)
+      await request.post('/students', submitData)
       ElMessage.success('添加成功')
     } else {
-      await request.put(`/students/${form.value._id}`, form.value)
+      await request.put(`/students/${form.value._id}`, submitData)
       ElMessage.success('更新成功')
     }
     dialogVisible.value = false
@@ -464,6 +584,29 @@ onUnmounted(() => {
 
 .no-price {
   color: #c0c4cc;
+}
+
+.sort-tip {
+  margin-bottom: 15px;
+}
+
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.name-cell.draggable {
+  cursor: grab;
+}
+
+.drag-icon {
+  color: #909399;
+  cursor: grab;
+}
+
+.sort-mode .el-table__row {
+  cursor: grab;
 }
 
 .mobile-cards {
@@ -560,6 +703,17 @@ onUnmounted(() => {
   margin-top: 2px;
 }
 
+.student-card.sort-mode {
+  cursor: grab;
+  border: 2px dashed #409EFF;
+}
+
+.drag-icon-mobile {
+  font-size: 20px;
+  color: #409EFF;
+  margin-right: 10px;
+}
+
 @media (max-width: 768px) {
   .students {
     padding: 12px;
@@ -572,12 +726,8 @@ onUnmounted(() => {
   }
   
   .header-buttons {
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 8px;
-  }
-  
-  .header-buttons .el-button {
-    width: 100%;
   }
 
   .desktop-table {
@@ -594,6 +744,8 @@ onUnmounted(() => {
     padding: 12px;
     margin-bottom: 12px;
     cursor: pointer;
+    display: flex;
+    align-items: flex-start;
   }
 
   .student-info {
@@ -603,6 +755,7 @@ onUnmounted(() => {
     margin-bottom: 10px;
     padding-bottom: 10px;
     border-bottom: 1px solid #e4e7ed;
+    flex: 1;
   }
 
   .student-name {
