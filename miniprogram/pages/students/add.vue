@@ -17,13 +17,28 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">年龄</text>
-        <input class="form-input" v-model="form.age" type="number" placeholder="请输入年龄" />
+        <text class="form-label">生日</text>
+        <picker mode="date" :value="form.birthday" @change="onBirthdayChange">
+          <view class="form-picker">
+            <text>{{ form.birthday || '请选择生日' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">家长姓名</text>
+        <input class="form-input" v-model="form.parentName" placeholder="请输入家长姓名" />
       </view>
       
       <view class="form-item">
         <text class="form-label">联系电话</text>
         <input class="form-input" v-model="form.phone" placeholder="请输入联系电话" type="tel" />
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">家长电话</text>
+        <input class="form-input" v-model="form.parentPhone" placeholder="请输入家长电话" type="tel" />
       </view>
       
       <view class="form-item">
@@ -88,8 +103,10 @@ const loading = ref(false)
 const form = reactive({
   name: '',
   gender: '',
-  age: '',
+  birthday: '',
+  parentName: '',
   phone: '',
+  parentPhone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: '',
@@ -115,6 +132,10 @@ const fetchCourseTypes = async () => {
 const onGenderChange = (e) => {
   genderIndex.value = e.detail.value
   form.gender = e.detail.value === 0 ? '' : genders[e.detail.value]
+}
+
+const onBirthdayChange = (e) => {
+  form.birthday = e.detail.value
 }
 
 const onCourseTypeChange = (e) => {
@@ -143,11 +164,11 @@ const handleSubmit = async () => {
   if (!submitData.defaultCourseTypeId) {
     delete submitData.defaultCourseTypeId
   }
-  if (submitData.age) {
-    submitData.age = Number(submitData.age)
-  }
   if (submitData.currentPrice) {
     submitData.currentPrice = Number(submitData.currentPrice)
+  }
+  if (submitData.birthday) {
+    submitData.birthday = new Date(submitData.birthday)
   }
   
   try {

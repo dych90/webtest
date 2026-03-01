@@ -129,12 +129,21 @@ const importStudents = async (req, res) => {
         const studentData = {
           name: row['姓名'] || row['name'] || '',
           gender: row['性别'] || row['gender'] || '',
-          age: parseInt(row['年龄'] || row['age']) || 0,
           phone: row['联系电话'] || row['phone'] || '',
+          parentName: row['家长姓名'] || row['parentName'] || '',
+          parentPhone: row['家长电话'] || row['parentPhone'] || '',
           practiceTeacher: row['陪练老师'] || row['practiceTeacher'] || '',
           notes: row['备注'] || row['notes'] || '',
           paymentType: 'prepaid',
           teacherId: req.userId
+        }
+        
+        const birthdayValue = row['生日'] || row['birthday'] || row['出生日期'] || ''
+        if (birthdayValue) {
+          const birthdayDate = new Date(birthdayValue)
+          if (!isNaN(birthdayDate.getTime())) {
+            studentData.birthday = birthdayDate
+          }
         }
         
         const paymentTypeValue = row['付费类型'] || row['paymentType'] || row['付费方式'] || ''

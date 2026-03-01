@@ -17,12 +17,20 @@
           <text class="info-value">{{ student.gender || '未设置' }}</text>
         </view>
         <view class="info-item">
-          <text class="info-label">年龄</text>
-          <text class="info-value">{{ student.age || '未设置' }}</text>
+          <text class="info-label">生日</text>
+          <text class="info-value">{{ formatDate(student.birthday) || '未设置' }}</text>
         </view>
         <view class="info-item">
           <text class="info-label">联系电话</text>
           <text class="info-value">{{ student.phone || '未设置' }}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">家长姓名</text>
+          <text class="info-value">{{ student.parentName || '未设置' }}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">家长电话</text>
+          <text class="info-value">{{ student.parentPhone || '未设置' }}</text>
         </view>
         <view class="info-item">
           <text class="info-label">课程类型</text>

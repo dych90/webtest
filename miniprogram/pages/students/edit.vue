@@ -17,13 +17,28 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">年龄</text>
-        <input class="form-input" v-model="form.age" type="number" placeholder="请输入年龄" />
+        <text class="form-label">生日</text>
+        <picker mode="date" :value="form.birthday" @change="onBirthdayChange">
+          <view class="form-picker">
+            <text>{{ form.birthday || '请选择生日' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">家长姓名</text>
+        <input class="form-input" v-model="form.parentName" placeholder="请输入家长姓名" />
       </view>
       
       <view class="form-item">
         <text class="form-label">联系电话</text>
         <input class="form-input" v-model="form.phone" placeholder="请输入联系电话" type="tel" />
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">家长电话</text>
+        <input class="form-input" v-model="form.parentPhone" placeholder="请输入家长电话" type="tel" />
       </view>
       
       <view class="form-item">
@@ -93,8 +108,10 @@ const originalPrice = ref('')
 const form = reactive({
   name: '',
   gender: '',
-  age: '',
+  birthday: '',
+  parentName: '',
   phone: '',
+  parentPhone: '',
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: '',
@@ -118,8 +135,10 @@ const fetchStudent = async () => {
     const data = res.data || {}
     form.name = data.name || ''
     form.gender = data.gender || ''
-    form.age = data.age || ''
+    form.birthday = data.birthday ? formatDate(data.birthday) : ''
+    form.parentName = data.parentName || ''
     form.phone = data.phone || ''
+    form.parentPhone = data.parentPhone || ''
     form.defaultCourseTypeId = data.defaultCourseTypeId?._id || data.defaultCourseTypeId || ''
     form.paymentType = data.paymentType || 'prepaid'
     form.currentPrice = data.currentPrice || ''
@@ -149,9 +168,19 @@ const fetchCourseTypes = async () => {
   }
 }
 
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
 const onGenderChange = (e) => {
   genderIndex.value = e.detail.value
   form.gender = e.detail.value === 0 ? '' : genders[e.detail.value]
+}
+
+const onBirthdayChange = (e) => {
+  form.birthday = e.detail.value
 }
 
 const onCourseTypeChange = (e) => {
@@ -180,11 +209,11 @@ const handleSubmit = async () => {
   if (!submitData.defaultCourseTypeId) {
     delete submitData.defaultCourseTypeId
   }
-  if (submitData.age) {
-    submitData.age = Number(submitData.age)
-  }
   if (submitData.currentPrice) {
     submitData.currentPrice = Number(submitData.currentPrice)
+  }
+  if (submitData.birthday) {
+    submitData.birthday = new Date(submitData.birthday)
   }
   
   try {
