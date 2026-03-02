@@ -43,16 +43,18 @@ const getStatistics = async (req, res) => {
     
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
     
-    const monthlyPayments = payments.filter(p => 
-      p.paymentDate >= startOfMonth && p.paymentDate < endOfMonth
-    )
+    const monthlyPayments = payments.filter(p => {
+      const paymentDate = new Date(p.paymentDate)
+      return paymentDate >= startOfMonth && paymentDate < endOfMonth
+    })
     const monthlyPrepaidRevenue = monthlyPayments.reduce((sum, p) => sum + p.amount, 0)
     
-    const monthlyLessonRecords = lessonRecords.filter(r => 
-      r.recordDate >= startOfMonth && r.recordDate < endOfMonth
-    )
+    const monthlyLessonRecords = lessonRecords.filter(r => {
+      const recordDate = new Date(r.recordDate)
+      return recordDate >= startOfMonth && recordDate < endOfMonth
+    })
     
     const monthlyActualRevenue = monthlyLessonRecords.reduce((sum, r) => {
       if (r.isGiftLesson) return sum
