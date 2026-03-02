@@ -59,7 +59,7 @@
           </view>
         </view>
         <view class="year-selector" v-if="chartType === 'month'">
-          <picker mode="date" fields="year" :value="currentYear" @change="onYearChange">
+          <picker mode="selector" :range="yearOptions" :value="getYearIndex()" @change="onYearChange">
             <view class="year-picker">
               <text>{{ currentYear }}年</text>
               <text class="picker-arrow">▼</text>
@@ -74,10 +74,8 @@
           <canvas 
             canvas-id="incomeChart" 
             id="incomeChart"
-            class="chart-canvas" 
-            @touchstart="touchIncomeChart"
-            @touchmove="touchIncomeChart"
-            @touchend="touchIncomeChartEnd"
+            class="chart-canvas"
+            type="2d"
           ></canvas>
         </view>
         <view class="chart-legend">
@@ -99,9 +97,7 @@
             canvas-id="lessonChart" 
             id="lessonChart"
             class="chart-canvas"
-            @touchstart="touchLessonChart"
-            @touchmove="touchLessonChart"
-            @touchend="touchLessonChartEnd"
+            type="2d"
           ></canvas>
         </view>
         <view class="chart-legend">
@@ -115,10 +111,6 @@
           </view>
         </view>
       </view>
-    </view>
-    
-    <view class="tooltip" v-if="tooltip.show" :style="{ left: tooltip.x + 'px', top: tooltip.y + 'px' }">
-      <text>{{ tooltip.text }}</text>
     </view>
   </view>
 </template>
@@ -145,6 +137,7 @@ const statistics = ref({
 
 const chartType = ref('month')
 const currentYear = ref(new Date().getFullYear().toString())
+const yearOptions = ref(['2022年', '2023年', '2024年', '2025年', '2026年'])
 const chartData = ref({
   labels: [],
   prepaidRevenue: [],
@@ -152,18 +145,6 @@ const chartData = ref({
   lessonsConsumed: [],
   lessonsAttended: []
 })
-
-const tooltip = ref({
-  show: false,
-  x: 0,
-  y: 0,
-  text: ''
-})
-
-let incomeCtx = null
-let lessonCtx = null
-let incomeCanvas = null
-let lessonCanvas = null
 
 const fetchStatistics = async () => {
   try {
@@ -184,10 +165,13 @@ const fetchChartStatistics = async () => {
       year: currentYear.value
     }
     const res = await get('/statistics/chart', params)
+    console.log('Chart data:', res.data)
     chartData.value = res.data
     
     await nextTick()
-    drawCharts()
+    setTimeout(() => {
+      drawCharts()
+    }, 300)
   } catch (error) {
     console.error('获取图表数据失败', error)
   }
@@ -199,205 +183,207 @@ const switchChartType = (type) => {
 }
 
 const onYearChange = (e) => {
-  currentYear.value = e.detail.value.split('-')[0]
+  const idx = e.detail.value
+  const selectedYear = yearOptions.value[idx]
+  currentYear.value = selectedYear.replace('年', '')
   fetchChartStatistics()
 }
 
-const initCanvas = () => {
-  const query = uni.createSelectorQuery()
-  
-  query.select('#incomeChart')
-    .fields({ node: true, size: true })
-    .exec((res) => {
-      if (res[0]) {
-        incomeCanvas = res[0].node
-        incomeCtx = incomeCanvas.getContext('2d')
-        const dpr = uni.getSystemInfoSync().pixelRatio
-        incomeCanvas.width = res[0].width * dpr
-        incomeCanvas.height = res[0].height * dpr
-        incomeCtx.scale(dpr, dpr)
-        drawIncomeChart()
-      }
-    })
-  
-  query.select('#lessonChart')
-    .fields({ node: true, size: true })
-    .exec((res) => {
-      if (res[0]) {
-        lessonCanvas = res[0].node
-        lessonCtx = lessonCanvas.getContext('2d')
-        const dpr = uni.getSystemInfoSync().pixelRatio
-        lessonCanvas.width = res[0].width * dpr
-        lessonCanvas.height = res[0].height * dpr
-        lessonCtx.scale(dpr, dpr)
-        drawLessonChart()
-      }
-    })
+const getYearIndex = () => {
+  const yearStr = currentYear.value + '年'
+  const idx = yearOptions.value.indexOf(yearStr)
+  return idx >= 0 ? idx : yearOptions.value.length - 1
 }
 
 const drawCharts = () => {
-  setTimeout(() => {
-    initCanvas()
-  }, 100)
+  drawIncomeChart()
+  drawLessonChart()
 }
 
 const drawIncomeChart = () => {
-  if (!incomeCtx || !incomeCanvas) return
-  
-  const width = incomeCanvas.width / uni.getSystemInfoSync().pixelRatio
-  const height = incomeCanvas.height / uni.getSystemInfoSync().pixelRatio
-  const padding = { top: 20, right: 20, bottom: 40, left: 50 }
-  const chartWidth = width - padding.left - padding.right
-  const chartHeight = height - padding.top - padding.bottom
-  
-  incomeCtx.clearRect(0, 0, width, height)
-  
-  const data = chartData.value
-  const maxPrepaid = Math.max(...data.prepaidRevenue, 1)
-  const maxActual = Math.max(...data.actualRevenue, 1)
-  const maxValue = Math.max(maxPrepaid, maxActual)
-  const barCount = data.labels.length
-  const groupWidth = chartWidth / barCount
-  const barWidth = groupWidth * 0.3
-  const gap = groupWidth * 0.1
-  
-  incomeCtx.strokeStyle = '#e4e7ed'
-  incomeCtx.lineWidth = 1
-  for (let i = 0; i <= 4; i++) {
-    const y = padding.top + (chartHeight / 4) * i
-    incomeCtx.beginPath()
-    incomeCtx.moveTo(padding.left, y)
-    incomeCtx.lineTo(width - padding.right, y)
-    incomeCtx.stroke()
-    
-    const value = Math.round(maxValue * (1 - i / 4))
-    incomeCtx.fillStyle = '#909399'
-    incomeCtx.font = '10px sans-serif'
-    incomeCtx.textAlign = 'right'
-    incomeCtx.fillText('¥' + value, padding.left - 5, y + 4)
-  }
-  
-  data.labels.forEach((label, i) => {
-    const x = padding.left + groupWidth * i + groupWidth / 2
-    
-    incomeCtx.fillStyle = '#909399'
-    incomeCtx.font = '10px sans-serif'
-    incomeCtx.textAlign = 'center'
-    incomeCtx.fillText(label, x, height - padding.bottom + 20)
-    
-    const prepaidHeight = (data.prepaidRevenue[i] / maxValue) * chartHeight
-    const prepaidX = x - barWidth - gap / 2
-    const prepaidY = padding.top + chartHeight - prepaidHeight
-    
-    incomeCtx.fillStyle = '#409EFF'
-    incomeCtx.beginPath()
-    incomeCtx.roundRect(prepaidX, prepaidY, barWidth, prepaidHeight, 4)
-    incomeCtx.fill()
-    
-    const actualHeight = (data.actualRevenue[i] / maxValue) * chartHeight
-    const actualX = x + gap / 2
-    const actualY = padding.top + chartHeight - actualHeight
-    
-    incomeCtx.fillStyle = '#67C23A'
-    incomeCtx.beginPath()
-    incomeCtx.roundRect(actualX, actualY, barWidth, actualHeight, 4)
-    incomeCtx.fill()
-  })
+  const query = uni.createSelectorQuery()
+  query.select('#incomeChart')
+    .fields({ node: true, size: true })
+    .exec((res) => {
+      if (!res || !res[0]) {
+        console.log('incomeChart canvas not found')
+        return
+      }
+      
+      const canvas = res[0].node
+      const ctx = canvas.getContext('2d')
+      const dpr = uni.getSystemInfoSync().pixelRatio
+      const width = res[0].width
+      const height = res[0].height
+      
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      ctx.scale(dpr, dpr)
+      
+      const padding = { top: 20, right: 20, bottom: 40, left: 50 }
+      const chartWidth = width - padding.left - padding.right
+      const chartHeight = height - padding.top - padding.bottom
+      
+      ctx.clearRect(0, 0, width, height)
+      
+      const data = chartData.value
+      console.log('Income chart data:', data.labels, data.prepaidRevenue, data.actualRevenue)
+      if (!data.labels || data.labels.length === 0) {
+        ctx.fillStyle = '#909399'
+        ctx.font = '14px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('暂无数据', width / 2, height / 2)
+        return
+      }
+      
+      const maxPrepaid = Math.max(...data.prepaidRevenue, 1)
+      const maxActual = Math.max(...data.actualRevenue, 1)
+      const maxValue = Math.max(maxPrepaid, maxActual)
+      const barCount = data.labels.length
+      const groupWidth = chartWidth / barCount
+      const barWidth = groupWidth * 0.3
+      const gap = groupWidth * 0.1
+      
+      ctx.strokeStyle = '#e4e7ed'
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartHeight / 4) * i
+        ctx.beginPath()
+        ctx.moveTo(padding.left, y)
+        ctx.lineTo(width - padding.right, y)
+        ctx.stroke()
+        
+        const value = Math.round(maxValue * (1 - i / 4))
+        ctx.fillStyle = '#909399'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'right'
+        ctx.fillText('¥' + value, padding.left - 5, y + 4)
+      }
+      
+      data.labels.forEach((label, i) => {
+        const x = padding.left + groupWidth * i + groupWidth / 2
+        
+        ctx.fillStyle = '#909399'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(label, x, height - padding.bottom + 20)
+        
+        const prepaidHeight = (data.prepaidRevenue[i] / maxValue) * chartHeight
+        const prepaidX = x - barWidth - gap / 2
+        const prepaidY = padding.top + chartHeight - prepaidHeight
+        
+        ctx.fillStyle = '#409EFF'
+        ctx.beginPath()
+        ctx.rect(prepaidX, prepaidY, barWidth, prepaidHeight)
+        ctx.fill()
+        
+        const actualHeight = (data.actualRevenue[i] / maxValue) * chartHeight
+        const actualX = x + gap / 2
+        const actualY = padding.top + chartHeight - actualHeight
+        
+        ctx.fillStyle = '#67C23A'
+        ctx.beginPath()
+        ctx.rect(actualX, actualY, barWidth, actualHeight)
+        ctx.fill()
+      })
+    })
 }
 
 const drawLessonChart = () => {
-  if (!lessonCtx || !lessonCanvas) return
-  
-  const width = lessonCanvas.width / uni.getSystemInfoSync().pixelRatio
-  const height = lessonCanvas.height / uni.getSystemInfoSync().pixelRatio
-  const padding = { top: 20, right: 20, bottom: 40, left: 50 }
-  const chartWidth = width - padding.left - padding.right
-  const chartHeight = height - padding.top - padding.bottom
-  
-  lessonCtx.clearRect(0, 0, width, height)
-  
-  const data = chartData.value
-  const maxConsumed = Math.max(...data.lessonsConsumed, 1)
-  const maxAttended = Math.max(...data.lessonsAttended, 1)
-  const maxValue = Math.max(maxConsumed, maxAttended)
-  const pointCount = data.labels.length
-  const stepX = chartWidth / (pointCount - 1 || 1)
-  
-  lessonCtx.strokeStyle = '#e4e7ed'
-  lessonCtx.lineWidth = 1
-  for (let i = 0; i <= 4; i++) {
-    const y = padding.top + (chartHeight / 4) * i
-    lessonCtx.beginPath()
-    lessonCtx.moveTo(padding.left, y)
-    lessonCtx.lineTo(width - padding.right, y)
-    lessonCtx.stroke()
-    
-    const value = Math.round(maxValue * (1 - i / 4))
-    lessonCtx.fillStyle = '#909399'
-    lessonCtx.font = '10px sans-serif'
-    lessonCtx.textAlign = 'right'
-    lessonCtx.fillText(value.toString(), padding.left - 5, y + 4)
-  }
-  
-  data.labels.forEach((label, i) => {
-    const x = padding.left + stepX * i
-    
-    lessonCtx.fillStyle = '#909399'
-    lessonCtx.font = '10px sans-serif'
-    lessonCtx.textAlign = 'center'
-    lessonCtx.fillText(label, x, height - padding.bottom + 20)
-  })
-  
-  const drawLine = (dataArr, color) => {
-    lessonCtx.strokeStyle = color
-    lessonCtx.lineWidth = 2
-    lessonCtx.beginPath()
-    
-    dataArr.forEach((value, i) => {
-      const x = padding.left + stepX * i
-      const y = padding.top + chartHeight - (value / maxValue) * chartHeight
-      
-      if (i === 0) {
-        lessonCtx.moveTo(x, y)
-      } else {
-        lessonCtx.lineTo(x, y)
+  const query = uni.createSelectorQuery()
+  query.select('#lessonChart')
+    .fields({ node: true, size: true })
+    .exec((res) => {
+      if (!res || !res[0]) {
+        console.log('lessonChart canvas not found')
+        return
       }
-    })
-    lessonCtx.stroke()
-    
-    dataArr.forEach((value, i) => {
-      const x = padding.left + stepX * i
-      const y = padding.top + chartHeight - (value / maxValue) * chartHeight
       
-      lessonCtx.fillStyle = '#fff'
-      lessonCtx.beginPath()
-      lessonCtx.arc(x, y, 4, 0, Math.PI * 2)
-      lessonCtx.fill()
+      const canvas = res[0].node
+      const ctx = canvas.getContext('2d')
+      const dpr = uni.getSystemInfoSync().pixelRatio
+      const width = res[0].width
+      const height = res[0].height
       
-      lessonCtx.strokeStyle = color
-      lessonCtx.lineWidth = 2
-      lessonCtx.stroke()
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      ctx.scale(dpr, dpr)
+      
+      const padding = { top: 20, right: 20, bottom: 40, left: 50 }
+      const chartWidth = width - padding.left - padding.right
+      const chartHeight = height - padding.top - padding.bottom
+      
+      ctx.clearRect(0, 0, width, height)
+      
+      const data = chartData.value
+      if (!data.labels || data.labels.length === 0) return
+      
+      const maxConsumed = Math.max(...data.lessonsConsumed, 1)
+      const maxAttended = Math.max(...data.lessonsAttended, 1)
+      const maxValue = Math.max(maxConsumed, maxAttended)
+      const pointCount = data.labels.length
+      const stepX = chartWidth / (pointCount - 1 || 1)
+      
+      ctx.strokeStyle = '#e4e7ed'
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartHeight / 4) * i
+        ctx.beginPath()
+        ctx.moveTo(padding.left, y)
+        ctx.lineTo(width - padding.right, y)
+        ctx.stroke()
+        
+        const value = Math.round(maxValue * (1 - i / 4))
+        ctx.fillStyle = '#909399'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'right'
+        ctx.fillText(value.toString(), padding.left - 5, y + 4)
+      }
+      
+      data.labels.forEach((label, i) => {
+        const x = padding.left + stepX * i
+        
+        ctx.fillStyle = '#909399'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(label, x, height - padding.bottom + 20)
+      })
+      
+      const drawLine = (dataArr, color) => {
+        ctx.strokeStyle = color
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        
+        dataArr.forEach((value, i) => {
+          const x = padding.left + stepX * i
+          const y = padding.top + chartHeight - (value / maxValue) * chartHeight
+          
+          if (i === 0) {
+            ctx.moveTo(x, y)
+          } else {
+            ctx.lineTo(x, y)
+          }
+        })
+        ctx.stroke()
+        
+        dataArr.forEach((value, i) => {
+          const x = padding.left + stepX * i
+          const y = padding.top + chartHeight - (value / maxValue) * chartHeight
+          
+          ctx.fillStyle = '#fff'
+          ctx.beginPath()
+          ctx.arc(x, y, 4, 0, Math.PI * 2)
+          ctx.fill()
+          
+          ctx.strokeStyle = color
+          ctx.lineWidth = 2
+          ctx.stroke()
+        })
+      }
+      
+      drawLine(data.lessonsConsumed, '#E6A23C')
+      drawLine(data.lessonsAttended, '#67C23A')
     })
-  }
-  
-  drawLine(data.lessonsConsumed, '#E6A23C')
-  drawLine(data.lessonsAttended, '#67C23A')
-}
-
-const touchIncomeChart = (e) => {
-  // 触摸交互可扩展
-}
-
-const touchIncomeChartEnd = () => {
-  tooltip.value.show = false
-}
-
-const touchLessonChart = (e) => {
-  // 触摸交互可扩展
-}
-
-const touchLessonChartEnd = () => {
-  tooltip.value.show = false
 }
 
 onMounted(() => {
@@ -416,7 +402,6 @@ onShow(() => {
   padding: 20rpx;
   background-color: #f8f8f8;
   min-height: 100vh;
-  position: relative;
 }
 
 .section-title {
@@ -578,16 +563,5 @@ onShow(() => {
 
 .legend-color.attended {
   background-color: #67C23A;
-}
-
-.tooltip {
-  position: fixed;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 10rpx 20rpx;
-  border-radius: 8rpx;
-  font-size: 24rpx;
-  pointer-events: none;
-  z-index: 999;
 }
 </style>
