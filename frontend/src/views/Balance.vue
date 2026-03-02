@@ -8,7 +8,12 @@
       </template>
       
       <el-table :data="balances" style="width: 100%">
-        <el-table-column prop="studentName" label="学生" />
+        <el-table-column type="index" label="序号" width="60" :index="indexMethod" />
+        <el-table-column prop="studentName" label="学生">
+          <template #default="{ row }">
+            {{ formatStudentName(row.studentName) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="remainingLessons" label="剩余课时" width="100">
           <template #default="{ row }">
             <template v-if="row.paymentType === 'prepaid'">
@@ -282,40 +287,39 @@ const handleGenerateReport = async () => {
     endDate.setHours(23, 59, 59, 999)
     
     const records = response.data.filter(record => {
-      const recordDate = new Date(record.recordDate)
-      recordDate.setHours(0, 0, 0, 0)
-      return recordDate >= startDate && recordDate <= endDate
+      const courseStartTime = record.courseStartTime ? new Date(record.courseStartTime) : new Date(record.recordDate)
+      courseStartTime.setHours(0, 0, 0, 0)
+      return courseStartTime >= startDate && courseStartTime <= endDate
     })
     
-    console.log('过滤后的消课记录数量:', records.length)
+    const uniqueRecords = []
+    const seenCourses = new Set()
     
-    const lessonDetails = []
     for (const record of records) {
-      if (record.courseStartTime) {
-        lessonDetails.push({
-          date: record.recordDate,
-          startTime: record.courseStartTime,
-          courseName: '课程',
-          status: record.isDeducted ? 'attended' : 'missed',
-          isGiftLesson: record.isGiftLesson || false
-        })
-      } else {
-        lessonDetails.push({
-          date: record.recordDate,
-          startTime: record.recordDate,
-          courseName: '未分配',
-          status: record.isDeducted ? 'attended' : 'missed',
-          isGiftLesson: record.isGiftLesson || false
-        })
+      if (record.courseId) {
+        const courseIdStr = record.courseId._id || record.courseId
+        if (seenCourses.has(courseIdStr.toString())) {
+          continue
+        }
+        seenCourses.add(courseIdStr.toString())
       }
+      uniqueRecords.push(record)
     }
+    
+    const lessonDetails = uniqueRecords.map(record => ({
+      date: record.courseStartTime || record.recordDate,
+      startTime: record.courseStartTime || record.recordDate,
+      courseName: '课程',
+      status: record.isDeducted ? 'attended' : 'missed',
+      isGiftLesson: record.isGiftLesson || false
+    })).sort((a, b) => new Date(a.date) - new Date(b.date))
     
     console.log('课程明细数量:', lessonDetails.length)
     
     reportData.value = {
-      totalLessons: records.length,
-      attendedLessons: records.filter(r => r.isDeducted).length,
-      missedLessons: records.filter(r => !r.isDeducted).length,
+      totalLessons: uniqueRecords.length,
+      attendedLessons: uniqueRecords.filter(r => r.isDeducted).length,
+      missedLessons: uniqueRecords.filter(r => !r.isDeducted).length,
       lessonDetails: lessonDetails,
       remainingLessons: reportForm.value.remainingLessons,
       paymentType: reportForm.value.paymentType
@@ -438,6 +442,15 @@ const formatTime = (date) => {
     minute: '2-digit',
     hour12: false
   })
+}
+
+const formatStudentName = (name) => {
+  if (!name) return '未分配'
+  return name.replace(/（/g, '(').replace(/）/g, ')')
+}
+
+const indexMethod = (index) => {
+  return index + 1
 }
 
 onMounted(() => {

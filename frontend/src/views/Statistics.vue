@@ -123,7 +123,24 @@
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
         <el-card>
           <template #header>
-            <span>收入统计</span>
+            <div class="chart-header">
+              <span>收入统计</span>
+              <div class="chart-controls">
+                <el-radio-group v-model="chartType" size="small" @change="fetchChartStatistics">
+                  <el-radio-button label="month">按月</el-radio-button>
+                  <el-radio-button label="year">按年</el-radio-button>
+                </el-radio-group>
+                <el-date-picker
+                  v-if="chartType === 'month'"
+                  v-model="selectedYear"
+                  type="year"
+                  placeholder="选择年份"
+                  size="small"
+                  value-format="YYYY"
+                  @change="fetchChartStatistics"
+                />
+              </div>
+            </div>
           </template>
           <div ref="incomeChart" style="height: 400px"></div>
         </el-card>
@@ -132,7 +149,9 @@
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
         <el-card>
           <template #header>
-            <span>本月消课统计</span>
+            <div class="chart-header">
+              <span>消课统计</span>
+            </div>
           </template>
           <div ref="lessonChart" style="height: 400px"></div>
         </el-card>
@@ -172,6 +191,16 @@ const lessonChart = ref(null)
 let incomeChartInstance = null
 let lessonChartInstance = null
 
+const chartType = ref('month')
+const selectedYear = ref(new Date().getFullYear().toString())
+const chartData = ref({
+  labels: [],
+  prepaidRevenue: [],
+  actualRevenue: [],
+  lessonsConsumed: [],
+  lessonsAttended: []
+})
+
 const fetchStatistics = async () => {
   try {
     const params = {}
@@ -181,10 +210,28 @@ const fetchStatistics = async () => {
     const response = await request.get('/statistics', { params })
     statistics.value = response.data
     
+    await fetchChartStatistics()
+  } catch (error) {
+    console.error('获取统计数据失败', error)
+  }
+}
+
+const fetchChartStatistics = async () => {
+  try {
+    const params = {
+      type: chartType.value,
+      year: selectedYear.value
+    }
+    if (userStore.isAdmin() && selectedTeacherId.value) {
+      params.teacherId = selectedTeacherId.value
+    }
+    const response = await request.get('/statistics/chart', { params })
+    chartData.value = response.data
+    
     updateIncomeChart()
     updateLessonChart()
   } catch (error) {
-    console.error('获取统计数据失败', error)
+    console.error('获取图表数据失败', error)
   }
 }
 
@@ -201,14 +248,13 @@ const fetchTeachers = async () => {
 const updateIncomeChart = () => {
   if (!incomeChartInstance) return
   
-  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-  const prepaidRevenueData = Array(12).fill(0)
-  const actualRevenueData = Array(12).fill(0)
-  prepaidRevenueData[11] = statistics.value.monthlyPrepaidRevenue
-  actualRevenueData[11] = statistics.value.monthlyActualRevenue
+  const data = chartData.value
   
   incomeChartInstance.setOption({
-    title: { text: '月度收入统计' },
+    title: { 
+      text: chartType.value === 'month' ? `${selectedYear.value}年收入统计` : '近5年收入统计',
+      left: 'center'
+    },
     tooltip: {
       trigger: 'axis',
       formatter: (params) => {
@@ -220,11 +266,18 @@ const updateIncomeChart = () => {
       }
     },
     legend: {
-      data: ['预收入', '实际收入']
+      data: ['预收入', '实际收入'],
+      bottom: 0
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '12%',
+      containLabel: true
     },
     xAxis: {
       type: 'category',
-      data: months
+      data: data.labels
     },
     yAxis: {
       type: 'value',
@@ -235,14 +288,14 @@ const updateIncomeChart = () => {
     series: [{
       name: '预收入',
       type: 'bar',
-      data: prepaidRevenueData,
+      data: data.prepaidRevenue,
       itemStyle: {
         color: '#409eff'
       }
     }, {
       name: '实际收入',
       type: 'bar',
-      data: actualRevenueData,
+      data: data.actualRevenue,
       itemStyle: {
         color: '#67c23a'
       }
@@ -253,46 +306,48 @@ const updateIncomeChart = () => {
 const updateLessonChart = () => {
   if (!lessonChartInstance) return
   
-  const months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
-  const lessonData = Array(12).fill(0)
-  lessonData[11] = statistics.value.monthlyLessonsConsumed
+  const data = chartData.value
   
   lessonChartInstance.setOption({
-    title: { text: '月度消课统计' },
+    title: { 
+      text: chartType.value === 'month' ? `${selectedYear.value}年消课统计` : '近5年消课统计',
+      left: 'center'
+    },
     tooltip: {
-      trigger: 'axis',
-      formatter: (params) => `${params.value} 课时`
+      trigger: 'axis'
+    },
+    legend: {
+      data: ['消课数', '上课数'],
+      bottom: 0
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '12%',
+      containLabel: true
     },
     xAxis: {
       type: 'category',
-      data: months
+      data: data.labels
     },
     yAxis: {
-      type: 'value',
-      axisLabel: {
-        formatter: (value) => `${value} 课时`
-      }
+      type: 'value'
     },
     series: [{
-      name: '消课',
+      name: '消课数',
       type: 'line',
       smooth: true,
-      data: lessonData,
+      data: data.lessonsConsumed,
+      itemStyle: {
+        color: '#e6a23c'
+      }
+    }, {
+      name: '上课数',
+      type: 'line',
+      smooth: true,
+      data: data.lessonsAttended,
       itemStyle: {
         color: '#67c23a'
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: '#67c23a' },
-            { offset: 1, color: '#ffffff' }
-          ]
-        }
       }
     }]
   })
@@ -404,5 +459,19 @@ const handleResize = () => {
   .el-col {
     margin-bottom: 12px;
   }
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 </style>

@@ -140,6 +140,9 @@
               <text class="details-title">上课明细</text>
               <view class="lesson-list">
                 <view v-for="(lesson, index) in reportData.lessonDetails" :key="index" class="lesson-item">
+                  <view class="lesson-index">
+                    <text>{{ index + 1 }}</text>
+                  </view>
                   <view class="lesson-info">
                     <text class="lesson-date">{{ formatDate(lesson.date) }}</text>
                     <text class="lesson-time">{{ formatTime(lesson.startTime) }}</text>
@@ -290,21 +293,35 @@ const handleGenerateReportData = async () => {
     endDate.setHours(23, 59, 59, 999)
     
     const records = (res.data || []).filter(record => {
-      const recordDate = new Date(record.recordDate)
-      recordDate.setHours(0, 0, 0, 0)
-      return recordDate >= startDate && recordDate <= endDate
+      const courseStartTime = record.courseStartTime ? new Date(record.courseStartTime) : new Date(record.recordDate)
+      courseStartTime.setHours(0, 0, 0, 0)
+      return courseStartTime >= startDate && courseStartTime <= endDate
     })
     
-    const lessonDetails = records.map(record => ({
-      date: record.recordDate,
+    const uniqueRecords = []
+    const seenCourses = new Set()
+    
+    for (const record of records) {
+      if (record.courseId) {
+        const courseIdStr = record.courseId._id || record.courseId
+        if (seenCourses.has(courseIdStr.toString())) {
+          continue
+        }
+        seenCourses.add(courseIdStr.toString())
+      }
+      uniqueRecords.push(record)
+    }
+    
+    const lessonDetails = uniqueRecords.map(record => ({
+      date: record.courseStartTime || record.recordDate,
       startTime: record.courseStartTime || record.recordDate,
       status: record.isDeducted ? 'attended' : 'missed',
       isGiftLesson: record.isGiftLesson || false
-    }))
+    })).sort((a, b) => new Date(a.date) - new Date(b.date))
     
-    reportData.totalLessons = records.length
-    reportData.attendedLessons = records.filter(r => r.isDeducted).length
-    reportData.missedLessons = records.filter(r => !r.isDeducted).length
+    reportData.totalLessons = uniqueRecords.length
+    reportData.attendedLessons = uniqueRecords.filter(r => r.isDeducted).length
+    reportData.missedLessons = uniqueRecords.filter(r => !r.isDeducted).length
     reportData.lessonDetails = lessonDetails
     reportData.remainingLessons = reportForm.remainingLessons
     reportData.paymentType = reportForm.paymentType
@@ -388,9 +405,13 @@ const saveReportImage = () => {
     ctx.setFillStyle('#f5f7fa')
     roundRect(ctx, 20, y, width - 40, 35, 6, '#f5f7fa')
     
+    ctx.setFillStyle('#409EFF')
+    ctx.setFontSize(10)
+    ctx.fillText(`${index + 1}.`, 30, y + 22)
+    
     ctx.setFillStyle('#333')
     ctx.setFontSize(12)
-    ctx.fillText(`${formatDate(lesson.date)} ${formatTime(lesson.startTime)}`, 30, y + 22)
+    ctx.fillText(`${formatDate(lesson.date)} ${formatTime(lesson.startTime)}`, 50, y + 22)
     
     const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
     const statusColor = lesson.isGiftLesson ? '#9b59b6' : (lesson.status === 'attended' ? '#67C23A' : '#F56C6C')
@@ -461,9 +482,9 @@ const copyReportText = () => {
   }
   text += `\n上课明细：\n`
   
-  reportData.lessonDetails.forEach(lesson => {
+  reportData.lessonDetails.forEach((lesson, index) => {
     const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
-    text += `${formatDate(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}\n`
+    text += `${index + 1}. ${formatDate(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}\n`
   })
   
   uni.setClipboardData({
@@ -866,9 +887,28 @@ onShow(() => {
   border-left: 4rpx solid #409EFF;
 }
 
+.lesson-index {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background-color: #409EFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.lesson-index text {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: bold;
+}
+
 .lesson-info {
   display: flex;
   gap: 16rpx;
+  flex: 1;
 }
 
 .lesson-date {

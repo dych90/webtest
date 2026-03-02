@@ -2,6 +2,7 @@ const Student = require('../models/Student')
 const User = require('../models/User')
 const FeeStandard = require('../models/FeeStandard')
 const CourseType = require('../models/CourseType')
+const LessonBalance = require('../models/LessonBalance')
 const xlsx = require('xlsx')
 const fs = require('fs')
 const path = require('path')
@@ -51,9 +52,13 @@ const getStudentById = async (req, res) => {
       return res.status(403).json({ message: '无权限查看此学生' })
     }
     
+    const balance = await LessonBalance.findOne({ studentId: id })
+    const studentData = student.toObject()
+    studentData.remainingLessons = balance ? balance.remainingLessons : 0
+    
     res.json({
       message: '获取成功',
-      data: student
+      data: studentData
     })
   } catch (error) {
     console.error('获取学生详情错误:', error)

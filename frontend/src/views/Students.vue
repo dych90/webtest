@@ -60,6 +60,44 @@
                 @drop="handleDrop($event, $index)"
                 @dragend="handleDragEnd"
               >
+                <div v-if="isSortMode" class="sort-buttons">
+                  <el-button 
+                    size="small" 
+                    circle 
+                    :disabled="$index === 0"
+                    @click.stop="moveToTop($index)"
+                    title="置顶"
+                  >
+                    <el-icon><Top /></el-icon>
+                  </el-button>
+                  <el-button 
+                    size="small" 
+                    circle 
+                    :disabled="$index === 0"
+                    @click.stop="moveUp($index)"
+                    title="上移"
+                  >
+                    <el-icon><ArrowUp /></el-icon>
+                  </el-button>
+                  <el-button 
+                    size="small" 
+                    circle 
+                    :disabled="$index === students.length - 1"
+                    @click.stop="moveDown($index)"
+                    title="下移"
+                  >
+                    <el-icon><ArrowDown /></el-icon>
+                  </el-button>
+                  <el-button 
+                    size="small" 
+                    circle 
+                    :disabled="$index === students.length - 1"
+                    @click.stop="moveToBottom($index)"
+                    title="置底"
+                  >
+                    <el-icon><Bottom /></el-icon>
+                  </el-button>
+                </div>
                 <el-icon v-if="isSortMode" class="drag-icon"><Rank /></el-icon>
                 <span>{{ row.name }}</span>
               </div>
@@ -306,8 +344,7 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Rank } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+import { Edit, Delete, Plus, Rank, Top, Bottom, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -491,6 +528,40 @@ const handleDragEnd = () => {
   draggedIndex.value = null
 }
 
+const moveUp = (index) => {
+  if (index === 0) return
+  const newStudents = [...students.value]
+  const temp = newStudents[index]
+  newStudents[index] = newStudents[index - 1]
+  newStudents[index - 1] = temp
+  students.value = newStudents
+}
+
+const moveDown = (index) => {
+  if (index === students.value.length - 1) return
+  const newStudents = [...students.value]
+  const temp = newStudents[index]
+  newStudents[index] = newStudents[index + 1]
+  newStudents[index + 1] = temp
+  students.value = newStudents
+}
+
+const moveToTop = (index) => {
+  if (index === 0) return
+  const newStudents = [...students.value]
+  const item = newStudents.splice(index, 1)[0]
+  newStudents.unshift(item)
+  students.value = newStudents
+}
+
+const moveToBottom = (index) => {
+  if (index === students.value.length - 1) return
+  const newStudents = [...students.value]
+  const item = newStudents.splice(index, 1)[0]
+  newStudents.push(item)
+  students.value = newStudents
+}
+
 const handleAdd = () => {
   dialogTitle.value = '添加学生'
   form.value = {
@@ -632,6 +703,20 @@ onUnmounted(() => {
 
 .name-cell.draggable {
   cursor: grab;
+}
+
+.sort-buttons {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.sort-buttons .el-button {
+  padding: 4px;
+}
+
+.sort-buttons .el-button.is-disabled {
+  opacity: 0.3;
 }
 
 .drag-icon {

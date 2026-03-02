@@ -4,14 +4,26 @@
       <el-col :xs="24" :sm="24" :md="24" :lg="24" :xl="24">
         <el-card>
           <template #header>
-            <span>今日课程</span>
+            <div class="course-header">
+              <div class="date-nav">
+                <el-button circle size="small" @click="prevDay">
+                  <el-icon><ArrowLeft /></el-icon>
+                </el-button>
+                <span class="date-text">{{ courseDateText }}</span>
+                <el-button circle size="small" @click="nextDay">
+                  <el-icon><ArrowRight /></el-icon>
+                </el-button>
+              </div>
+              <el-button v-if="!isToday" size="small" @click="goToday">回到今天</el-button>
+            </div>
           </template>
           <div v-if="todayCourses.length > 0" class="course-list">
-            <div v-for="course in todayCourses" :key="course._id" class="course-item">
+            <div v-for="(course, index) in todayCourses" :key="course._id" class="course-item">
+              <div class="course-index">{{ index + 1 }}</div>
               <div class="course-info">
                 <div class="course-time">{{ formatTime(course.startTime) }}</div>
                 <div class="course-name">
-                  {{ course.studentId?.name || '未分配' }}
+                  {{ formatStudentName(course.studentId?.name) }}
                   <el-tag v-if="course.isGiftLesson" type="warning" size="small" style="margin-left: 8px">赠课</el-tag>
                 </div>
               </div>
@@ -38,7 +50,7 @@
               </div>
             </div>
           </div>
-          <el-empty v-else description="暂无课程" />
+          <el-empty v-else :description="isToday ? '今日暂无课程' : '该日暂无课程'" />
         </el-card>
       </el-col>
     </el-row>
@@ -170,8 +182,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { User, Calendar, Money, Bell, Reading, Document } from '@element-plus/icons-vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { User, Calendar, Money, Bell, Reading, Document, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCourseStore } from '../store/course'
@@ -190,6 +202,47 @@ const statistics = ref({
 
 const todayCourses = ref([])
 const recentReminders = ref([])
+const selectedDate = ref(new Date())
+const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+
+const isToday = computed(() => {
+  const today = new Date()
+  return selectedDate.value.getFullYear() === today.getFullYear() &&
+         selectedDate.value.getMonth() === today.getMonth() &&
+         selectedDate.value.getDate() === today.getDate()
+})
+
+const courseDateText = computed(() => {
+  const d = selectedDate.value
+  if (isToday.value) {
+    return '今日课程'
+  }
+  return `${d.getMonth() + 1}月${d.getDate()}日 周${dayNames[d.getDay()]}`
+})
+
+const prevDay = () => {
+  const newDate = new Date(selectedDate.value)
+  newDate.setDate(newDate.getDate() - 1)
+  selectedDate.value = newDate
+  fetchDayCourses()
+}
+
+const nextDay = () => {
+  const newDate = new Date(selectedDate.value)
+  newDate.setDate(newDate.getDate() + 1)
+  selectedDate.value = newDate
+  fetchDayCourses()
+}
+
+const goToday = () => {
+  selectedDate.value = new Date()
+  fetchDayCourses()
+}
+
+const formatStudentName = (name) => {
+  if (!name) return '未分配'
+  return name.replace(/（/g, '(').replace(/）/g, ')')
+}
 
 const fetchStatistics = async () => {
   try {
@@ -214,17 +267,13 @@ const fetchStatistics = async () => {
 
 const fetchTodayCourses = async () => {
   try {
-    const now = new Date()
-    
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const day = now.getDate()
+    const d = selectedDate.value
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    const day = d.getDate()
     
     const startOfDay = new Date(year, month, day, 0, 0, 0)
     const endOfDay = new Date(year, month, day, 23, 59, 59)
-    
-    console.log('查询今日课程时间范围:', startOfDay.toISOString(), '至', endOfDay.toISOString())
-    console.log('当前日期:', now.toISOString())
     
     const response = await request.get('/courses', {
       params: {
@@ -232,23 +281,15 @@ const fetchTodayCourses = async () => {
         endTime: endOfDay.toISOString()
       }
     })
-    console.log('今日课程响应:', response)
     todayCourses.value = response.data || []
-    console.log('今日课程数量:', todayCourses.value.length)
-    console.log('今日课程详情:', todayCourses.value.map(c => ({
-      id: c._id,
-      startTime: c.startTime,
-      endTime: c.endTime,
-      startHour: new Date(c.startTime).getHours(),
-      startMinute: new Date(c.startTime).getMinutes()
-    })))
     statistics.value.todayLessons = todayCourses.value.length
-    console.log('今日课程数量更新后:', statistics.value.todayLessons)
   } catch (error) {
-    console.error('获取今日课程失败', error)
-    ElMessage.error('获取今日课程失败')
+    console.error('获取课程失败', error)
+    ElMessage.error('获取课程失败')
   }
 }
+
+const fetchDayCourses = fetchTodayCourses
 
 const fetchRecentReminders = async () => {
   try {
@@ -485,6 +526,26 @@ onMounted(() => {
   gap: 12px;
 }
 
+.course-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.date-text {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  min-width: 100px;
+  text-align: center;
+}
+
 .course-item {
   display: flex;
   justify-content: space-between;
@@ -492,6 +553,21 @@ onMounted(() => {
   padding: 12px;
   background: #f5f5f5;
   border-radius: 4px;
+}
+
+.course-index {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #409EFF;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  margin-right: 12px;
+  flex-shrink: 0;
 }
 
 .reminder-list {

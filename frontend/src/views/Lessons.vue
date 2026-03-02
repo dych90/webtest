@@ -12,7 +12,14 @@
         <el-tab-pane label="消课记录" name="records">
           <el-table :data="lessons" style="width: 100%">
             <el-table-column prop="studentName" label="学生" />
-            <el-table-column prop="recordDate" label="记录日期">
+            <el-table-column prop="courseStartTime" label="上课时间" width="180">
+              <template #default="{ row }">
+                <span :class="{ 'primary-text': row.courseStartTime }">
+                  {{ formatDateTime(row.courseStartTime) || '未记录' }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="recordDate" label="记录时间" width="180">
               <template #default="{ row }">
                 {{ formatDateTime(row.recordDate) }}
               </template>
@@ -24,6 +31,12 @@
                 <el-tag :type="row.isDeducted ? 'success' : 'info'">
                   {{ row.isDeducted ? '已扣费' : '未扣费' }}
                 </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="isGiftLesson" label="课程类型">
+              <template #default="{ row }">
+                <el-tag v-if="row.isGiftLesson" type="warning">赠课</el-tag>
+                <span v-else>-</span>
               </template>
             </el-table-column>
             <el-table-column prop="notes" label="备注" />
@@ -265,5 +278,10 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.primary-text {
+  color: #409EFF;
+  font-weight: bold;
 }
 </style>

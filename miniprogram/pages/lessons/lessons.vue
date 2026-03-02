@@ -26,9 +26,13 @@
         <view v-for="record in lessonRecords" :key="record._id" class="record-item">
           <view class="record-header">
             <text class="student-name">{{ record.studentId?.name || '未知学生' }}</text>
-            <text class="record-date">{{ formatDateTime(record.recordDate) }}</text>
+            <text class="record-date">记录时间：{{ formatDateTime(record.recordDate) }}</text>
           </view>
           <view class="record-body">
+            <view class="record-info highlight">
+              <text class="info-label">上课时间：</text>
+              <text class="info-value primary">{{ formatDateTime(record.courseStartTime) || '未记录' }}</text>
+            </view>
             <view class="record-info">
               <text class="info-label">消课数量：</text>
               <text class="info-value">{{ record.lessonsConsumed }} 课时</text>
@@ -42,6 +46,10 @@
               <text class="info-value" :class="record.isDeducted ? 'text-success' : 'text-info'">
                 {{ record.isDeducted ? '已扣费' : '未扣费' }}
               </text>
+            </view>
+            <view class="record-info" v-if="record.isGiftLesson">
+              <text class="info-label">课程类型：</text>
+              <text class="info-value text-gift">赠课</text>
             </view>
             <view class="record-info" v-if="record.notes">
               <text class="info-label">备注：</text>
@@ -300,12 +308,28 @@ onShow(() => {
   color: #333;
 }
 
+.info-value.primary {
+  color: #409EFF;
+  font-weight: bold;
+}
+
 .text-success {
   color: #67C23A;
 }
 
 .text-info {
   color: #909399;
+}
+
+.text-gift {
+  color: #9b59b6;
+}
+
+.record-info.highlight {
+  background-color: #ecf5ff;
+  padding: 12rpx 16rpx;
+  border-radius: 8rpx;
+  border-left: 4rpx solid #409EFF;
 }
 
 .record-actions, .course-actions {

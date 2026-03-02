@@ -36,7 +36,7 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="isMobile ? '95%' : '600px'" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <el-form :model="form" label-width="100px">
         <el-form-item label="学生">
-          <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%">
+          <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%" filterable>
             <el-option
               v-for="student in students"
               :key="student._id"
@@ -99,7 +99,7 @@ const isMobile = computed(() => window.innerWidth < 768)
 
 const form = ref({
   studentId: '',
-  paymentType: '现金',
+  paymentType: '微信',
   amount: 0,
   totalLessons: 0,
   bonusLessons: 0,
@@ -143,7 +143,7 @@ const handleAdd = () => {
   dialogTitle.value = '添加缴费'
   form.value = {
     studentId: '',
-    paymentType: '现金',
+    paymentType: '微信',
     amount: 0,
     totalLessons: 0,
     bonusLessons: 0,
