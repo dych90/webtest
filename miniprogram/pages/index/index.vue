@@ -32,26 +32,37 @@
     
     <view class="schedule-section">
       <view class="section-header">
-        <text class="section-title">今日课程</text>
+        <view class="date-nav">
+          <view class="nav-btn" @click="prevDay">
+            <text>‹</text>
+          </view>
+          <text class="section-title">{{ courseDateText }}</text>
+          <view class="nav-btn" @click="nextDay">
+            <text>›</text>
+          </view>
+        </view>
         <text class="section-more" @click="goToSchedule">查看全部</text>
       </view>
       
       <view v-if="todayCourses.length === 0" class="empty-tip">
-        今日暂无课程安排
+        {{ isToday ? '今日暂无课程安排' : '该日暂无课程安排' }}
       </view>
       
       <view v-else class="course-list">
         <view 
-          v-for="course in todayCourses" 
+          v-for="(course, index) in todayCourses" 
           :key="course._id" 
           class="course-item"
           :class="{ 'course-completed': course.status === 'completed' }"
         >
+          <view class="course-index">
+            <text>{{ index + 1 }}</text>
+          </view>
           <view class="course-time">
             <text class="time">{{ formatTime(course.startTime) }}</text>
           </view>
           <view class="course-info">
-            <text class="student-name">{{ course.studentId?.name || '未分配' }}</text>
+            <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
             <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
           </view>
           <view class="course-actions">
@@ -162,6 +173,8 @@ const statistics = ref({
 })
 
 const todayCourses = ref([])
+const selectedDate = ref(new Date())
+const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -176,14 +189,33 @@ const greeting = computed(() => {
 
 const currentDate = computed(() => {
   const now = new Date()
-  const weekDays = ['日', '一', '二', '三', '四', '五', '六']
-  return `${now.getMonth() + 1}月${now.getDate()}日 周${weekDays[now.getDay()]}`
+  return `${now.getMonth() + 1}月${now.getDate()}日 周${dayNames[now.getDay()]}`
+})
+
+const isToday = computed(() => {
+  const today = new Date()
+  return selectedDate.value.getFullYear() === today.getFullYear() &&
+         selectedDate.value.getMonth() === today.getMonth() &&
+         selectedDate.value.getDate() === today.getDate()
+})
+
+const courseDateText = computed(() => {
+  const d = selectedDate.value
+  if (isToday.value) {
+    return '今日课程'
+  }
+  return `${d.getMonth() + 1}月${d.getDate()}日 周${dayNames[d.getDay()]}`
 })
 
 const formatTime = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+}
+
+const formatStudentName = (name) => {
+  if (!name) return '未分配'
+  return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
 const getStatusText = (status) => {
@@ -195,11 +227,25 @@ const getStatusText = (status) => {
   return statusMap[status] || '待上课'
 }
 
-const fetchTodayCourses = async () => {
+const prevDay = () => {
+  const newDate = new Date(selectedDate.value)
+  newDate.setDate(newDate.getDate() - 1)
+  selectedDate.value = newDate
+  fetchDayCourses()
+}
+
+const nextDay = () => {
+  const newDate = new Date(selectedDate.value)
+  newDate.setDate(newDate.getDate() + 1)
+  selectedDate.value = newDate
+  fetchDayCourses()
+}
+
+const fetchDayCourses = async () => {
   try {
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0)
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59)
+    const d = selectedDate.value
+    const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0)
+    const endOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59)
     
     const res = await get('/courses', {
       startTime: startOfDay.toISOString(),
@@ -208,7 +254,7 @@ const fetchTodayCourses = async () => {
     
     todayCourses.value = res.data || []
   } catch (error) {
-    console.error('获取今日课程失败', error)
+    console.error('获取课程失败', error)
   }
 }
 
@@ -254,7 +300,7 @@ const doAttendCourse = async (course) => {
       notes: '从首页直接上课'
     })
     uni.showToast({ title: '上课成功', icon: 'success' })
-    await fetchTodayCourses()
+    await fetchDayCourses()
     await fetchStatistics()
   } catch (error) {
     uni.showToast({ title: error.message || '上课失败', icon: 'none' })
@@ -285,7 +331,7 @@ const handleCancelAttendCourse = async (course) => {
           await put(`/courses/${course._id}`, { status: 'normal' })
           
           uni.showToast({ title: '取消上课成功', icon: 'success' })
-          await fetchTodayCourses()
+          await fetchDayCourses()
           await fetchStatistics()
         } catch (error) {
           uni.showToast({ title: error.message || '取消上课失败', icon: 'none' })
@@ -310,12 +356,12 @@ const goToPage = (url) => {
 }
 
 onMounted(() => {
-  fetchTodayCourses()
+  fetchDayCourses()
   fetchStatistics()
 })
 
 onShow(() => {
-  fetchTodayCourses()
+  fetchDayCourses()
   fetchStatistics()
 })
 </script>
@@ -423,6 +469,27 @@ onShow(() => {
   margin-bottom: 20rpx;
 }
 
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.nav-btn {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f7fa;
+  border-radius: 50%;
+}
+
+.nav-btn text {
+  font-size: 28rpx;
+  color: #409EFF;
+}
+
 .section-title {
   font-size: 30rpx;
   font-weight: bold;
@@ -459,6 +526,23 @@ onShow(() => {
 .course-item.course-completed {
   opacity: 0.6;
   border-left-color: #67C23A;
+}
+
+.course-index {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background-color: #409EFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.course-index text {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: bold;
 }
 
 .course-time {

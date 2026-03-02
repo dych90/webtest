@@ -17,7 +17,7 @@ const getLessonBalances = async (req, res) => {
     }
     
     const students = await Student.find(studentQuery)
-      .sort({ createdAt: -1 })
+      .sort({ sortOrder: 1, createdAt: -1 })
     
     const studentIds = students.map(s => s._id)
     const balanceQuery = isTeacher ? { studentId: { $in: studentIds } } : {}

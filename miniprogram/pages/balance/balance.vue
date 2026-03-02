@@ -5,9 +5,14 @@
     </view>
     
     <view v-else class="balance-list">
-      <view v-for="item in balances" :key="item._id" class="balance-item">
+      <view v-for="(item, index) in balances" :key="item._id" class="balance-item">
         <view class="balance-header">
-          <text class="student-name">{{ item.studentId?.name || '未分配' }}</text>
+          <view class="student-info-row">
+            <view class="student-index">
+              <text>{{ index + 1 }}</text>
+            </view>
+            <text class="student-name">{{ formatStudentName(item.studentId?.name) }}</text>
+          </view>
           <text class="payment-type" :class="item.studentId?.paymentType">
             {{ item.studentId?.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
           </text>
@@ -211,6 +216,11 @@ const formatDate = (date) => {
   if (!date) return ''
   const d = new Date(date)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const formatStudentName = (name) => {
+  if (!name) return '未分配'
+  return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
 const formatTime = (date) => {
@@ -506,6 +516,28 @@ onShow(() => {
   margin-bottom: 16rpx;
   padding-bottom: 16rpx;
   border-bottom: 1rpx solid #f0f0f0;
+}
+
+.student-info-row {
+  display: flex;
+  align-items: center;
+}
+
+.student-index {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background-color: #409EFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+
+.student-index text {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: bold;
 }
 
 .student-name {
