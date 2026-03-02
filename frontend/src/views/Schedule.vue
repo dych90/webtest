@@ -398,22 +398,11 @@ const handleStudentChange = (studentId) => {
   const student = students.value.find(s => s._id === studentId)
   if (student && student.defaultCourseTypeId) {
     form.value.courseTypeId = student.defaultCourseTypeId._id
-    handleCourseTypeChange(student.defaultCourseTypeId._id)
   }
 }
 
 const handleCourseTypeChange = (courseTypeId) => {
-  const courseType = courseTypes.value.find(t => t._id === courseTypeId)
-  if (courseType && form.value.date && form.value.startTime) {
-    const date = new Date(form.value.date)
-    const [hours, minutes] = form.value.startTime.split(':')
-    const startTime = new Date(date)
-    startTime.setHours(parseInt(hours))
-    startTime.setMinutes(parseInt(minutes))
-    const endTime = new Date(startTime.getTime() + courseType.duration * 60000)
-    form.value.startTime = startTime.toISOString()
-    form.value.endTime = endTime.toISOString()
-  }
+  // 课程时长现在是独立选择的，不需要自动计算
 }
 
 const handleAdd = () => {
