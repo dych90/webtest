@@ -455,6 +455,23 @@ const handleSaveEdit = async () => {
 }
 
 const handleAttend = async () => {
+  if (!course.value.courseTypeId?._id && !course.value.courseTypeId) {
+    uni.showModal({
+      title: '提示',
+      content: '该课程未设置课程类型，上课后无法记录收入。是否继续上课？',
+      success: async (res) => {
+        if (res.confirm) {
+          await doAttend()
+        }
+      }
+    })
+    return
+  }
+  
+  await doAttend()
+}
+
+const doAttend = async () => {
   try {
     await put(`/courses/${courseId.value}`, { status: 'completed' })
     await post('/lesson-records', {

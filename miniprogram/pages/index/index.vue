@@ -225,6 +225,23 @@ const fetchStatistics = async () => {
 }
 
 const handleAttendCourse = async (course) => {
+  if (!course.courseTypeId?._id && !course.courseTypeId) {
+    uni.showModal({
+      title: '提示',
+      content: '该课程未设置课程类型，上课后无法记录收入。是否继续上课？',
+      success: async (res) => {
+        if (res.confirm) {
+          await doAttendCourse(course)
+        }
+      }
+    })
+    return
+  }
+  
+  await doAttendCourse(course)
+}
+
+const doAttendCourse = async (course) => {
   try {
     await put(`/courses/${course._id}`, { status: 'completed' })
     await post('/lesson-records', {

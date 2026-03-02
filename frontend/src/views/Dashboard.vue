@@ -173,7 +173,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { User, Calendar, Money, Bell, Reading, Document } from '@element-plus/icons-vue'
 import request from '../utils/request'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCourseStore } from '../store/course'
 
 const courseStore = useCourseStore()
@@ -313,6 +313,27 @@ const getCourseStatusText = (status) => {
 }
 
 const handleAttendCourse = async (course) => {
+  if (!course.courseTypeId?._id && !course.courseTypeId) {
+    ElMessageBox.confirm(
+      '该课程未设置课程类型，上课后无法记录收入。是否继续上课？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    ).then(async () => {
+      await doAttendCourse(course)
+    }).catch(() => {
+      // 用户取消
+    })
+    return
+  }
+  
+  await doAttendCourse(course)
+}
+
+const doAttendCourse = async (course) => {
   try {
     await request.put(`/courses/${course._id}`, { status: 'completed' })
     await request.post('/lesson-records', {
