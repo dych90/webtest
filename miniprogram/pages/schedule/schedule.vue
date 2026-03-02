@@ -64,34 +64,64 @@
       </view>
     </view>
     
-    <view v-if="viewMode === 'week'" class="week-view">
-      <view class="week-days">
+    <view v-if="viewMode === 'week'" class="week-table-view">
+      <view class="week-table-header">
+        <view class="time-column-header">时间</view>
         <view 
           v-for="day in weekDays" 
           :key="day.date" 
-          class="day-item"
-          :class="{ 'is-today': day.isToday, 'is-selected': day.date === selectedDate }"
-          @click="selectDate(day)"
+          class="day-column-header"
+          :class="{ 'is-today': day.isToday }"
         >
-          <text class="day-name">{{ day.dayName }}</text>
-          <text class="day-number">{{ day.dayNumber }}</text>
-          <view v-if="day.courseCount > 0" class="has-course-dot"></view>
+          <text class="header-day-name">{{ day.dayName }}</text>
+          <text class="header-day-number">{{ day.dayNumber }}</text>
         </view>
       </view>
+      
+      <scroll-view scroll-y class="week-table-body">
+        <view class="time-slots">
+          <view v-for="hour in hours" :key="hour" class="time-slot-row">
+            <view class="time-label">{{ hour }}:00</view>
+            <view class="slot-cells">
+              <view 
+                v-for="day in weekDays" 
+                :key="day.date" 
+                class="slot-cell"
+                @click="handleSlotClick(day.date, hour)"
+              >
+                <view 
+                  v-for="course in getCoursesForSlot(day.date, hour)" 
+                  :key="course._id"
+                  class="course-block"
+                  :class="{
+                    'completed': course.status === 'completed',
+                    'cancelled': course.status === 'cancelled'
+                  }"
+                  :style="getCourseStyle(course)"
+                  @click.stop="goToDetail(course)"
+                >
+                  <text class="course-block-time">{{ formatTime(course.startTime) }}</text>
+                  <text class="course-block-name">{{ formatStudentName(course.studentId?.name) }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
     </view>
     
     <view v-if="viewMode === 'day'" class="day-header">
       <text class="day-title">{{ selectedDateText }}</text>
     </view>
     
-    <view class="course-list">
+    <view v-if="viewMode !== 'week'" class="course-list">
       <view v-if="dayCourses.length === 0" class="empty-tip">
         当日暂无课程安排
       </view>
       
       <view v-else class="course-timeline">
         <view 
-          v-for="course in dayCourses" 
+          v-for="(course, index) in dayCourses" 
           :key="course._id" 
           class="course-item"
           :class="{
@@ -100,14 +130,16 @@
           }"
           @click="goToDetail(course)"
         >
-          <view class="timeline-dot"></view>
+          <view class="timeline-dot">
+            <text class="dot-number">{{ index + 1 }}</text>
+          </view>
           <view class="timeline-line"></view>
           <view class="course-content">
             <view class="course-time">
               <text>{{ formatTime(course.startTime) }} - {{ formatTime(course.endTime) }}</text>
             </view>
             <view class="course-main">
-              <text class="student-name">{{ course.studentId?.name || '未分配' }}</text>
+              <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
               <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
             </view>
             <view class="course-status">
@@ -151,6 +183,7 @@ const currentWeekStart = ref(new Date())
 const selectedDate = ref(formatDateString(new Date()))
 const courses = ref([])
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+const hours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
 const monthDays = computed(() => {
   const days = []
@@ -266,10 +299,31 @@ function getCourseCount(dateStr) {
   return courses.value.filter(c => formatDateString(new Date(c.startTime)) === dateStr).length
 }
 
+function getCoursesForSlot(dateStr, hour) {
+  return courses.value.filter(c => {
+    const courseDate = formatDateString(new Date(c.startTime))
+    const courseHour = new Date(c.startTime).getHours()
+    return courseDate === dateStr && courseHour === hour
+  })
+}
+
+function getCourseStyle(course) {
+  const start = new Date(course.startTime)
+  const end = new Date(course.endTime)
+  const duration = (end - start) / 60000
+  const height = Math.max(duration * 2, 60)
+  return { height: `${height}rpx` }
+}
+
 function formatTime(dateStr) {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function formatStudentName(name) {
+  if (!name) return '未分配'
+  return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
 function getStatusText(status) {
@@ -331,6 +385,13 @@ const selectDate = (day) => {
     currentMonth.value = new Date(date.getFullYear(), date.getMonth(), 1)
   }
   selectedDate.value = day.date
+}
+
+const handleSlotClick = (date, hour) => {
+  const hourStr = String(hour).padStart(2, '0')
+  uni.navigateTo({
+    url: `/pages/schedule/add?date=${date}&time=${hourStr}:00`
+  })
 }
 
 const fetchCourses = async () => {
@@ -537,61 +598,136 @@ onShow(() => {
   background-color: #fff;
 }
 
-.week-view {
+.week-table-view {
   background-color: #fff;
-  padding: 20rpx;
-}
-
-.week-days {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  height: calc(100vh - 200rpx);
 }
 
-.day-item {
+.week-table-header {
+  display: flex;
+  border-bottom: 2rpx solid #ebeef5;
+  background-color: #f5f7fa;
+}
+
+.time-column-header {
+  width: 80rpx;
+  padding: 16rpx 8rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: #909399;
+  border-right: 1rpx solid #ebeef5;
+}
+
+.day-column-header {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16rpx 0;
-  border-radius: 12rpx;
-  position: relative;
+  padding: 12rpx 4rpx;
+  border-right: 1rpx solid #ebeef5;
 }
 
-.day-item.is-today {
+.day-column-header:last-child {
+  border-right: none;
+}
+
+.day-column-header.is-today {
   background-color: #ecf5ff;
 }
 
-.day-item.is-selected {
-  background-color: #409EFF;
-}
-
-.day-item.is-selected .day-name,
-.day-item.is-selected .day-number {
-  color: #fff;
-}
-
-.day-name {
+.header-day-name {
   font-size: 22rpx;
   color: #909399;
-  margin-bottom: 8rpx;
 }
 
-.day-number {
+.header-day-number {
   font-size: 28rpx;
   font-weight: bold;
   color: #333;
+  margin-top: 4rpx;
 }
 
-.has-course-dot {
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
+.day-column-header.is-today .header-day-number {
+  color: #409EFF;
+}
+
+.week-table-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.time-slots {
+  display: flex;
+  flex-direction: column;
+}
+
+.time-slot-row {
+  display: flex;
+  min-height: 120rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.time-label {
+  width: 80rpx;
+  padding: 8rpx;
+  text-align: center;
+  font-size: 20rpx;
+  color: #909399;
+  border-right: 1rpx solid #ebeef5;
+  background-color: #fafafa;
+}
+
+.slot-cells {
+  flex: 1;
+  display: flex;
+}
+
+.slot-cell {
+  flex: 1;
+  min-height: 120rpx;
+  border-right: 1rpx solid #f0f0f0;
+  padding: 4rpx;
+  position: relative;
+}
+
+.slot-cell:last-child {
+  border-right: none;
+}
+
+.course-block {
   background-color: #409EFF;
-  margin-top: 6rpx;
+  border-radius: 8rpx;
+  padding: 8rpx;
+  margin-bottom: 4rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  word-wrap: break-word;
+  word-break: break-all;
 }
 
-.day-item.is-selected .has-course-dot {
-  background-color: #fff;
+.course-block.completed {
+  background-color: #67C23A;
+}
+
+.course-block.cancelled {
+  background-color: #909399;
+}
+
+.course-block-time {
+  font-size: 18rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.course-block-name {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: bold;
+  word-wrap: break-word;
+  word-break: break-all;
+  white-space: normal;
 }
 
 .day-header {
@@ -637,13 +773,22 @@ onShow(() => {
 }
 
 .timeline-dot {
-  width: 20rpx;
-  height: 20rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
   background-color: #409EFF;
   margin-right: 20rpx;
   margin-top: 10rpx;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dot-number {
+  font-size: 22rpx;
+  color: #fff;
+  font-weight: bold;
 }
 
 .course-item.completed .timeline-dot {
@@ -656,8 +801,8 @@ onShow(() => {
 
 .timeline-line {
   position: absolute;
-  left: 9rpx;
-  top: 30rpx;
+  left: 19rpx;
+  top: 50rpx;
   bottom: 0;
   width: 2rpx;
   background-color: #e4e7ed;

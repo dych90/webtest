@@ -40,7 +40,7 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="90%" :style="{ maxWidth: '600px' }">
       <el-form :model="form" label-width="100px">
         <el-form-item label="学生">
-          <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%" @change="handleStudentChange">
+          <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%" clearable @change="handleStudentChange">
             <el-option
               v-for="student in students"
               :key="student._id"
@@ -50,7 +50,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课程类型">
-          <el-select v-model="form.courseTypeId" placeholder="请选择课程类型" style="width: 100%" @change="handleCourseTypeChange">
+          <el-select v-model="form.courseTypeId" placeholder="请选择课程类型" style="width: 100%" clearable @change="handleCourseTypeChange">
             <el-option
               v-for="type in courseTypes"
               :key="type._id"
@@ -65,14 +65,15 @@
             type="date"
             placeholder="选择日期"
             style="width: 100%"
+            value-format="YYYY-MM-DD"
           />
         </el-form-item>
         <el-form-item label="开始时间">
           <el-time-select
             v-model="form.startTime"
-            start="08:00"
+            start="06:00"
             step="00:15"
-            end="22:00"
+            end="23:00"
             placeholder="选择时间"
             style="width: 100%"
             :readonly="isMobile"
@@ -90,11 +91,37 @@
             }"
           />
         </el-form-item>
+        <el-form-item label="课程时长">
+          <el-select v-model="form.duration" placeholder="选择时长" style="width: 100%">
+            <el-option label="30分钟" :value="30" />
+            <el-option label="45分钟" :value="45" />
+            <el-option label="50分钟" :value="50" />
+            <el-option label="60分钟" :value="60" />
+            <el-option label="70分钟" :value="70" />
+            <el-option label="90分钟" :value="90" />
+            <el-option label="120分钟" :value="120" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="是否重复">
           <el-switch v-model="form.isRecurring" />
         </el-form-item>
-        <el-form-item v-if="form.isRecurring" label="重复模式">
-          <el-input v-model="form.recurringPattern" placeholder="例如：每周一、每周二" />
+        <el-form-item v-if="form.isRecurring" label="重复开始">
+          <el-date-picker
+            v-model="form.recurringStartDate"
+            type="date"
+            placeholder="选择开始日期"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item v-if="form.isRecurring" label="重复结束">
+          <el-date-picker
+            v-model="form.recurringEndDate"
+            type="date"
+            placeholder="选择结束日期"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+          />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="form.status" style="width: 100%">
@@ -102,6 +129,9 @@
             <el-option label="已取消" value="cancelled" />
             <el-option label="已改期" value="rescheduled" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="form.notes" type="textarea" :rows="2" placeholder="请输入备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -138,9 +168,12 @@ const form = ref({
   courseTypeId: '',
   date: '',
   startTime: '',
+  duration: 60,
   isRecurring: false,
-  recurringPattern: '',
-  status: 'normal'
+  recurringStartDate: '',
+  recurringEndDate: '',
+  status: 'normal',
+  notes: ''
 })
 
 const isMobile = computed(() => window.innerWidth < 768)
@@ -195,8 +228,8 @@ const calendarOptions = ref({
         console.log('原始结束时间:', newEndTime.toISOString())
         
         const dataToSend = {
-          studentId: course.studentId._id,
-          courseTypeId: course.courseTypeId._id,
+          studentId: course.studentId?._id || null,
+          courseTypeId: course.courseTypeId?._id || null,
           startTime: newStartTime.toISOString(),
           endTime: newEndTime.toISOString(),
           isRecurring: course.isRecurring || false,
@@ -238,8 +271,8 @@ const calendarOptions = ref({
         const newEndTime = new Date(info.event.end)
         
         const dataToSend = {
-          studentId: course.studentId._id,
-          courseTypeId: course.courseTypeId._id,
+          studentId: course.studentId?._id || null,
+          courseTypeId: course.courseTypeId?._id || null,
           startTime: newStartTime.toISOString(),
           endTime: newEndTime.toISOString(),
           isRecurring: course.isRecurring || false,
@@ -264,17 +297,23 @@ const calendarOptions = ref({
     if (course) {
       dialogTitle.value = '编辑课程'
       const startTime = new Date(course.startTime)
+      const endTime = new Date(course.endTime)
+      const duration = Math.round((endTime - startTime) / 60000)
       const hours = startTime.getHours().toString().padStart(2, '0')
       const minutes = startTime.getMinutes().toString().padStart(2, '0')
+      const dateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`
       form.value = {
         _id: course._id,
         studentId: course.studentId?._id || '',
         courseTypeId: course.courseTypeId?._id || '',
-        date: new Date(course.startTime).toISOString().split('T')[0],
+        date: dateStr,
         startTime: `${hours}:${minutes}`,
-        isRecurring: course.isRecurring || false,
-        recurringPattern: course.recurringPattern || '',
-        status: course.status || 'normal'
+        duration: duration,
+        isRecurring: false,
+        recurringStartDate: dateStr,
+        recurringEndDate: '',
+        status: course.status || 'normal',
+        notes: course.notes || ''
       }
       dialogVisible.value = true
     }
@@ -379,14 +418,20 @@ const handleCourseTypeChange = (courseTypeId) => {
 
 const handleAdd = () => {
   dialogTitle.value = '添加课程'
+  const today = new Date()
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   form.value = {
+    _id: '',
     studentId: '',
     courseTypeId: '',
-    date: new Date().toISOString().split('T')[0],
+    date: dateStr,
     startTime: '',
+    duration: 60,
     isRecurring: false,
-    recurringPattern: '',
-    status: 'normal'
+    recurringStartDate: dateStr,
+    recurringEndDate: '',
+    status: 'normal',
+    notes: ''
   }
   dialogVisible.value = true
 }
@@ -412,45 +457,114 @@ const handleDelete = async () => {
 
 const handleSave = async () => {
   try {
-    if (!form.value.date || !form.value.startTime || !form.value.courseTypeId) {
+    if (!form.value.date || !form.value.startTime) {
       ElMessage.error('请填写完整信息')
       return
     }
     
-    const courseType = courseTypes.value.find(t => t._id === form.value.courseTypeId)
-    if (courseType && form.value.date && form.value.startTime) {
-      const date = new Date(form.value.date)
-      const [hours, minutes] = form.value.startTime.split(':')
-      const startTime = new Date(date)
-      startTime.setHours(parseInt(hours))
-      startTime.setMinutes(parseInt(minutes))
-      const endTime = new Date(startTime.getTime() + courseType.duration * 60000)
-      form.value.startTime = startTime.toISOString()
-      form.value.endTime = endTime.toISOString()
-    }
+    const date = new Date(form.value.date)
+    const [hours, minutes] = form.value.startTime.split(':')
+    const startTime = new Date(date)
+    startTime.setHours(parseInt(hours))
+    startTime.setMinutes(parseInt(minutes))
+    const endTime = new Date(startTime.getTime() + form.value.duration * 60000)
     
     const dataToSend = {
-      studentId: form.value.studentId,
-      courseTypeId: form.value.courseTypeId,
-      startTime: form.value.startTime,
-      endTime: form.value.endTime,
-      isRecurring: form.value.isRecurring,
-      recurringPattern: form.value.recurringPattern,
-      status: form.value.status
+      studentId: form.value.studentId || null,
+      courseTypeId: form.value.courseTypeId || null,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      status: form.value.status,
+      notes: form.value.notes
     }
     
     if (dialogTitle.value === '添加课程') {
-      await request.post('/courses', dataToSend)
-      ElMessage.success('添加成功')
+      if (form.value.isRecurring && form.value.recurringStartDate && form.value.recurringEndDate) {
+        const startDate = new Date(form.value.recurringStartDate)
+        const endDate = new Date(form.value.recurringEndDate)
+        const targetDayOfWeek = startTime.getDay()
+        
+        const dates = []
+        let currentDate = new Date(startDate)
+        while (currentDate <= endDate) {
+          if (currentDate.getDay() === targetDayOfWeek) {
+            dates.push(new Date(currentDate))
+          }
+          currentDate.setDate(currentDate.getDate() + 1)
+        }
+        
+        const promises = dates.map(date => {
+          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+          const courseStartTime = new Date(`${dateStr}T${form.value.startTime}:00`)
+          const courseEndTime = new Date(courseStartTime.getTime() + form.value.duration * 60000)
+          
+          return request.post('/courses', {
+            studentId: form.value.studentId || undefined,
+            courseTypeId: form.value.courseTypeId || undefined,
+            startTime: courseStartTime.toISOString(),
+            endTime: courseEndTime.toISOString(),
+            status: 'normal',
+            notes: form.value.notes
+          })
+        })
+        
+        await Promise.all(promises)
+        ElMessage.success(`成功创建${dates.length}节课程`)
+      } else {
+        await request.post('/courses', dataToSend)
+        ElMessage.success('添加成功')
+      }
     } else {
       await request.put(`/courses/${form.value._id}`, dataToSend)
-      ElMessage.success('更新成功')
+      
+      if (form.value.isRecurring && form.value.recurringStartDate && form.value.recurringEndDate) {
+        const startDate = new Date(form.value.recurringStartDate)
+        const endDate = new Date(form.value.recurringEndDate)
+        const targetDayOfWeek = startTime.getDay()
+        
+        const dates = []
+        let currentDate = new Date(startDate)
+        while (currentDate <= endDate) {
+          if (currentDate.getDay() === targetDayOfWeek) {
+            const dateStr = formatDate(currentDate)
+            if (dateStr !== form.value.date) {
+              dates.push(new Date(currentDate))
+            }
+          }
+          currentDate.setDate(currentDate.getDate() + 1)
+        }
+        
+        const promises = dates.map(date => {
+          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+          const courseStartTime = new Date(`${dateStr}T${form.value.startTime}:00`)
+          const courseEndTime = new Date(courseStartTime.getTime() + form.value.duration * 60000)
+          
+          return request.post('/courses', {
+            studentId: form.value.studentId || undefined,
+            courseTypeId: form.value.courseTypeId || undefined,
+            startTime: courseStartTime.toISOString(),
+            endTime: courseEndTime.toISOString(),
+            status: 'normal',
+            notes: form.value.notes
+          })
+        })
+        
+        await Promise.all(promises)
+        ElMessage.success(`保存成功，新增${dates.length}节课程`)
+      } else {
+        ElMessage.success('更新成功')
+      }
     }
+    
     dialogVisible.value = false
     await fetchCourses()
   } catch (error) {
     console.error('保存课程失败', error)
   }
+}
+
+const formatDate = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 onMounted(() => {

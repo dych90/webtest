@@ -9,7 +9,7 @@
       <view class="info-list">
         <view class="info-item">
           <text class="info-label">学生</text>
-          <text class="info-value">{{ course.studentId?.name || '未分配' }}</text>
+          <text class="info-value">{{ formatStudentName(course.studentId?.name) }}</text>
         </view>
         <view class="info-item">
           <text class="info-label">课程类型</text>
@@ -23,9 +23,9 @@
           <text class="info-label">结束时间</text>
           <text class="info-value">{{ formatDateTime(course.endTime) }}</text>
         </view>
-        <view class="info-item" v-if="course.notes">
+        <view class="info-item">
           <text class="info-label">备注</text>
-          <text class="info-value">{{ course.notes }}</text>
+          <text class="info-value">{{ course.notes || '未设置' }}</text>
         </view>
       </view>
     </view>
@@ -66,13 +66,13 @@
       </button>
     </view>
     
-    <view class="dialog-mask" v-if="editDialogVisible" @click="editDialogVisible = false">
+    <view class="dialog-mask" v-if="editDialogVisible" @click.self="editDialogVisible = false">
       <view class="dialog-content" @click.stop>
         <view class="dialog-header">
           <text class="dialog-title">编辑课程</text>
           <text class="dialog-close" @click="editDialogVisible = false">×</text>
         </view>
-        <view class="dialog-body">
+        <view class="dialog-body" @click.stop>
           <view class="form-item">
             <text class="form-label">学生</text>
             <picker :value="studentIndex" :range="students" range-key="name" @change="onStudentChange">
@@ -92,22 +92,75 @@
             </picker>
           </view>
           <view class="form-item">
-            <text class="form-label">上课时间</text>
-            <picker mode="multiSelector" :value="startDateTimeIndex" :range="dateTimeRange" @change="onStartTimeChange" @columnchange="onStartColumnChange">
+            <text class="form-label">上课日期</text>
+            <picker mode="date" :value="editForm.date" @change="onDateChange">
               <view class="form-picker">
-                <text>{{ formatEditDateTime(editForm.startTime) || '请选择时间' }}</text>
+                <text>{{ editForm.date || '请选择日期' }} {{ editWeekDayText }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">开始时间</text>
+            <picker mode="time" :value="editForm.startTime" start="06:00" end="23:00" @change="onStartTimeChange">
+              <view class="form-picker">
+                <text>{{ editForm.startTime || '请选择时间' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">课程时长</text>
+            <picker :value="durationIndex" :range="durationOptions" @change="onDurationChange">
+              <view class="form-picker">
+                <text>{{ durationOptions[durationIndex] }}</text>
                 <text class="picker-arrow">▼</text>
               </view>
             </picker>
           </view>
           <view class="form-item">
             <text class="form-label">结束时间</text>
-            <picker mode="multiSelector" :value="endDateTimeIndex" :range="dateTimeRange" @change="onEndTimeChange" @columnchange="onEndColumnChange">
-              <view class="form-picker">
-                <text>{{ formatEditDateTime(editForm.endTime) || '请选择时间' }}</text>
-                <text class="picker-arrow">▼</text>
+            <view class="form-picker readonly">
+              <text class="readonly-value">{{ computedEndTime }}</text>
+            </view>
+          </view>
+          <view class="form-item switch-item" @click.stop>
+            <text class="form-label">是否重复</text>
+            <switch :checked="editForm.isRecurring" @change="onRecurringChange" color="#409EFF" />
+          </view>
+          <view v-if="editForm.isRecurring" class="recurring-section" @click.stop>
+            <view class="recurring-info">
+              <text class="recurring-tip">将在此日期的每周{{ editWeekDayText }}重复排课</text>
+            </view>
+            <view class="form-item">
+              <text class="form-label">重复开始日期</text>
+              <picker mode="date" :value="editForm.recurringStartDate" @change="onRecurringStartChange">
+                <view class="form-picker">
+                  <text>{{ editForm.recurringStartDate || editForm.date || '请选择日期' }}</text>
+                  <text class="picker-arrow">▼</text>
+                </view>
+              </picker>
+            </view>
+            <view class="form-item">
+              <text class="form-label">重复结束日期</text>
+              <picker mode="date" :value="editForm.recurringEndDate" @change="onRecurringEndChange">
+                <view class="form-picker">
+                  <text>{{ editForm.recurringEndDate || '请选择日期' }}</text>
+                  <text class="picker-arrow">▼</text>
+                </view>
+              </picker>
+            </view>
+            <view class="recurring-preview" v-if="recurringDates.length > 0">
+              <text class="preview-title">将创建 {{ recurringDates.length }} 节新课程</text>
+              <view class="preview-dates">
+                <text v-for="(date, index) in recurringDates.slice(0, 5)" :key="index" class="preview-date">
+                  {{ formatDateShort(date) }}
+                </text>
+                <text v-if="recurringDates.length > 5" class="preview-more">
+                  ...等{{ recurringDates.length }}个日期
+                </text>
               </view>
-            </picker>
+            </view>
           </view>
           <view class="form-item">
             <text class="form-label">备注</text>
@@ -135,19 +188,23 @@ const students = ref([{ name: '请选择学生', _id: '' }])
 const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
 const studentIndex = ref(0)
 const courseTypeIndex = ref(0)
+const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+
+const durationOptions = ['30分钟', '45分钟', '50分钟', '60分钟', '70分钟', '90分钟', '120分钟']
+const durationIndex = ref(3)
+const durationValues = [30, 45, 50, 60, 70, 90, 120]
 
 const editForm = ref({
   studentId: '',
   courseTypeId: '',
-  startTime: null,
-  endTime: null,
+  date: '',
+  startTime: '',
+  duration: 60,
+  isRecurring: false,
+  recurringStartDate: '',
+  recurringEndDate: '',
   notes: ''
 })
-
-const startDateTimeIndex = ref([0, 0, 0, 0])
-const endDateTimeIndex = ref([0, 0, 0, 0])
-
-const dateTimeRange = ref([[], [], [], []])
 
 const statusText = computed(() => {
   const map = { normal: '待上课', completed: '已完成', cancelled: '已取消' }
@@ -159,6 +216,49 @@ const statusClass = computed(() => {
   return map[course.value.status] || 'status-normal'
 })
 
+const editWeekDayText = computed(() => {
+  if (!editForm.value.date) return ''
+  const date = new Date(editForm.value.date)
+  return `周${dayNames[date.getDay()]}`
+})
+
+const computedEndTime = computed(() => {
+  if (!editForm.value.date || !editForm.value.startTime) return '未设置'
+  
+  const [hours, minutes] = editForm.value.startTime.split(':').map(Number)
+  const startDate = new Date(editForm.value.date)
+  startDate.setHours(hours, minutes, 0, 0)
+  
+  const endDate = new Date(startDate.getTime() + editForm.value.duration * 60000)
+  
+  return `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`
+})
+
+const recurringDates = computed(() => {
+  if (!editForm.value.isRecurring || !editForm.value.recurringStartDate || !editForm.value.recurringEndDate) {
+    return []
+  }
+  
+  const dates = []
+  const startDate = new Date(editForm.value.recurringStartDate)
+  const endDate = new Date(editForm.value.recurringEndDate)
+  const originalDate = new Date(editForm.value.date)
+  const targetDayOfWeek = originalDate.getDay()
+  
+  let currentDate = new Date(startDate)
+  while (currentDate <= endDate) {
+    if (currentDate.getDay() === targetDayOfWeek) {
+      const dateStr = formatDate(currentDate)
+      if (dateStr !== editForm.value.date) {
+        dates.push(new Date(currentDate))
+      }
+    }
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  return dates
+})
+
 onMounted(() => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
@@ -166,7 +266,6 @@ onMounted(() => {
   if (courseId.value) {
     fetchCourse()
   }
-  initDateTimeRange()
 })
 
 onShow(() => {
@@ -174,27 +273,6 @@ onShow(() => {
     fetchCourse()
   }
 })
-
-const initDateTimeRange = () => {
-  const hours = []
-  for (let i = 6; i <= 23; i++) {
-    hours.push(`${i}时`)
-  }
-  const minutes = []
-  for (let i = 0; i < 60; i += 5) {
-    minutes.push(`${String(i).padStart(2, '0')}分`)
-  }
-  
-  const now = new Date()
-  const dates = []
-  for (let i = -7; i <= 30; i++) {
-    const date = new Date(now)
-    date.setDate(date.getDate() + i)
-    dates.push(`${date.getMonth() + 1}月${date.getDate()}日`)
-  }
-  
-  dateTimeRange.value = [dates, [''], hours, minutes]
-}
 
 const fetchCourse = async () => {
   try {
@@ -210,8 +288,8 @@ const fetchStudents = async () => {
     const res = await get('/students')
     students.value = [{ name: '请选择学生', _id: '' }, ...(res.data || [])]
     
-    const courseId = (course.value.studentId?._id || course.value.studentId || '').toString()
-    const idx = students.value.findIndex(s => (s._id || '').toString() === courseId)
+    const studentId = (course.value.studentId?._id || course.value.studentId || '').toString()
+    const idx = students.value.findIndex(s => (s._id || '').toString() === studentId)
     studentIndex.value = idx >= 0 ? idx : 0
   } catch (error) {
     console.error('获取学生列表失败', error)
@@ -237,10 +315,21 @@ const formatDateTime = (dateStr) => {
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-const formatEditDateTime = (date) => {
-  if (!date) return ''
-  const d = new Date(date)
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+const formatDate = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const formatTime = (date) => {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const formatDateShort = (date) => {
+  return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+const formatStudentName = (name) => {
+  if (!name) return '未分配'
+  return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
 const onStudentChange = (e) => {
@@ -253,92 +342,111 @@ const onCourseTypeChange = (e) => {
   editForm.value.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
 }
 
+const onDateChange = (e) => {
+  editForm.value.date = e.detail.value
+  if (!editForm.value.recurringStartDate) {
+    editForm.value.recurringStartDate = e.detail.value
+  }
+}
+
 const onStartTimeChange = (e) => {
-  startDateTimeIndex.value = e.detail.value
-  updateStartTime()
+  editForm.value.startTime = e.detail.value
 }
 
-const onStartColumnChange = (e) => {
-  startDateTimeIndex.value[e.detail.column] = e.detail.value
+const onDurationChange = (e) => {
+  durationIndex.value = e.detail.value
+  editForm.value.duration = durationValues[e.detail.value]
 }
 
-const onEndTimeChange = (e) => {
-  endDateTimeIndex.value = e.detail.value
-  updateEndTime()
+const onRecurringChange = (e) => {
+  editForm.value.isRecurring = e.detail.value
+  if (editForm.value.isRecurring) {
+    if (!editForm.value.recurringStartDate) {
+      editForm.value.recurringStartDate = editForm.value.date
+    }
+    if (!editForm.value.recurringEndDate) {
+      // 默认设置重复结束日期为开始日期后3个月
+      const defaultEndDate = new Date(editForm.value.recurringStartDate)
+      defaultEndDate.setMonth(defaultEndDate.getMonth() + 3)
+      editForm.value.recurringEndDate = formatDate(defaultEndDate)
+    }
+  }
 }
 
-const onEndColumnChange = (e) => {
-  endDateTimeIndex.value[e.detail.column] = e.detail.value
+const onRecurringStartChange = (e) => {
+  editForm.value.recurringStartDate = e.detail.value
 }
 
-const updateStartTime = () => {
-  const [dateIdx, , hourIdx, minuteIdx] = startDateTimeIndex.value
-  const now = new Date()
-  const date = new Date(now)
-  date.setDate(date.getDate() - 7 + dateIdx)
-  const hour = 6 + hourIdx
-  const minute = minuteIdx * 5
-  
-  editForm.value.startTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute)
-}
-
-const updateEndTime = () => {
-  const [dateIdx, , hourIdx, minuteIdx] = endDateTimeIndex.value
-  const now = new Date()
-  const date = new Date(now)
-  date.setDate(date.getDate() - 7 + dateIdx)
-  const hour = 6 + hourIdx
-  const minute = minuteIdx * 5
-  
-  editForm.value.endTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute)
+const onRecurringEndChange = (e) => {
+  editForm.value.recurringEndDate = e.detail.value
 }
 
 const handleEdit = async () => {
   await fetchStudents()
   await fetchCourseTypes()
   
+  const startTime = new Date(course.value.startTime)
+  const endTime = new Date(course.value.endTime)
+  const duration = Math.round((endTime - startTime) / 60000)
+  
   editForm.value = {
     studentId: course.value.studentId?._id || '',
     courseTypeId: course.value.courseTypeId?._id || '',
-    startTime: new Date(course.value.startTime),
-    endTime: new Date(course.value.endTime),
+    date: formatDate(startTime),
+    startTime: formatTime(startTime),
+    duration: duration,
+    isRecurring: false,
+    recurringStartDate: formatDate(startTime),
+    recurringEndDate: '',
     notes: course.value.notes || ''
   }
   
-  const startTime = new Date(course.value.startTime)
-  const endTime = new Date(course.value.endTime)
-  const now = new Date()
-  const startDateIdx = Math.floor((startTime - now) / (1000 * 60 * 60 * 24)) + 7
-  const endDateIdx = Math.floor((endTime - now) / (1000 * 60 * 60 * 24)) + 7
-  
-  startDateTimeIndex.value = [
-    Math.max(0, Math.min(startDateIdx, 37)),
-    0,
-    Math.max(0, startTime.getHours() - 6),
-    Math.floor(startTime.getMinutes() / 5)
-  ]
-  endDateTimeIndex.value = [
-    Math.max(0, Math.min(endDateIdx, 37)),
-    0,
-    Math.max(0, endTime.getHours() - 6),
-    Math.floor(endTime.getMinutes() / 5)
-  ]
+  const durIdx = durationValues.findIndex(d => d === duration)
+  durationIndex.value = durIdx >= 0 ? durIdx : 3
   
   editDialogVisible.value = true
 }
 
 const handleSaveEdit = async () => {
   try {
+    const [hours, minutes] = editForm.value.startTime.split(':').map(Number)
+    const startDate = new Date(editForm.value.date)
+    startDate.setHours(hours, minutes, 0, 0)
+    
+    const endDate = new Date(startDate.getTime() + editForm.value.duration * 60000)
+    
     const updateData = {
       studentId: editForm.value.studentId || null,
       courseTypeId: editForm.value.courseTypeId || null,
-      startTime: editForm.value.startTime,
-      endTime: editForm.value.endTime,
+      startTime: startDate.toISOString(),
+      endTime: endDate.toISOString(),
       notes: editForm.value.notes
     }
     
     await put(`/courses/${courseId.value}`, updateData)
-    uni.showToast({ title: '保存成功', icon: 'success' })
+    
+    if (editForm.value.isRecurring && recurringDates.value.length > 0) {
+      const promises = recurringDates.value.map(date => {
+        const dateStr = formatDate(date)
+        const courseStartTime = new Date(`${dateStr}T${editForm.value.startTime}:00`)
+        const courseEndTime = new Date(courseStartTime.getTime() + editForm.value.duration * 60000)
+        
+        return post('/courses', {
+          studentId: editForm.value.studentId || undefined,
+          courseTypeId: editForm.value.courseTypeId || undefined,
+          startTime: courseStartTime.toISOString(),
+          endTime: courseEndTime.toISOString(),
+          status: 'normal',
+          notes: editForm.value.notes
+        })
+      })
+      
+      await Promise.all(promises)
+      uni.showToast({ title: `保存成功，新增${recurringDates.value.length}节课程`, icon: 'success' })
+    } else {
+      uni.showToast({ title: '保存成功', icon: 'success' })
+    }
+    
     editDialogVisible.value = false
     fetchCourse()
   } catch (error) {
@@ -595,6 +703,9 @@ const handleDelete = async () => {
   background-color: #fff;
   border-radius: 20rpx;
   overflow: hidden;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .dialog-header {
@@ -618,8 +729,8 @@ const handleDelete = async () => {
 
 .dialog-body {
   padding: 30rpx;
-  max-height: 60vh;
   overflow-y: auto;
+  flex: 1;
 }
 
 .form-item {
@@ -644,8 +755,76 @@ const handleDelete = async () => {
   font-size: 28rpx;
 }
 
+.form-picker.readonly {
+  background-color: #f5f7fa;
+  color: #606266;
+}
+
+.readonly-value {
+  color: #606266;
+}
+
 .picker-arrow {
   font-size: 20rpx;
+  color: #909399;
+}
+
+.switch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.switch-item .form-label {
+  margin-bottom: 0;
+}
+
+.recurring-section {
+  background-color: #f5f7fa;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.recurring-info {
+  margin-bottom: 20rpx;
+}
+
+.recurring-tip {
+  font-size: 26rpx;
+  color: #409EFF;
+}
+
+.recurring-preview {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #e4e7ed;
+}
+
+.preview-title {
+  font-size: 26rpx;
+  color: #333;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.preview-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.preview-date {
+  font-size: 24rpx;
+  color: #606266;
+  background-color: #fff;
+  padding: 6rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.preview-more {
+  font-size: 24rpx;
   color: #909399;
 }
 

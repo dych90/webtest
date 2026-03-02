@@ -28,11 +28,17 @@
         @longpress="startSortMode"
       >
         <view v-if="isSortMode" class="sort-buttons">
+          <view class="sort-btn sort-btn-top" :class="{ disabled: index === 0 }" @click.stop="moveToTop(index)">
+            <text>⬆</text>
+          </view>
           <view class="sort-btn" :class="{ disabled: index === 0 }" @click.stop="moveUp(index)">
             <text>↑</text>
           </view>
           <view class="sort-btn" :class="{ disabled: index === displayStudents.length - 1 }" @click.stop="moveDown(index)">
             <text>↓</text>
+          </view>
+          <view class="sort-btn sort-btn-bottom" :class="{ disabled: index === displayStudents.length - 1 }" @click.stop="moveToBottom(index)">
+            <text>⬇</text>
           </view>
         </view>
         <view class="student-index">
@@ -161,6 +167,28 @@ const moveDown = (index) => {
   sortList.value = newList
 }
 
+const moveToTop = (index) => {
+  if (index === 0) return
+  hasChanged.value = true
+  
+  const newList = [...sortList.value]
+  const item = newList.splice(index, 1)[0]
+  newList.unshift(item)
+  
+  sortList.value = newList
+}
+
+const moveToBottom = (index) => {
+  if (index === sortList.value.length - 1) return
+  hasChanged.value = true
+  
+  const newList = [...sortList.value]
+  const item = newList.splice(index, 1)[0]
+  newList.push(item)
+  
+  sortList.value = newList
+}
+
 const goToDetail = (student) => {
   uni.navigateTo({
     url: `/pages/students/detail?id=${student._id}`
@@ -253,15 +281,15 @@ onShow(() => {
 .sort-buttons {
   display: flex;
   flex-direction: column;
-  margin-right: 16rpx;
-  gap: 8rpx;
+  margin-right: 12rpx;
+  gap: 4rpx;
 }
 
 .sort-btn {
-  width: 48rpx;
-  height: 48rpx;
+  width: 40rpx;
+  height: 40rpx;
   background-color: #409EFF;
-  border-radius: 8rpx;
+  border-radius: 6rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -269,12 +297,17 @@ onShow(() => {
 
 .sort-btn text {
   color: #fff;
-  font-size: 24rpx;
+  font-size: 20rpx;
   font-weight: bold;
 }
 
 .sort-btn.disabled {
   background-color: #c0c4cc;
+}
+
+.sort-btn-top text,
+.sort-btn-bottom text {
+  font-size: 18rpx;
 }
 
 .student-index {
