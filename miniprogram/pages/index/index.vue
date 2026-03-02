@@ -54,6 +54,7 @@
           :key="course._id" 
           class="course-item"
           :class="{ 'course-completed': course.status === 'completed' }"
+          @click="goToCourseDetail(course)"
         >
           <view class="course-index">
             <text>{{ index + 1 }}</text>
@@ -79,17 +80,18 @@
             <button 
               v-if="course.status === 'normal'" 
               class="btn-attend" 
-              @click="handleAttendCourse(course)"
+              @click.stop="handleAttendCourse(course)"
             >
               上课
             </button>
             <button 
               v-if="course.status === 'completed'" 
               class="btn-cancel-attend" 
-              @click="handleCancelAttendCourse(course)"
+              @click.stop="handleCancelAttendCourse(course)"
             >
               取消
             </button>
+            <text class="arrow-icon">›</text>
           </view>
         </view>
       </view>
@@ -347,6 +349,12 @@ const goToSchedule = () => {
   })
 }
 
+const goToCourseDetail = (course) => {
+  uni.navigateTo({
+    url: `/pages/schedule/detail?id=${course._id}`
+  })
+}
+
 const goToPage = (url) => {
   if (url.includes('students') || url.includes('schedule')) {
     uni.switchTab({ url })
@@ -523,6 +531,10 @@ onShow(() => {
   border-left: 6rpx solid #409EFF;
 }
 
+.course-item:active {
+  background-color: #e8e8e8;
+}
+
 .course-item.course-completed {
   opacity: 0.6;
   border-left-color: #67C23A;
@@ -619,6 +631,12 @@ onShow(() => {
   border: 2rpx solid #F56C6C;
   border-radius: 6rpx;
   line-height: 1.2;
+}
+
+.arrow-icon {
+  font-size: 32rpx;
+  color: #c0c4cc;
+  margin-left: 8rpx;
 }
 
 .stats-section {
