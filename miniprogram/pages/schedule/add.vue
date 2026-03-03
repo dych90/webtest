@@ -295,6 +295,15 @@ const fetchCourseTypes = async () => {
   try {
     const res = await get('/course-types')
     courseTypes.value = res.data || []
+    
+    if (courseTypeIndex.value < 0 && courseTypes.value.length > 0) {
+      const defaultType = courseTypes.value.find(t => t.isDefault)
+      if (defaultType) {
+        const idx = courseTypes.value.findIndex(t => t._id === defaultType._id)
+        courseTypeIndex.value = idx
+        form.courseTypeId = defaultType._id
+      }
+    }
   } catch (error) {
     console.error('获取课程类型失败', error)
   }

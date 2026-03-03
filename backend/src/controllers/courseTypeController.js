@@ -80,10 +80,33 @@ const updateCourseTypesSort = async (req, res) => {
   }
 }
 
+const setDefaultCourseType = async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    await CourseType.updateMany({}, { isDefault: false })
+    
+    const courseType = await CourseType.findByIdAndUpdate(id, { isDefault: true }, { new: true })
+    
+    if (!courseType) {
+      return res.status(404).json({ message: '课程类型不存在' })
+    }
+    
+    res.json({
+      message: '设置成功',
+      data: courseType
+    })
+  } catch (error) {
+    console.error('设置默认课程类型错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 module.exports = {
   getCourseTypes,
   createCourseType,
   updateCourseType,
   deleteCourseType,
-  updateCourseTypesSort
+  updateCourseTypesSort,
+  setDefaultCourseType
 }

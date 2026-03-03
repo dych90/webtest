@@ -30,10 +30,14 @@
         </view>
         <view class="type-content">
           <view class="type-header">
-            <text class="type-name">{{ type.name }}</text>
+            <view class="type-name-row">
+              <text class="type-name">{{ type.name }}</text>
+              <text v-if="type.isDefault" class="default-tag">默认</text>
+            </view>
             <text class="type-duration">{{ type.duration }}分钟</text>
           </view>
           <view class="type-actions" v-if="!isSortMode">
+            <button v-if="!type.isDefault" class="btn-default" @click="handleSetDefault(type)">设为默认</button>
             <button class="btn-edit" @click="handleEdit(type)">编辑</button>
             <button class="btn-delete" @click="handleDelete(type)">删除</button>
           </view>
@@ -185,6 +189,16 @@ const handleDelete = (type) => {
       }
     }
   })
+}
+
+const handleSetDefault = async (type) => {
+  try {
+    await put(`/course-types/${type._id}/default`)
+    uni.showToast({ title: '设置成功', icon: 'success' })
+    fetchCourseTypes()
+  } catch (error) {
+    uni.showToast({ title: error.message || '设置失败', icon: 'none' })
+  }
 }
 
 const handleSave = async () => {
@@ -345,6 +359,20 @@ onShow(() => {
   color: #333;
 }
 
+.type-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.default-tag {
+  font-size: 20rpx;
+  color: #fff;
+  background-color: #67C23A;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
 .type-duration {
   font-size: 26rpx;
   color: #409EFF;
@@ -356,6 +384,17 @@ onShow(() => {
 .type-actions {
   display: flex;
   gap: 16rpx;
+}
+
+.btn-default {
+  flex: 1;
+  height: 60rpx;
+  line-height: 60rpx;
+  background-color: #67C23A;
+  color: #fff;
+  font-size: 24rpx;
+  border: none;
+  border-radius: 8rpx;
 }
 
 .btn-edit {

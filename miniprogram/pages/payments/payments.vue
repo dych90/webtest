@@ -1,11 +1,21 @@
 <template>
   <view class="payments-container">
-    <view v-if="payments.length === 0" class="empty-tip">
-      暂无缴费记录
+    <view class="search-bar">
+      <input 
+        class="search-input" 
+        placeholder="搜索学生姓名" 
+        v-model="searchKeyword"
+        @input="filterPayments"
+      />
+      <view class="search-icon">🔍</view>
+    </view>
+    
+    <view v-if="filteredPayments.length === 0" class="empty-tip">
+      {{ searchKeyword ? '未找到匹配的记录' : '暂无缴费记录' }}
     </view>
     
     <view v-else class="payment-list">
-      <view v-for="payment in payments" :key="payment._id" class="payment-item" @click="handleDetail(payment)">
+      <view v-for="payment in filteredPayments" :key="payment._id" class="payment-item" @click="handleDetail(payment)">
         <view class="payment-header">
           <text class="student-name">{{ payment.studentId?.name || '未知学生' }}</text>
           <text class="payment-amount">¥{{ payment.amount }}</text>
@@ -51,6 +61,8 @@ import { onShow } from '@dcloudio/uni-app'
 import { get, del } from '@/utils/request'
 
 const payments = ref([])
+const searchKeyword = ref('')
+const filteredPayments = ref([])
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -62,8 +74,21 @@ const fetchPayments = async () => {
   try {
     const res = await get('/payments')
     payments.value = res.data || []
+    filterPayments()
   } catch (error) {
     console.error('获取缴费记录失败', error)
+  }
+}
+
+const filterPayments = () => {
+  if (!searchKeyword.value.trim()) {
+    filteredPayments.value = payments.value
+  } else {
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    filteredPayments.value = payments.value.filter(payment => {
+      const name = payment.studentId?.name || ''
+      return name.toLowerCase().includes(keyword)
+    })
   }
 }
 
@@ -119,6 +144,33 @@ onShow(() => {
   background-color: #f8f8f8;
   min-height: 100vh;
   padding-bottom: 140rpx;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.search-input::placeholder {
+  color: #c0c4cc;
+}
+
+.search-icon {
+  font-size: 32rpx;
+  color: #909399;
+  margin-left: 16rpx;
 }
 
 .empty-tip {

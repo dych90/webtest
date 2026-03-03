@@ -1,11 +1,21 @@
 <template>
   <view class="balance-container">
-    <view v-if="balances.length === 0" class="empty-tip">
-      暂无课费余额数据
+    <view class="search-bar">
+      <input 
+        class="search-input" 
+        placeholder="搜索学生姓名" 
+        v-model="searchKeyword"
+        @input="filterBalances"
+      />
+      <view class="search-icon">🔍</view>
+    </view>
+    
+    <view v-if="filteredBalances.length === 0" class="empty-tip">
+      {{ searchKeyword ? '未找到匹配的学生' : '暂无课费余额数据' }}
     </view>
     
     <view v-else class="balance-list">
-      <view v-for="(item, index) in balances" :key="item._id" class="balance-item">
+      <view v-for="(item, index) in filteredBalances" :key="item._id" class="balance-item">
         <view class="balance-header">
           <view class="student-info-row">
             <view class="student-index">
@@ -175,6 +185,8 @@ import { onShow } from '@dcloudio/uni-app'
 import { get, put } from '@/utils/request'
 
 const balances = ref([])
+const searchKeyword = ref('')
+const filteredBalances = ref([])
 const dialogVisible = ref(false)
 const reportDialogVisible = ref(false)
 const reportDataVisible = ref(false)
@@ -210,8 +222,21 @@ const fetchBalances = async () => {
   try {
     const res = await get('/lesson-balances')
     balances.value = res.data || []
+    filterBalances()
   } catch (error) {
     console.error('获取课费余额列表失败', error)
+  }
+}
+
+const filterBalances = () => {
+  if (!searchKeyword.value.trim()) {
+    filteredBalances.value = balances.value
+  } else {
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    filteredBalances.value = balances.value.filter(item => {
+      const name = item.studentId?.name || ''
+      return name.toLowerCase().includes(keyword)
+    })
   }
 }
 
@@ -509,6 +534,33 @@ onShow(() => {
   padding: 20rpx;
   background-color: #f8f8f8;
   min-height: 100vh;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.search-input::placeholder {
+  color: #c0c4cc;
+}
+
+.search-icon {
+  font-size: 32rpx;
+  color: #909399;
+  margin-left: 16rpx;
 }
 
 .empty-tip {

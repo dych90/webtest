@@ -17,13 +17,23 @@
       </view>
     </view>
     
+    <view class="search-bar" v-if="activeTab === 'records'">
+      <input 
+        class="search-input" 
+        placeholder="搜索学生姓名" 
+        v-model="searchKeyword"
+        @input="filterRecords"
+      />
+      <view class="search-icon">🔍</view>
+    </view>
+    
     <view v-if="activeTab === 'records'">
-      <view v-if="lessonRecords.length === 0" class="empty-tip">
-        暂无消课记录
+      <view v-if="filteredRecords.length === 0" class="empty-tip">
+        {{ searchKeyword ? '未找到匹配的记录' : '暂无消课记录' }}
       </view>
       
       <view v-else class="record-list">
-        <view v-for="record in lessonRecords" :key="record._id" class="record-item">
+        <view v-for="record in filteredRecords" :key="record._id" class="record-item">
           <view class="record-header">
             <text class="student-name">{{ record.studentId?.name || '未知学生' }}</text>
             <text class="record-date">记录时间：{{ formatDateTime(record.recordDate) }}</text>
@@ -106,6 +116,8 @@ import { get, post, put, del } from '@/utils/request'
 const activeTab = ref('records')
 const lessonRecords = ref([])
 const pendingCourses = ref([])
+const searchKeyword = ref('')
+const filteredRecords = ref([])
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -123,8 +135,21 @@ const fetchRecords = async () => {
   try {
     const res = await get('/lesson-records')
     lessonRecords.value = res.data || []
+    filterRecords()
   } catch (error) {
     console.error('获取消课记录失败', error)
+  }
+}
+
+const filterRecords = () => {
+  if (!searchKeyword.value.trim()) {
+    filteredRecords.value = lessonRecords.value
+  } else {
+    const keyword = searchKeyword.value.trim().toLowerCase()
+    filteredRecords.value = lessonRecords.value.filter(record => {
+      const name = record.studentId?.name || ''
+      return name.toLowerCase().includes(keyword)
+    })
   }
 }
 
@@ -239,6 +264,33 @@ onShow(() => {
   height: 4rpx;
   background-color: #409EFF;
   border-radius: 2rpx;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.search-input::placeholder {
+  color: #c0c4cc;
+}
+
+.search-icon {
+  font-size: 32rpx;
+  color: #909399;
+  margin-left: 16rpx;
 }
 
 .empty-tip {
