@@ -132,7 +132,7 @@ const getOpenIdByCode = async (req, res) => {
       return res.status(400).json({ message: '缺少 code 参数' })
     }
 
-    return new Promise((resolve, reject) => {
+    const openId = await new Promise((resolve, reject) => {
       const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${APPID}&secret=${APPSECRET}&js_code=${code}&grant_type=authorization_code`
 
       https.get(url, (response) => {
@@ -157,18 +157,15 @@ const getOpenIdByCode = async (req, res) => {
       }).on('error', (error) => {
         reject(error)
       })
-    }).then(async (openId) => {
-      res.json({
-        message: '获取成功',
-        data: { openId }
-      })
-    }).catch((error) => {
-      console.error('获取 openId 错误:', error)
-      res.status(500).json({ message: error.message || '获取 openId 失败' })
+    })
+
+    res.json({
+      message: '获取成功',
+      data: { openId }
     })
   } catch (error) {
     console.error('获取 openId 错误:', error)
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
 
