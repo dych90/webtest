@@ -217,23 +217,6 @@ const getCurrentUser = async (req, res) => {
   }
 }
 
-const sendTestReminderToSelf = async (req, res) => {
-  try {
-    console.log('收到测试提醒请求，userId:', req.userId)
-    const result = await sendTestReminder(req.userId)
-    
-    res.json({
-      message: result.message,
-      data: result
-    })
-  } catch (error) {
-    console.error('发送测试提醒错误:', error)
-    console.error('错误详情:', error.message)
-    console.error('错误堆栈:', error.stack)
-    res.status(500).json({ message: error.message || '发送测试提醒失败' })
-  }
-}
-
 module.exports = {
   getUsers,
   createUser,
@@ -242,6 +225,5 @@ module.exports = {
   getTeachers,
   getOpenIdByCode,
   bindOpenId,
-  getCurrentUser,
-  sendTestReminderToSelf
+  getCurrentUser
 }

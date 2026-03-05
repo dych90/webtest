@@ -11,6 +11,5 @@ router.get('/teachers', authenticateToken, userController.getTeachers)
 router.get('/users/me', authenticateToken, userController.getCurrentUser)
 router.post('/openid', userController.getOpenIdByCode)
 router.post('/bind-openid', authenticateToken, userController.bindOpenId)
-router.post('/test-reminder', authenticateToken, userController.sendTestReminderToSelf)
 
 module.exports = router

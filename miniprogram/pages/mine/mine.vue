@@ -53,11 +53,6 @@
           <text class="menu-text" :class="{ 'subscribed-text': isSubscribed }">{{ isSubscribed ? '已订阅上课提醒' : '订阅上课提醒' }}</text>
           <text class="menu-arrow" :class="{ 'subscribed-arrow': isSubscribed }">{{ isSubscribed ? '✓' : '›' }}</text>
         </view>
-        <view class="menu-item" v-if="isSubscribed" @click="handleTestReminder">
-          <view class="menu-icon">🧪</view>
-          <text class="menu-text">发送测试提醒</text>
-          <text class="menu-arrow">›</text>
-        </view>
       </view>
       
       <view class="menu-group">
@@ -67,10 +62,6 @@
           <text class="menu-arrow">›</text>
         </view>
       </view>
-    </view>
-    
-    <view class="debug-info" v-if="userStore.isTeacher()">
-      <text>调试信息: isSubscribed = {{ isSubscribed }}</text>
     </view>
     
     <view class="version">
@@ -207,26 +198,6 @@ const handleSubscribeMessage = async () => {
     console.error('订阅消息错误:', error)
     uni.showToast({
       title: '订阅失败',
-      icon: 'none'
-    })
-  }
-}
-
-const handleTestReminder = async () => {
-  try {
-    uni.showLoading({ title: '发送中...' })
-    
-    await post('/test-reminder')
-    
-    uni.hideLoading()
-    uni.showToast({
-      title: '测试提醒已发送',
-      icon: 'success'
-    })
-  } catch (error) {
-    uni.hideLoading()
-    uni.showToast({
-      title: error.message || '发送失败',
       icon: 'none'
     })
   }
