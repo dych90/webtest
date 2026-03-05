@@ -73,8 +73,11 @@ const startReminderService = () => {
 
   setInterval(() => {
     checkAndSendReminders()
+  }, 10 * 60 * 1000)
+
+  setInterval(() => {
     checkDailyCourseRecords()
-  }, 60 * 60 * 1000)
+  }, 10 * 60 * 1000)
 }
 
 const checkDailyCourseRecords = async () => {
