@@ -69,10 +69,85 @@ const startReminderService = () => {
   console.log('启动课程提醒定时任务服务...')
 
   checkAndSendReminders()
+  checkDailyCourseRecords()
 
   setInterval(() => {
     checkAndSendReminders()
+    checkDailyCourseRecords()
   }, 60 * 60 * 1000)
+}
+
+const checkDailyCourseRecords = async () => {
+  try {
+    const now = new Date()
+    const currentHour = now.getHours()
+    const currentMinute = now.getMinutes()
+    
+    console.log(`检查是否需要发送每日提醒，当前时间: ${currentHour}:${currentMinute}`)
+    
+    if (currentHour !== 22 || currentMinute > 5) {
+      console.log('不是晚上10点，跳过每日提醒')
+      return
+    }
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+
+    const courses = await Course.find({
+      startTime: {
+        $gte: todayStart,
+        $lte: todayEnd
+      },
+      status: 'normal'
+    }).populate('teacherId')
+
+    const teachersToRemind = {}
+    
+    for (const course of courses) {
+      const teacher = course.teacherId
+      if (!teacher || !teacher.openId) continue
+      
+      if (!teachersToRemind[teacher._id]) {
+        teachersToRemind[teacher._id] = {
+          teacher,
+          courses: []
+        }
+      }
+      teachersToRemind[teacher._id].courses.push(course)
+    }
+
+    console.log(`找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
+
+    for (const teacherId in teachersToRemind) {
+      const { teacher, courses } = teachersToRemind[teacherId]
+      
+      try {
+        const messageData = {
+          time2: {
+            value: formatTime(now)
+          },
+          thing11: {
+            value: `今日课程共${courses.length}节`
+          },
+          thing12: {
+            value: '请检查记录'
+          },
+          phrase16: {
+            value: '建议核对消课记录'
+          }
+        }
+
+        await sendSubscribeMessage(teacher.openId, messageData, 'pages/lessons/lessons')
+        console.log(`已向教师 ${teacher.name} 发送每日提醒，今日课程: ${courses.length}节`)
+      } catch (error) {
+        console.error(`发送每日提醒失败:`, error.message)
+      }
+    }
+
+    console.log('每日提醒检查完成')
+  } catch (error) {
+    console.error('检查每日提醒时出错:', error)
+  }
 }
 
 module.exports = {
