@@ -33,7 +33,7 @@ const checkAndSendReminders = async () => {
         }
 
         const messageData = {
-          time: {
+          time2: {
             value: formatTime(course.startTime)
           },
           name: {
@@ -91,7 +91,7 @@ const sendTestReminder = async (userId) => {
     testTime.setMinutes(testTime.getMinutes() + 60)
 
     const messageData = {
-      time: {
+      time2: {
         value: formatTime(testTime)
       },
       name: {
