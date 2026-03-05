@@ -8,5 +8,7 @@ router.post('/users', authenticateToken, requireAdmin, userController.createUser
 router.put('/users/:id', authenticateToken, requireAdmin, userController.updateUser)
 router.delete('/users/:id', authenticateToken, requireAdmin, userController.deleteUser)
 router.get('/teachers', authenticateToken, userController.getTeachers)
+router.post('/openid', userController.getOpenIdByCode)
+router.post('/bind-openid', authenticateToken, userController.bindOpenId)
 
 module.exports = router

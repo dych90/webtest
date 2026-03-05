@@ -47,6 +47,14 @@
         </view>
       </view>
       
+      <view class="menu-group" v-if="userStore.isTeacher()">
+        <view class="menu-item" @click="handleSubscribeMessage">
+          <view class="menu-icon">🔔</view>
+          <text class="menu-text">订阅上课提醒</text>
+          <text class="menu-arrow">›</text>
+        </view>
+      </view>
+      
       <view class="menu-group">
         <view class="menu-item" @click="handleLogout">
           <view class="menu-icon logout-icon">🚪</view>
@@ -65,6 +73,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { get, post } from '@/utils/request'
 
 const userStore = useUserStore()
 
@@ -91,6 +100,74 @@ const handleLogout = () => {
       }
     }
   })
+}
+
+const handleSubscribeMessage = async () => {
+  try {
+    const res = await new Promise((resolve, reject) => {
+      uni.requestSubscribeMessage({
+        tmplIds: ['FPymYYMiWppMeQyUl6RwZbFfJvgCuknjdyphRkDs1Y0'],
+        success: (res) => {
+          resolve(res)
+        },
+        fail: (err) => {
+          reject(err)
+        }
+      })
+    })
+
+    const templateResult = res['FPymYYMiWppMeQyUl6RwZbFfJvgCuknjdyphRkDs1Y0']
+    
+    if (templateResult === 'accept') {
+      uni.showLoading({ title: '绑定中...' })
+      
+      try {
+        const codeRes = await new Promise((resolve, reject) => {
+          uni.login({
+            provider: 'weixin',
+            success: (res) => {
+              resolve(res)
+            },
+            fail: (err) => {
+              reject(err)
+            }
+          })
+        })
+
+        const openIdRes = await post('/openid', { code: codeRes.code })
+        
+        await post('/bind-openid', { openId: openIdRes.data.openId })
+        
+        uni.hideLoading()
+        uni.showToast({
+          title: '订阅成功',
+          icon: 'success'
+        })
+      } catch (error) {
+        uni.hideLoading()
+        uni.showToast({
+          title: error.message || '绑定失败',
+          icon: 'none'
+        })
+      }
+    } else if (templateResult === 'reject') {
+      uni.showToast({
+        title: '已拒绝订阅',
+        icon: 'none'
+      })
+    } else {
+      uni.showToast({
+        title: '订阅失败',
+        icon: 'none'
+      })
+    }
+  } catch (error) {
+    console.error('订阅消息错误:', error)
+    uni.showToast({
+      title: '订阅失败',
+      icon: 'none'
+    })
+  }
 }
 </script>
 

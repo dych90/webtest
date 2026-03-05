@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const { connectDB } = require('./utils/database')
+const { startReminderService } = require('./services/reminderService')
 require('dotenv').config()
 
 const app = express()
@@ -42,6 +43,7 @@ app.use('/api', userRoutes)
 const PORT = process.env.PORT || 3000
 
 connectDB().then(() => {
+  startReminderService()
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
   })
