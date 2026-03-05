@@ -44,7 +44,7 @@ const getAccessToken = async () => {
   })
 }
 
-const sendSubscribeMessage = async (openId, data) => {
+const sendSubscribeMessage = async (openId, data, page = 'pages/schedule/schedule') => {
   try {
     const accessToken = await getAccessToken()
     const url = `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${accessToken}`
@@ -54,7 +54,8 @@ const sendSubscribeMessage = async (openId, data) => {
       template_id: TEMPLATE_ID,
       data: data,
       miniprogram: {
-        appid: APPID
+        appid: APPID,
+        page: page
       }
     })
 

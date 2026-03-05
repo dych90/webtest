@@ -47,7 +47,7 @@ const checkAndSendReminders = async () => {
           }
         }
 
-        await sendSubscribeMessage(teacher.openId, messageData)
+        await sendSubscribeMessage(teacher.openId, messageData, 'pages/schedule/schedule')
         console.log(`已向教师 ${teacher.name} 发送课程提醒: ${student.name} - ${courseType.name}`)
       } catch (error) {
         console.error(`发送课程提醒失败:`, error.message)
@@ -106,7 +106,7 @@ const sendTestReminder = async (userId) => {
     }
 
     console.log('准备发送消息:', messageData)
-    await sendSubscribeMessage(user.openId, messageData)
+    await sendSubscribeMessage(user.openId, messageData, 'pages/schedule/schedule')
     console.log(`已向用户 ${user.name} 发送测试提醒`)
     return { success: true, message: '测试提醒发送成功' }
   } catch (error) {
