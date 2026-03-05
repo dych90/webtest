@@ -70,7 +70,43 @@ const startReminderService = () => {
   }, 60 * 60 * 1000)
 }
 
+const sendTestReminder = async (userId) => {
+  try {
+    const user = await User.findById(userId)
+    
+    if (!user || !user.openId) {
+      throw new Error('用户未绑定 openId')
+    }
+
+    const testTime = new Date()
+    testTime.setMinutes(testTime.getMinutes() + 60)
+
+    const messageData = {
+      time: {
+        value: formatTime(testTime)
+      },
+      name: {
+        value: '测试学生'
+      },
+      course: {
+        value: '测试课程'
+      },
+      status: {
+        value: '测试提醒'
+      }
+    }
+
+    await sendSubscribeMessage(user.openId, messageData)
+    console.log(`已向用户 ${user.name} 发送测试提醒`)
+    return { success: true, message: '测试提醒发送成功' }
+  } catch (error) {
+    console.error('发送测试提醒失败:', error)
+    throw error
+  }
+}
+
 module.exports = {
   checkAndSendReminders,
-  startReminderService
+  startReminderService,
+  sendTestReminder
 }

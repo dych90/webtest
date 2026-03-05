@@ -1,6 +1,7 @@
 const User = require('../models/User')
 const bcrypt = require('bcryptjs')
 const https = require('https')
+const { sendTestReminder } = require('../services/reminderService')
 
 const APPID = 'wxc0fad9ed6db1b4a7'
 const APPSECRET = 'a31612ae78c3e971ba69fe41c3e2f1a5'
@@ -198,6 +199,38 @@ const bindOpenId = async (req, res) => {
   }
 }
 
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId).select('-password')
+    
+    if (!user) {
+      return res.status(404).json({ message: '用户不存在' })
+    }
+
+    res.json({
+      message: '获取成功',
+      data: user
+    })
+  } catch (error) {
+    console.error('获取当前用户错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const sendTestReminderToSelf = async (req, res) => {
+  try {
+    const result = await sendTestReminder(req.userId)
+    
+    res.json({
+      message: result.message,
+      data: result
+    })
+  } catch (error) {
+    console.error('发送测试提醒错误:', error)
+    res.status(500).json({ message: error.message || '发送测试提醒失败' })
+  }
+}
+
 module.exports = {
   getUsers,
   createUser,
@@ -205,5 +238,7 @@ module.exports = {
   deleteUser,
   getTeachers,
   getOpenIdByCode,
-  bindOpenId
+  bindOpenId,
+  getCurrentUser,
+  sendTestReminderToSelf
 }

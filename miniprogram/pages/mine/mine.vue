@@ -50,7 +50,12 @@
       <view class="menu-group" v-if="userStore.isTeacher()">
         <view class="menu-item" @click="handleSubscribeMessage">
           <view class="menu-icon">🔔</view>
-          <text class="menu-text">订阅上课提醒</text>
+          <text class="menu-text" :class="{ 'subscribed-text': isSubscribed }">{{ isSubscribed ? '已订阅上课提醒' : '订阅上课提醒' }}</text>
+          <text class="menu-arrow" :class="{ 'subscribed-arrow': isSubscribed }">{{ isSubscribed ? '✓' : '›' }}</text>
+        </view>
+        <view class="menu-item" v-if="isSubscribed" @click="handleTestReminder">
+          <view class="menu-icon">🧪</view>
+          <text class="menu-text">发送测试提醒</text>
           <text class="menu-arrow">›</text>
         </view>
       </view>
@@ -71,17 +76,29 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onShow } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
 
 const userStore = useUserStore()
+const isSubscribed = ref(false)
 
 const roleText = computed(() => {
   if (userStore.isAdmin()) return '管理员'
   if (userStore.isTeacher()) return '教师'
   return '未知角色'
 })
+
+const checkSubscriptionStatus = async () => {
+  if (!userStore.isTeacher()) return
+  
+  try {
+    const res = await get('/users/me')
+    isSubscribed.value = !!(res.data?.openId)
+  } catch (error) {
+    console.error('检查订阅状态失败:', error)
+  }
+}
 
 const goToPage = (url) => {
   uni.navigateTo({ url })
@@ -138,6 +155,8 @@ const handleSubscribeMessage = async () => {
         
         await post('/bind-openid', { openId: openIdRes.data.openId })
         
+        isSubscribed.value = true
+        
         uni.hideLoading()
         uni.showToast({
           title: '订阅成功',
@@ -169,6 +188,30 @@ const handleSubscribeMessage = async () => {
     })
   }
 }
+
+const handleTestReminder = async () => {
+  try {
+    uni.showLoading({ title: '发送中...' })
+    
+    await post('/test-reminder')
+    
+    uni.hideLoading()
+    uni.showToast({
+      title: '测试提醒已发送',
+      icon: 'success'
+    })
+  } catch (error) {
+    uni.hideLoading()
+    uni.showToast({
+      title: error.message || '发送失败',
+      icon: 'none'
+    })
+  }
+}
+
+onShow(() => {
+  checkSubscriptionStatus()
+})
 </script>
 
 <style scoped>
@@ -271,6 +314,17 @@ const handleSubscribeMessage = async () => {
 
 .logout-text {
   color: #F56C6C;
+}
+
+.subscribed-text {
+  color: #67C23A;
+  font-weight: bold;
+}
+
+.subscribed-arrow {
+  color: #67C23A;
+  font-weight: bold;
+  font-size: 36rpx;
 }
 
 .version {
