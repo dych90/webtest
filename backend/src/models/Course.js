@@ -11,6 +11,7 @@ const courseSchema = new mongoose.Schema({
   isGiftLesson: { type: Boolean, default: false },
   originalTime: Date,
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  reminderSent: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 })

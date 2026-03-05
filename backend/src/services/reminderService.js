@@ -16,7 +16,8 @@ const checkAndSendReminders = async () => {
         $gte: now,
         $lte: oneHourLater
       },
-      status: 'normal'
+      status: 'normal',
+      reminderSent: false
     }).populate('studentId').populate('teacherId').populate('courseTypeId')
 
     console.log(`找到 ${courses.length} 节即将开始的课程`)
@@ -48,6 +49,9 @@ const checkAndSendReminders = async () => {
         }
 
         await sendSubscribeMessage(teacher.openId, messageData, 'pages/schedule/schedule')
+        
+        await Course.findByIdAndUpdate(course._id, { reminderSent: true })
+        
         console.log(`已向教师 ${teacher.name} 发送课程提醒: ${student.name} - ${courseType.name}`)
       } catch (error) {
         console.error(`发送课程提醒失败:`, error.message)
