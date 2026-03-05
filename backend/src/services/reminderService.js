@@ -36,13 +36,13 @@ const checkAndSendReminders = async () => {
           time2: {
             value: formatTime(course.startTime)
           },
-          name: {
+          thing11: {
             value: student.name
           },
-          course: {
+          thing12: {
             value: courseType.name
           },
-          status: {
+          phrase16: {
             value: '即将开始'
           }
         }
@@ -94,13 +94,13 @@ const sendTestReminder = async (userId) => {
       time2: {
         value: formatTime(testTime)
       },
-      name: {
+      thing11: {
         value: '测试学生'
       },
-      course: {
+      thing12: {
         value: '测试课程'
       },
-      status: {
+      phrase16: {
         value: '测试提醒'
       }
     }
