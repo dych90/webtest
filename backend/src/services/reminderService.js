@@ -71,7 +71,6 @@ const startReminderService = () => {
   console.log('启动课程提醒定时任务服务...')
 
   checkAndSendReminders()
-  checkDailyCourseRecords()
 
   const cron = require('node-cron')
 
