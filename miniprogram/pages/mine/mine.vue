@@ -69,6 +69,10 @@
       </view>
     </view>
     
+    <view class="debug-info" v-if="userStore.isTeacher()">
+      <text>调试信息: isSubscribed = {{ isSubscribed }}</text>
+    </view>
+    
     <view class="version">
       <text>版本 1.0.0</text>
     </view>
@@ -76,7 +80,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onShow } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
 
@@ -90,13 +95,29 @@ const roleText = computed(() => {
 })
 
 const checkSubscriptionStatus = async () => {
-  if (!userStore.isTeacher()) return
+  if (!userStore.isTeacher()) {
+    console.log('不是教师角色，跳过检查订阅状态')
+    return
+  }
   
   try {
+    console.log('开始检查订阅状态...')
     const res = await get('/users/me')
+    console.log('获取用户信息成功:', res.data)
+    console.log('openId值:', res.data?.openId)
+    console.log('openId类型:', typeof res.data?.openId)
+    
     isSubscribed.value = !!(res.data?.openId)
+    
+    console.log('最终订阅状态:', isSubscribed.value)
+    console.log('isSubscribed.value类型:', typeof isSubscribed.value)
   } catch (error) {
     console.error('检查订阅状态失败:', error)
+    console.error('错误详情:', error.message)
+    uni.showToast({
+      title: '获取订阅状态失败',
+      icon: 'none'
+    })
   }
 }
 
@@ -162,6 +183,8 @@ const handleSubscribeMessage = async () => {
           title: '订阅成功',
           icon: 'success'
         })
+        
+        await checkSubscriptionStatus()
       } catch (error) {
         uni.hideLoading()
         uni.showToast({
@@ -209,7 +232,13 @@ const handleTestReminder = async () => {
   }
 }
 
+onMounted(() => {
+  console.log('页面已挂载，开始检查订阅状态')
+  checkSubscriptionStatus()
+})
+
 onShow(() => {
+  console.log('页面显示，检查订阅状态')
   checkSubscriptionStatus()
 })
 </script>
@@ -325,6 +354,19 @@ onShow(() => {
   color: #67C23A;
   font-weight: bold;
   font-size: 36rpx;
+}
+
+.debug-info {
+  text-align: center;
+  padding: 20rpx;
+  background-color: #f0f0f0;
+  border-radius: 10rpx;
+  margin-top: 20rpx;
+}
+
+.debug-info text {
+  font-size: 24rpx;
+  color: #666;
 }
 
 .version {

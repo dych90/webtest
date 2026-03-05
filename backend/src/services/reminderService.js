@@ -72,11 +72,20 @@ const startReminderService = () => {
 
 const sendTestReminder = async (userId) => {
   try {
-    const user = await User.findById(userId)
+    console.log('开始发送测试提醒，userId:', userId)
     
-    if (!user || !user.openId) {
+    const user = await User.findById(userId)
+    console.log('查询到的用户:', user)
+    
+    if (!user) {
+      throw new Error('用户不存在')
+    }
+    
+    if (!user.openId) {
       throw new Error('用户未绑定 openId')
     }
+
+    console.log('用户 openId:', user.openId)
 
     const testTime = new Date()
     testTime.setMinutes(testTime.getMinutes() + 60)
@@ -96,11 +105,13 @@ const sendTestReminder = async (userId) => {
       }
     }
 
+    console.log('准备发送消息:', messageData)
     await sendSubscribeMessage(user.openId, messageData)
     console.log(`已向用户 ${user.name} 发送测试提醒`)
     return { success: true, message: '测试提醒发送成功' }
   } catch (error) {
     console.error('发送测试提醒失败:', error)
+    console.error('错误堆栈:', error.stack)
     throw error
   }
 }
