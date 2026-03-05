@@ -9,7 +9,7 @@ const checkAndSendReminders = async () => {
     console.log('开始检查课程提醒...')
 
     const now = new Date()
-    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+    const oneHourLater = new Date(now.getTime() + 65 * 60 * 1000)
 
     const courses = await Course.find({
       startTime: {
@@ -21,6 +21,7 @@ const checkAndSendReminders = async () => {
     }).populate('studentId').populate('teacherId').populate('courseTypeId')
 
     console.log(`找到 ${courses.length} 节即将开始的课程`)
+    console.log(`当前时间: ${now.toISOString()}, 查询范围: ${oneHourLater.toISOString()}`)
 
     for (const course of courses) {
       try {
