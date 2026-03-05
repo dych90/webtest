@@ -75,7 +75,7 @@ const startReminderService = () => {
 
   const cron = require('node-cron')
 
-  cron.schedule('*/10 * * * *', async () => {
+  cron.schedule('*/5 * * * *', async () => {
     await checkAndSendReminders()
   })
 
