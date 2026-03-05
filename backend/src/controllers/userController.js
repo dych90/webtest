@@ -172,7 +172,7 @@ const getOpenIdByCode = async (req, res) => {
 const bindOpenId = async (req, res) => {
   try {
     const { openId } = req.body
-    const userId = req.user._id
+    const userId = req.userId
 
     if (!openId) {
       return res.status(400).json({ message: '缺少 openId 参数' })
@@ -194,7 +194,7 @@ const bindOpenId = async (req, res) => {
     })
   } catch (error) {
     console.error('绑定 openId 错误:', error)
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
 
