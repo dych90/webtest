@@ -120,7 +120,14 @@ const updateCourse = async (req, res) => {
     console.log('更新课程，ID:', id)
     console.log('更新课程数据:', req.body)
     
-    const updatedCourse = await Course.findByIdAndUpdate(id, req.body, { new: true })
+    const updateData = { ...req.body }
+    
+    if (req.body.startTime && new Date(req.body.startTime).getTime() !== new Date(course.startTime).getTime()) {
+      updateData.reminderSent = false
+      console.log('课程时间已修改，重置 reminderSent 为 false')
+    }
+    
+    const updatedCourse = await Course.findByIdAndUpdate(id, updateData, { new: true })
     
     console.log('更新后的课程:', updatedCourse)
     
@@ -318,7 +325,8 @@ const rescheduleCourseGroup = async (req, res) => {
           endTime,
           studentId: studentId || course.studentId,
           courseTypeId: courseTypeId || course.courseTypeId,
-          notes: notes !== undefined ? notes : course.notes
+          notes: notes !== undefined ? notes : course.notes,
+          reminderSent: false
         })
         updatedCount++
       } else {
@@ -330,7 +338,8 @@ const rescheduleCourseGroup = async (req, res) => {
           endTime,
           status: 'normal',
           groupId: groupId,
-          notes: notes !== undefined ? notes : firstCourse.notes
+          notes: notes !== undefined ? notes : firstCourse.notes,
+          reminderSent: false
         }
         await Course.create(courseData)
         createdCount++

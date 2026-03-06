@@ -46,18 +46,22 @@ const getAccessToken = async () => {
 
 const sendSubscribeMessage = async (openId, data, page = 'pages/schedule/schedule') => {
   try {
+    console.log('开始发送订阅消息...')
+    console.log('openId:', openId)
+    console.log('page:', page)
+    console.log('data:', JSON.stringify(data, null, 2))
+    
     const accessToken = await getAccessToken()
-    const url = `https://api.weixin.qq.com/cgi-bin/message/subscribe/send?access_token=${accessToken}`
-
+    console.log('获取到 access_token:', accessToken ? '成功' : '失败')
+    
     const postData = JSON.stringify({
       touser: openId,
       template_id: TEMPLATE_ID,
-      data: data,
-      miniprogram: {
-        appid: APPID,
-        page: page
-      }
+      page: page,
+      data: data
     })
+    
+    console.log('发送的数据:', postData)
 
     return new Promise((resolve, reject) => {
       const options = {
@@ -80,19 +84,24 @@ const sendSubscribeMessage = async (openId, data, page = 'pages/schedule/schedul
 
         res.on('end', () => {
           try {
+            console.log('微信API响应:', responseData)
             const result = JSON.parse(responseData)
             if (result.errcode === 0) {
+              console.log('订阅消息发送成功')
               resolve(result)
             } else {
-              reject(new Error(result.errmsg || '发送订阅消息失败'))
+              console.error('订阅消息发送失败:', result)
+              reject(new Error(`错误码: ${result.errcode}, 错误信息: ${result.errmsg}`))
             }
           } catch (error) {
+            console.error('解析响应失败:', error)
             reject(error)
           }
         })
       })
 
       req.on('error', (error) => {
+        console.error('请求失败:', error)
         reject(error)
       })
 
@@ -100,6 +109,7 @@ const sendSubscribeMessage = async (openId, data, page = 'pages/schedule/schedul
       req.end()
     })
   } catch (error) {
+    console.error('发送订阅消息异常:', error)
     throw error
   }
 }

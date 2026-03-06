@@ -53,6 +53,11 @@
           <text class="menu-text" :class="{ 'subscribed-text': isSubscribed }">{{ isSubscribed ? '已订阅上课提醒' : '订阅上课提醒' }}</text>
           <text class="menu-arrow" :class="{ 'subscribed-arrow': isSubscribed }">{{ isSubscribed ? '✓' : '›' }}</text>
         </view>
+        <view class="menu-item" @click="handleTestPush">
+          <view class="menu-icon">🧪</view>
+          <text class="menu-text">测试消息推送</text>
+          <text class="menu-arrow">›</text>
+        </view>
       </view>
       
       <view class="menu-group">
@@ -201,6 +206,40 @@ const handleSubscribeMessage = async () => {
       icon: 'none'
     })
   }
+}
+
+const handleTestPush = async () => {
+  if (!isSubscribed.value) {
+    uni.showToast({
+      title: '请先订阅消息',
+      icon: 'none'
+    })
+    return
+  }
+  
+  uni.showModal({
+    title: '测试消息推送',
+    content: '确定要发送测试消息吗？请查看后端日志和手机通知。',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          uni.showLoading({ title: '发送中...' })
+          const result = await post('/test-push')
+          uni.hideLoading()
+          uni.showToast({
+            title: result.message || '测试已发送',
+            icon: 'success'
+          })
+        } catch (error) {
+          uni.hideLoading()
+          uni.showToast({
+            title: error.message || '测试失败',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
 }
 
 onMounted(() => {

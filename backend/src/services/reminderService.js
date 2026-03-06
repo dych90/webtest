@@ -9,9 +9,12 @@ let lastDailyReminderDate = null
 const checkAndSendReminders = async () => {
   try {
     console.log('开始检查课程提醒...')
+    console.log('当前时间:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }))
 
     const now = new Date()
-    const oneHourLater = new Date(now.getTime() + 65 * 60 * 1000)
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+
+    console.log(`查询时间范围: ${now.toISOString()} 到 ${oneHourLater.toISOString()}`)
 
     const courses = await Course.find({
       startTime: {
@@ -23,13 +26,18 @@ const checkAndSendReminders = async () => {
     }).populate('studentId').populate('teacherId').populate('courseTypeId')
 
     console.log(`找到 ${courses.length} 节即将开始的课程`)
-    console.log(`当前时间: ${now.toISOString()}, 查询范围: ${oneHourLater.toISOString()}`)
 
     for (const course of courses) {
       try {
         const teacher = course.teacherId
         const student = course.studentId
         const courseType = course.courseTypeId
+
+        console.log(`处理课程: ${course._id}`)
+        console.log(`  教师: ${teacher?.name || '未知'}, openId: ${teacher?.openId || '无'}`)
+        console.log(`  学生: ${student?.name || '未知'}`)
+        console.log(`  课程类型: ${courseType?.name || '未知'}`)
+        console.log(`  开始时间: ${course.startTime}`)
 
         if (!teacher || !teacher.openId) {
           console.log(`教师 ${teacher?.name || '未知'} 未绑定 openId,跳过提醒`)
@@ -41,10 +49,10 @@ const checkAndSendReminders = async () => {
             value: formatTime(course.startTime)
           },
           thing11: {
-            value: student.name
+            value: student?.name || '未知学生'
           },
           thing12: {
-            value: courseType.name
+            value: courseType?.name || '未知课程'
           },
           phrase16: {
             value: '即将开始'
@@ -55,9 +63,9 @@ const checkAndSendReminders = async () => {
         
         await Course.findByIdAndUpdate(course._id, { reminderSent: true })
         
-        console.log(`已向教师 ${teacher.name} 发送课程提醒: ${student.name} - ${courseType.name}`)
+        console.log(`✅ 已向教师 ${teacher.name} 发送课程提醒: ${student?.name} - ${courseType?.name}`)
       } catch (error) {
-        console.error(`发送课程提醒失败:`, error.message)
+        console.error(`❌ 发送课程提醒失败 (课程ID: ${course._id}):`, error.message)
       }
     }
 
@@ -75,16 +83,24 @@ const startReminderService = () => {
   const cron = require('node-cron')
 
   cron.schedule('*/5 * * * *', async () => {
+    console.log('定时任务触发: 检查课程提醒')
     await checkAndSendReminders()
   })
 
-  cron.schedule('0 8,22 * * *', async () => {
+  cron.schedule('0 8 * * *', async () => {
+    console.log('定时任务触发: 早上提醒')
     await sendMorningDailyReminder()
   })
 
-  cron.schedule('0 22 * * * *', async () => {
+  cron.schedule('0 22 * * *', async () => {
+    console.log('定时任务触发: 晚上提醒')
     await sendEveningDailyReminder()
   })
+  
+  console.log('定时任务已注册:')
+  console.log('  - 课程提醒: 每5分钟检查一次')
+  console.log('  - 早上提醒: 每天8:00')
+  console.log('  - 晚上提醒: 每天22:00')
 }
 
 const sendMorningDailyReminder = async () => {
