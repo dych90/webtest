@@ -45,6 +45,15 @@
           </view>
         </view>
         
+        <view class="remember-row">
+          <view class="remember-checkbox" @click="rememberPassword = !rememberPassword">
+            <view class="checkbox" :class="{ checked: rememberPassword }">
+              <text v-if="rememberPassword">✓</text>
+            </view>
+            <text class="remember-text">记住密码</text>
+          </view>
+        </view>
+        
         <button class="login-btn" :loading="loading" @tap="handleLogin">
           <text class="btn-text">登 录</text>
         </button>
@@ -64,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { post } from '@/utils/request'
 
@@ -77,6 +86,19 @@ const form = ref({
 
 const loading = ref(false)
 const showPassword = ref(false)
+const rememberPassword = ref(false)
+
+onMounted(() => {
+  const savedUsername = uni.getStorageSync('savedUsername')
+  const savedPassword = uni.getStorageSync('savedPassword')
+  const savedRemember = uni.getStorageSync('rememberPassword')
+  
+  if (savedRemember === 'true' || savedRemember === true) {
+    form.value.username = savedUsername || ''
+    form.value.password = savedPassword || ''
+    rememberPassword.value = true
+  }
+})
 
 const handleLogin = async () => {
   if (!form.value.username) {
@@ -101,6 +123,16 @@ const handleLogin = async () => {
     const res = await post('/login', form.value)
     
     if (res.data && res.data.token) {
+      if (rememberPassword.value) {
+        uni.setStorageSync('savedUsername', form.value.username)
+        uni.setStorageSync('savedPassword', form.value.password)
+        uni.setStorageSync('rememberPassword', 'true')
+      } else {
+        uni.removeStorageSync('savedUsername')
+        uni.removeStorageSync('savedPassword')
+        uni.removeStorageSync('rememberPassword')
+      }
+      
       userStore.login(res.data.token, res.data.user)
       
       uni.showToast({
@@ -237,6 +269,40 @@ const handleLogin = async () => {
 
 .form-item {
   margin-bottom: 32rpx;
+}
+
+.remember-row {
+  margin-bottom: 24rpx;
+}
+
+.remember-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  font-size: 24rpx;
+  color: #fff;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.checkbox.checked {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.remember-text {
+  font-size: 26rpx;
+  color: #606266;
 }
 
 .input-wrapper {
