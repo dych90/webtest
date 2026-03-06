@@ -231,5 +231,7 @@ const sendEveningDailyReminder = async () => {
 
 module.exports = {
   checkAndSendReminders,
-  startReminderService
+  startReminderService,
+  sendMorningDailyReminder,
+  sendEveningDailyReminder
 }

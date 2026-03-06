@@ -46,15 +46,17 @@ router.post('/send-test-message', authenticateToken, async (req, res) => {
         value: formatTime(now)
       },
       thing11: {
-        value: '这是一条测试消息'
+        value: '测试消息'
       },
       thing12: {
-        value: '测试课程类型'
+        value: '测试课程'
       },
       phrase16: {
-        value: '测试推送成功'
+        value: '测试成功'
       }
     }
+    
+    console.log('发送的数据:', JSON.stringify(messageData, null, 2))
     
     await sendSubscribeMessage(user.openId, messageData, 'pages/schedule/schedule')
     
