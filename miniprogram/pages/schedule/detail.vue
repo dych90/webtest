@@ -748,8 +748,15 @@ const handleAttend = async () => {
 const doAttend = async () => {
   try {
     await put(`/courses/${courseId.value}`, { status: 'completed' })
+    
+    const studentId = course.value.studentId?._id || course.value.studentId
+    if (!studentId) {
+      uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
+      return
+    }
+    
     await post('/lesson-records', {
-      studentId: course.value.studentId._id,
+      studentId: studentId,
       courseId: course.value._id,
       courseStartTime: course.value.startTime,
       lessonsConsumed: 1,

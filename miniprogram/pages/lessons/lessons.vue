@@ -27,6 +27,16 @@
       <view class="search-icon">🔍</view>
     </view>
     
+    <view class="search-bar" v-if="activeTab === 'courses'">
+      <input 
+        class="search-input" 
+        placeholder="搜索学生姓名" 
+        v-model="courseSearchKeyword"
+        @input="filterCourses"
+      />
+      <view class="search-icon">🔍</view>
+    </view>
+    
     <view v-if="activeTab === 'records'">
       <view v-if="filteredRecords.length === 0" class="empty-tip">
         {{ searchKeyword ? '未找到匹配的记录' : '暂无消课记录' }}
@@ -75,12 +85,12 @@
     </view>
     
     <view v-if="activeTab === 'courses'">
-      <view v-if="pendingCourses.length === 0" class="empty-tip">
-        暂无待上课课程
+      <view v-if="filteredCourses.length === 0" class="empty-tip">
+        {{ courseSearchKeyword ? '未找到匹配的课程' : '暂无待上课课程' }}
       </view>
       
       <view v-else class="course-list">
-        <view v-for="course in pendingCourses" :key="course._id" class="course-item">
+        <view v-for="course in filteredCourses" :key="course._id" class="course-item">
           <view class="course-header">
             <text class="student-name">{{ course.studentId?.name || '未分配' }}</text>
             <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
@@ -117,7 +127,9 @@ const activeTab = ref('records')
 const lessonRecords = ref([])
 const pendingCourses = ref([])
 const searchKeyword = ref('')
+const courseSearchKeyword = ref('')
 const filteredRecords = ref([])
+const filteredCourses = ref([])
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -157,8 +169,21 @@ const fetchPendingCourses = async () => {
   try {
     const res = await get('/courses')
     pendingCourses.value = (res.data || []).filter(c => c.status === 'normal')
+    filterCourses()
   } catch (error) {
     console.error('获取待上课课程失败', error)
+  }
+}
+
+const filterCourses = () => {
+  if (!courseSearchKeyword.value.trim()) {
+    filteredCourses.value = pendingCourses.value
+  } else {
+    const keyword = courseSearchKeyword.value.trim().toLowerCase()
+    filteredCourses.value = pendingCourses.value.filter(course => {
+      const name = course.studentId?.name || ''
+      return name.toLowerCase().includes(keyword)
+    })
   }
 }
 
@@ -196,8 +221,15 @@ const handleDelete = (record) => {
 const handleAttend = async (course) => {
   try {
     await put(`/courses/${course._id}`, { status: 'completed' })
+    
+    const studentId = course.studentId?._id || course.studentId
+    if (!studentId) {
+      uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
+      return
+    }
+    
     await post('/lesson-records', {
-      studentId: course.studentId._id,
+      studentId: studentId,
       courseId: course._id,
       courseStartTime: course.startTime,
       lessonsConsumed: 1,

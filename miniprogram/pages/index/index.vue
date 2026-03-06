@@ -312,8 +312,15 @@ const confirmAttend = async () => {
 const doAttendCourse = async (course, lessonsConsumed = 1) => {
   try {
     await put(`/courses/${course._id}`, { status: 'completed' })
+    
+    const studentId = course.studentId?._id || course.studentId
+    if (!studentId) {
+      uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
+      return
+    }
+    
     await post('/lesson-records', {
-      studentId: course.studentId._id,
+      studentId: studentId,
       courseId: course._id,
       courseStartTime: course.startTime,
       lessonsConsumed: lessonsConsumed,
