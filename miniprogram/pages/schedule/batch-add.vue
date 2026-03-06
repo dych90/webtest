@@ -57,7 +57,7 @@
               <text class="picker-arrow-small">▼</text>
             </view>
           </picker>
-          <picker mode="time" :value="item.startTime" start="06:00" end="23:00" @change="(e) => onItemTimeChange(e, index)" class="row-time">
+          <picker mode="time" :value="item.startTime" start="08:00" end="23:00" @change="(e) => onItemTimeChange(e, index)" class="row-time">
             <view class="form-picker-small">
               <text>{{ item.startTime || '时间' }}</text>
               <text class="picker-arrow-small">▼</text>

@@ -71,7 +71,7 @@
         <el-form-item label="开始时间">
           <el-time-select
             v-model="form.startTime"
-            start="06:00"
+            start="08:00"
             step="00:15"
             end="23:00"
             placeholder="选择时间"
@@ -174,7 +174,7 @@
         <el-form-item label="开始时间">
           <el-time-select
             v-model="rescheduleForm.newStartTime"
-            start="06:00"
+            start="08:00"
             step="00:15"
             end="23:00"
             placeholder="选择开始时间"

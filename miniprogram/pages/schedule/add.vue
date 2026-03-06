@@ -33,7 +33,7 @@
       
       <view class="form-item">
         <text class="form-label">开始时间 *</text>
-        <picker mode="time" :value="form.startTime" start="06:00" end="23:00" @change="onStartTimeChange">
+        <picker mode="time" :value="form.startTime" start="08:00" end="23:00" @change="onStartTimeChange">
           <view class="form-picker">
             <text>{{ form.startTime || '请选择时间' }}</text>
             <text class="picker-arrow">▼</text>

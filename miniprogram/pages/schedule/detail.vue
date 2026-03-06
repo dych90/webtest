@@ -116,7 +116,7 @@
           </view>
           <view class="form-item">
             <text class="form-label">开始时间</text>
-            <picker mode="time" :value="editForm.startTime" start="06:00" end="23:00" @change="onStartTimeChange">
+            <picker mode="time" :value="editForm.startTime" start="08:00" end="23:00" @change="onStartTimeChange">
               <view class="form-picker">
                 <text>{{ editForm.startTime || '请选择时间' }}</text>
                 <text class="picker-arrow">▼</text>
@@ -252,7 +252,7 @@
           </view>
           <view class="form-item">
             <text class="form-label">开始时间</text>
-            <picker mode="time" :value="rescheduleForm.newStartTime" start="06:00" end="23:00" @change="onRescheduleTimeChange">
+            <picker mode="time" :value="rescheduleForm.newStartTime" start="08:00" end="23:00" @change="onRescheduleTimeChange">
               <view class="form-picker">
                 <text>{{ rescheduleForm.newStartTime || '请选择时间' }}</text>
                 <text class="picker-arrow">▼</text>

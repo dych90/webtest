@@ -196,7 +196,7 @@ const currentWeekStart = ref(new Date())
 const selectedDate = ref(formatDateString(new Date()))
 const courses = ref([])
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
-const hours = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
 const monthDays = computed(() => {
   const days = []
