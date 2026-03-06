@@ -71,6 +71,13 @@
       >
         批量删除同组
       </button>
+      <button 
+        class="btn-reschedule" 
+        @click="openRescheduleDialog"
+        v-if="course.groupId"
+      >
+        重新排课
+      </button>
     </view>
     
     <view class="dialog-mask" v-if="editDialogVisible" @click.self="editDialogVisible = false">
@@ -214,6 +221,70 @@
         </view>
       </view>
     </view>
+    
+    <view class="dialog-mask" v-if="rescheduleDialogVisible" @click.self="rescheduleDialogVisible = false">
+      <view class="dialog-content" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">重新排课</text>
+          <text class="dialog-close" @click="rescheduleDialogVisible = false">×</text>
+        </view>
+        <view class="dialog-body" @click.stop>
+          <view class="reschedule-info">
+            <text class="reschedule-tip">从第 {{ courseIndex + 1 }} 节课程开始修改，前面的 {{ courseIndex }} 节课程保持不变</text>
+          </view>
+          <view class="form-item">
+            <text class="form-label">开始日期</text>
+            <picker mode="date" :value="rescheduleForm.newStartDate" @change="onRescheduleStartChange">
+              <view class="form-picker">
+                <text>{{ rescheduleForm.newStartDate || '请选择日期' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">结束日期</text>
+            <picker mode="date" :value="rescheduleForm.newEndDate" @change="onRescheduleEndChange">
+              <view class="form-picker">
+                <text>{{ rescheduleForm.newEndDate || '请选择日期' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">开始时间</text>
+            <picker mode="time" :value="rescheduleForm.newStartTime" start="06:00" end="23:00" @change="onRescheduleTimeChange">
+              <view class="form-picker">
+                <text>{{ rescheduleForm.newStartTime || '请选择时间' }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">课程时长</text>
+            <picker :value="rescheduleDurationIndex" :range="durationOptions" @change="onRescheduleDurationChange">
+              <view class="form-picker">
+                <text>{{ durationOptions[rescheduleDurationIndex] }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item" v-if="rescheduleForm.newStartDate">
+            <text class="form-label">排课星期</text>
+            <view class="form-picker readonly">
+              <text class="weekday-tag">{{ getDayOfWeekName(rescheduleForm.newStartDate) }}</text>
+              <text class="weekday-tip">由开始日期自动确定</text>
+            </view>
+          </view>
+          <view class="reschedule-preview" v-if="reschedulePreviewCount > 0">
+            <text class="preview-title">将创建 {{ reschedulePreviewCount }} 节课程</text>
+          </view>
+        </view>
+        <view class="dialog-footer">
+          <button class="btn-dialog-cancel" @click="rescheduleDialogVisible = false">取消</button>
+          <button class="btn-dialog-save" @click="handleReschedule">确认重新排课</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -225,6 +296,7 @@ import { get, put, post, del } from '@/utils/request'
 const course = ref({})
 const courseId = ref('')
 const editDialogVisible = ref(false)
+const rescheduleDialogVisible = ref(false)
 const students = ref([{ name: '请选择学生', _id: '' }])
 const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
 const studentIndex = ref(0)
@@ -234,6 +306,7 @@ const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 const durationOptions = ['30分钟', '45分钟', '50分钟', '60分钟', '70分钟', '90分钟', '120分钟']
 const durationIndex = ref(3)
 const durationValues = [30, 45, 50, 60, 70, 90, 120]
+const rescheduleDurationIndex = ref(3)
 
 const editForm = ref({
   studentId: '',
@@ -245,6 +318,13 @@ const editForm = ref({
   recurringStartDate: '',
   recurringEndDate: '',
   notes: ''
+})
+
+const rescheduleForm = ref({
+  newStartDate: '',
+  newEndDate: '',
+  newStartTime: '',
+  duration: 60
 })
 
 const applyToGroup = ref(false)
@@ -305,6 +385,32 @@ const recurringDates = computed(() => {
   
   return dates
 })
+
+const reschedulePreviewCount = computed(() => {
+  if (!rescheduleForm.value.newStartDate || !rescheduleForm.value.newEndDate) {
+    return 0
+  }
+  
+  const startDate = new Date(rescheduleForm.value.newStartDate)
+  const endDate = new Date(rescheduleForm.value.newEndDate)
+  const targetDayOfWeek = startDate.getDay()
+  
+  let count = 0
+  let currentDate = new Date(startDate)
+  while (currentDate <= endDate) {
+    if (currentDate.getDay() === targetDayOfWeek) {
+      count++
+    }
+    currentDate.setDate(currentDate.getDate() + 1)
+  }
+  
+  return count
+})
+
+const getDayOfWeekName = (dateStr) => {
+  const date = new Date(dateStr)
+  return `周${dayNames[date.getDay()]}`
+}
 
 onMounted(() => {
   const pages = getCurrentPages()
@@ -441,6 +547,23 @@ const onRecurringEndChange = (e) => {
   editForm.value.recurringEndDate = e.detail.value
 }
 
+const onRescheduleStartChange = (e) => {
+  rescheduleForm.value.newStartDate = e.detail.value
+}
+
+const onRescheduleEndChange = (e) => {
+  rescheduleForm.value.newEndDate = e.detail.value
+}
+
+const onRescheduleTimeChange = (e) => {
+  rescheduleForm.value.newStartTime = e.detail.value
+}
+
+const onRescheduleDurationChange = (e) => {
+  rescheduleDurationIndex.value = e.detail.value
+  rescheduleForm.value.duration = durationValues[e.detail.value]
+}
+
 const handleEdit = async () => {
   await fetchStudents()
   await fetchCourseTypes()
@@ -500,36 +623,26 @@ const handleSaveEdit = async () => {
       const groupCourses = allCourses.value.filter(c => c.groupId === course.value.groupId)
       const [hours, minutes] = editForm.value.startTime.split(':')
       
-      let coursesToUpdate = []
+      const coursesToUpdate = groupCourses.slice(courseIndex.value)
       
-      if (updateScope.value === 'all') {
-        coursesToUpdate = [...groupCourses]
-      } else if (updateScope.value === 'fromCurrent') {
-        coursesToUpdate = groupCourses.slice(courseIndex.value)
-      } else if (updateScope.value === 'uncompleted') {
-        coursesToUpdate = groupCourses.filter(c => c.status !== 'completed')
-      }
-      
-      if (timeAdjustMode.value === 'timeOnly') {
-        const updatePromises = coursesToUpdate.map(courseItem => {
-          const originalDate = new Date(courseItem.startTime)
-          const newStartTime = new Date(originalDate)
-          newStartTime.setHours(parseInt(hours))
-          newStartTime.setMinutes(parseInt(minutes))
-          const newEndTime = new Date(newStartTime.getTime() + editForm.value.duration * 60000)
-          
-          return put(`/courses/${courseItem._id}`, {
-            studentId: editForm.value.studentId || null,
-            courseTypeId: editForm.value.courseTypeId || null,
-            startTime: newStartTime.toISOString(),
-            endTime: newEndTime.toISOString(),
-            notes: editForm.value.notes
-          })
-        })
+      const updatePromises = coursesToUpdate.map(courseItem => {
+        const originalDate = new Date(courseItem.startTime)
+        const newStartTime = new Date(originalDate)
+        newStartTime.setHours(parseInt(hours))
+        newStartTime.setMinutes(parseInt(minutes))
+        const newEndTime = new Date(newStartTime.getTime() + editForm.value.duration * 60000)
         
-        await Promise.all(updatePromises)
-        uni.showToast({ title: '更新成功', icon: 'success' })
-      }
+        return put(`/courses/${courseItem._id}`, {
+          studentId: editForm.value.studentId || null,
+          courseTypeId: editForm.value.courseTypeId || null,
+          startTime: newStartTime.toISOString(),
+          endTime: newEndTime.toISOString(),
+          notes: editForm.value.notes
+        })
+      })
+      
+      await Promise.all(updatePromises)
+      uni.showToast({ title: `成功更新${coursesToUpdate.length}节课程`, icon: 'success' })
     } else {
       await put(`/courses/${courseId.value}`, updateData)
       
@@ -560,6 +673,58 @@ const handleSaveEdit = async () => {
     fetchCourse()
   } catch (error) {
     uni.showToast({ title: error.message || '保存失败', icon: 'none' })
+  }
+}
+
+const openRescheduleDialog = async () => {
+  await fetchAllCourses()
+  
+  const startTime = new Date(course.value.startTime)
+  const endTime = new Date(course.value.endTime)
+  const duration = Math.round((endTime - startTime) / 60000)
+  
+  if (course.value.groupId) {
+    const groupCourses = allCourses.value.filter(c => c.groupId === course.value.groupId)
+    groupCourseCount.value = groupCourses.length
+    courseIndex.value = groupCourses.findIndex(c => c._id === course.value._id)
+  }
+  
+  rescheduleForm.value = {
+    newStartDate: formatDate(startTime),
+    newEndDate: formatDate(startTime),
+    newStartTime: formatTime(startTime),
+    duration: duration
+  }
+  
+  const durIdx = durationValues.findIndex(d => d === duration)
+  rescheduleDurationIndex.value = durIdx >= 0 ? durIdx : 3
+  
+  rescheduleDialogVisible.value = true
+}
+
+const handleReschedule = async () => {
+  try {
+    if (!rescheduleForm.value.newStartDate || !rescheduleForm.value.newEndDate || !rescheduleForm.value.newStartTime) {
+      uni.showToast({ title: '请填写完整的重新排课信息', icon: 'none' })
+      return
+    }
+    
+    const response = await post(`/courses/group/${course.value.groupId}/reschedule`, {
+      fromCourseId: course.value._id,
+      newStartDate: rescheduleForm.value.newStartDate,
+      newEndDate: rescheduleForm.value.newEndDate,
+      newStartTime: rescheduleForm.value.newStartTime,
+      duration: rescheduleForm.value.duration
+    })
+    
+    uni.showToast({ title: response.message || '重新排课成功', icon: 'success' })
+    rescheduleDialogVisible.value = false
+    
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+  } catch (error) {
+    uni.showToast({ title: error.message || '重新排课失败', icon: 'none' })
   }
 }
 
@@ -846,6 +1011,18 @@ const handleDeleteGroup = async () => {
   font-size: 28rpx;
 }
 
+.btn-reschedule {
+  flex: 1;
+  min-width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #409EFF;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
 .dialog-mask {
   position: fixed;
   top: 0;
@@ -1038,6 +1215,56 @@ const handleDeleteGroup = async () => {
   background-color: #409EFF;
   color: #fff;
   border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.reschedule-info {
+  background-color: #ecf5ff;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+}
+
+.reschedule-info .reschedule-tip {
+  color: #409EFF;
+  font-size: 26rpx;
+}
+
+.reschedule-preview {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #e4e7ed;
+}
+
+.weekday-tag {
+  background-color: #409EFF;
+  color: #fff;
+  padding: 6rpx 16rpx;
+  border-radius: 6rpx;
+  font-size: 26rpx;
+}
+
+.weekday-tip {
+  margin-left: 16rpx;
+  color: #909399;
+  font-size: 24rpx;
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 30rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.btn-dialog-cancel {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #fff;
+  color: #606266;
+  border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
