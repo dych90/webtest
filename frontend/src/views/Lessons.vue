@@ -24,7 +24,11 @@
                 {{ formatDateTime(row.recordDate) }}
               </template>
             </el-table-column>
-            <el-table-column prop="lessonsConsumed" label="消课数量" />
+            <el-table-column prop="lessonsConsumed" label="消课数量">
+              <template #default="{ row }">
+                {{ row.lessonsConsumed }}节
+              </template>
+            </el-table-column>
             <el-table-column prop="lessonContent" label="上课曲目" />
             <el-table-column prop="isDeducted" label="是否扣费">
               <template #default="{ row }">
@@ -96,7 +100,18 @@
           </el-select>
         </el-form-item>
         <el-form-item label="消课数量">
-          <el-input-number v-model="form.lessonsConsumed" :min="1" />
+          <el-select v-model="form.lessonsConsumed" placeholder="请选择消课数量" style="width: 100%">
+            <el-option label="0.5节" :value="0.5" />
+            <el-option label="1节" :value="1" />
+            <el-option label="1.5节" :value="1.5" />
+            <el-option label="2节" :value="2" />
+            <el-option label="2.5节" :value="2.5" />
+            <el-option label="3节" :value="3" />
+            <el-option label="3.5节" :value="3.5" />
+            <el-option label="4节" :value="4" />
+            <el-option label="4.5节" :value="4.5" />
+            <el-option label="5节" :value="5" />
+          </el-select>
         </el-form-item>
         <el-form-item label="上课曲目">
           <el-input v-model="form.lessonContent" type="textarea" />

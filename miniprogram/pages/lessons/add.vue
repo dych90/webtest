@@ -33,7 +33,12 @@
       
       <view class="form-item">
         <text class="form-label">消课数量 *</text>
-        <input class="form-input" v-model="form.lessonsConsumed" type="number" placeholder="请输入消课数量" />
+        <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonCountChange">
+          <view class="form-picker">
+            <text>{{ lessonCountOptions[lessonCountIndex] || '请选择' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
       </view>
       
       <view class="form-item">
@@ -68,12 +73,16 @@ const studentIndex = ref(0)
 const courses = ref([])
 const courseIndex = ref(0)
 const loading = ref(false)
+const lessonCountIndex = ref(2)
+
+const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
+const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const form = reactive({
   studentId: '',
   courseId: '',
   recordDate: '',
-  lessonsConsumed: '',
+  lessonsConsumed: 1,
   lessonContent: '',
   isDeducted: true,
   notes: ''
@@ -126,6 +135,11 @@ const onDeductedChange = (e) => {
   form.isDeducted = e.detail.value
 }
 
+const onLessonCountChange = (e) => {
+  lessonCountIndex.value = e.detail.value
+  form.lessonsConsumed = lessonCountValues[e.detail.value]
+}
+
 const handleCancel = () => {
   uni.navigateBack()
 }
@@ -136,7 +150,7 @@ const handleSubmit = async () => {
     return
   }
   if (!form.lessonsConsumed || form.lessonsConsumed <= 0) {
-    uni.showToast({ title: '请输入有效的消课数量', icon: 'none' })
+    uni.showToast({ title: '请选择消课数量', icon: 'none' })
     return
   }
   
@@ -146,7 +160,7 @@ const handleSubmit = async () => {
     studentId: form.studentId,
     courseId: form.courseId || undefined,
     recordDate: form.recordDate,
-    lessonsConsumed: Number(form.lessonsConsumed),
+    lessonsConsumed: form.lessonsConsumed,
     lessonContent: form.lessonContent,
     isDeducted: form.isDeducted,
     notes: form.notes

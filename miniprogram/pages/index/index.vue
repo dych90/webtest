@@ -119,32 +119,31 @@
       </view>
     </view>
     
-    <view class="stats-section">
-      <view class="section-title">总体数据</view>
-      <view class="stats-grid">
-        <view class="stat-card">
-          <text class="stat-value">{{ statistics.studentCount }}</text>
-          <text class="stat-label">学生总数</text>
+    <view class="dialog-mask" v-if="attendDialogVisible" @click="attendDialogVisible = false">
+      <view class="dialog-content" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">确认上课</text>
+          <text class="dialog-close" @click="attendDialogVisible = false">×</text>
         </view>
-        <view class="stat-card">
-          <text class="stat-value revenue">¥{{ statistics.totalRevenue }}</text>
-          <text class="stat-label">总收入</text>
+        <view class="dialog-body">
+          <view class="attend-info">
+            <text class="attend-student">{{ currentCourse?.studentId?.name || '未分配' }}</text>
+            <text class="attend-course">{{ currentCourse?.courseTypeId?.name || '未设置' }}</text>
+            <text class="attend-time">{{ formatTime(currentCourse?.startTime) }}</text>
+          </view>
+          <view class="form-item">
+            <text class="form-label">消课数量</text>
+            <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonCountChange">
+              <view class="form-picker">
+                <text>{{ lessonCountOptions[lessonCountIndex] }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
         </view>
-        <view class="stat-card">
-          <text class="stat-value">{{ statistics.totalLessonsAttended }}</text>
-          <text class="stat-label">总上课数</text>
-        </view>
-        <view class="stat-card">
-          <text class="stat-value">{{ statistics.prepaidLessonsConsumed }}</text>
-          <text class="stat-label">预付费已消课时</text>
-        </view>
-        <view class="stat-card">
-          <text class="stat-value">{{ statistics.totalLessonsConsumed }}</text>
-          <text class="stat-label">已消课时</text>
-        </view>
-        <view class="stat-card">
-          <text class="stat-value warning">{{ statistics.totalRemainingLessons }}</text>
-          <text class="stat-label">剩余课时</text>
+        <view class="dialog-footer">
+          <button class="btn-cancel" @click="attendDialogVisible = false">取消</button>
+          <button class="btn-confirm" @click="confirmAttend">确认上课</button>
         </view>
       </view>
     </view>
@@ -177,6 +176,12 @@ const statistics = ref({
 const todayCourses = ref([])
 const selectedDate = ref(new Date())
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+const attendDialogVisible = ref(false)
+const currentCourse = ref(null)
+const lessonCountIndex = ref(1)
+
+const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
+const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -279,24 +284,39 @@ const handleAttendCourse = async (course) => {
       content: '该课程未设置课程类型，上课后无法记录收入。是否继续上课？',
       success: async (res) => {
         if (res.confirm) {
-          await doAttendCourse(course)
+          currentCourse.value = course
+          lessonCountIndex.value = 1
+          attendDialogVisible.value = true
         }
       }
     })
     return
   }
   
-  await doAttendCourse(course)
+  currentCourse.value = course
+  lessonCountIndex.value = 1
+  attendDialogVisible.value = true
 }
 
-const doAttendCourse = async (course) => {
+const onLessonCountChange = (e) => {
+  lessonCountIndex.value = e.detail.value
+}
+
+const confirmAttend = async () => {
+  if (!currentCourse.value) return
+  
+  attendDialogVisible.value = false
+  await doAttendCourse(currentCourse.value, lessonCountValues[lessonCountIndex.value])
+}
+
+const doAttendCourse = async (course, lessonsConsumed = 1) => {
   try {
     await put(`/courses/${course._id}`, { status: 'completed' })
     await post('/lesson-records', {
       studentId: course.studentId._id,
       courseId: course._id,
       courseStartTime: course.startTime,
-      lessonsConsumed: 1,
+      lessonsConsumed: lessonsConsumed,
       lessonContent: '',
       isDeducted: true,
       notes: '从首页直接上课'
@@ -682,5 +702,134 @@ onShow(() => {
 .stat-label {
   font-size: 22rpx;
   color: #909399;
+}
+
+.dialog-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.dialog-content {
+  width: 85%;
+  max-width: 600rpx;
+  background-color: #fff;
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.dialog-close {
+  font-size: 40rpx;
+  color: #909399;
+}
+
+.dialog-body {
+  padding: 30rpx;
+}
+
+.attend-info {
+  text-align: center;
+  margin-bottom: 30rpx;
+  padding: 20rpx;
+  background-color: #f5f7fa;
+  border-radius: 12rpx;
+}
+
+.attend-student {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.attend-course {
+  display: block;
+  font-size: 26rpx;
+  color: #606266;
+  margin-bottom: 4rpx;
+}
+
+.attend-time {
+  display: block;
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.form-item {
+  margin-bottom: 24rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+
+.form-picker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.picker-arrow {
+  font-size: 20rpx;
+  color: #909399;
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx 30rpx 30rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.btn-cancel {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #fff;
+  color: #606266;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.btn-confirm {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #409EFF;
+  color: #fff;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
 }
 </style>
