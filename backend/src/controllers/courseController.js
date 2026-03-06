@@ -235,7 +235,6 @@ const rescheduleCourseGroup = async (req, res) => {
       fromCourseId,
       newStartDate,
       newEndDate,
-      newDayOfWeek,
       newStartTime,
       duration,
       studentId,
@@ -243,7 +242,7 @@ const rescheduleCourseGroup = async (req, res) => {
       notes
     } = req.body
     
-    if (!newStartDate || !newEndDate || newDayOfWeek === undefined || !newStartTime || !duration) {
+    if (!newStartDate || !newEndDate || !newStartTime || !duration) {
       return res.status(400).json({ message: '缺少必要参数' })
     }
     
@@ -278,6 +277,8 @@ const rescheduleCourseGroup = async (req, res) => {
     const endDate = new Date(newEndDate)
     const [hours, minutes] = newStartTime.split(':').map(Number)
     
+    const newDayOfWeek = startDate.getDay()
+    
     const newDates = []
     let currentDate = new Date(startDate)
     while (currentDate <= endDate) {
@@ -298,7 +299,6 @@ const rescheduleCourseGroup = async (req, res) => {
     let createdCount = 0
     let deletedCount = 0
     
-    const existingIds = new Set(coursesToProcess.map(c => c._id.toString()))
     const usedIndices = new Set()
     
     for (let i = 0; i < newCourseTimes.length; i++) {
