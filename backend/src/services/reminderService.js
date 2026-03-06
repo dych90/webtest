@@ -13,13 +13,16 @@ const checkAndSendReminders = async () => {
 
     const now = new Date()
     const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+    
+    const nowFloored = new Date(Math.floor(now.getTime() / 60000) * 60000)
+    const oneHourLaterCeiled = new Date(Math.ceil(oneHourLater.getTime() / 60000) * 60000 + 1000)
 
-    console.log(`查询时间范围: ${now.toISOString()} 到 ${oneHourLater.toISOString()}`)
+    console.log(`查询时间范围: ${nowFloored.toISOString()} 到 ${oneHourLaterCeiled.toISOString()}`)
 
     const courses = await Course.find({
       startTime: {
-        $gte: now,
-        $lte: oneHourLater
+        $gte: nowFloored,
+        $lte: oneHourLaterCeiled
       },
       status: 'normal',
       reminderSent: false
@@ -143,13 +146,13 @@ const sendMorningDailyReminder = async () => {
             value: formatTime(now)
           },
           thing11: {
-            value: `今日课程共${courses.length}节`
+            value: `今日${courses.length}节课`
           },
           thing12: {
             value: '请检查记录'
           },
           phrase16: {
-            value: '建议核对消课记录'
+            value: '核对消课'
           }
         }
 
@@ -206,13 +209,13 @@ const sendEveningDailyReminder = async () => {
             value: formatTime(now)
           },
           thing11: {
-            value: `今日课程共${courses.length}节`
+            value: `今日${courses.length}节课`
           },
           thing12: {
             value: '请检查记录'
           },
           phrase16: {
-            value: '建议核对消课记录'
+            value: '核对消课'
           }
         }
 
