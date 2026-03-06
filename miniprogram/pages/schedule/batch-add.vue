@@ -29,6 +29,12 @@
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
+        <view class="default-duration-check" @click.stop="toggleDefaultDuration">
+          <view class="checkbox" :class="{ checked: isDefaultDuration }">
+            <text v-if="isDefaultDuration">✓</text>
+          </view>
+          <text class="checkbox-label">设为默认时长</text>
+        </view>
       </view>
       
       <view class="form-item">
@@ -134,11 +140,12 @@ const courseTypeIndex = ref(-1)
 const durationOptions = ['30分钟', '45分钟', '50分钟', '60分钟', '70分钟', '90分钟', '120分钟']
 const durationIndex = ref(3)
 const durationValues = [30, 45, 50, 60, 70, 90, 120]
-const statusOptions = ['正常', '已完成', '已取消']
+const statusOptions = ['未上课', '已完成', '已取消']
 const statusValues = ['normal', 'completed', 'cancelled']
 const statusIndex = ref(1)
 const loading = ref(false)
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+const isDefaultDuration = ref(false)
 
 const form = reactive({
   studentId: '',
@@ -155,6 +162,20 @@ onMounted(async () => {
   const today = new Date()
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   courseList.value[0].date = dateStr
+  
+  try {
+    const saved = uni.getStorageSync('defaultDuration')
+    if (saved) {
+      const idx = durationValues.indexOf(Number(saved))
+      if (idx >= 0) {
+        durationIndex.value = idx
+        form.duration = durationValues[idx]
+        isDefaultDuration.value = true
+      }
+    }
+  } catch (e) {
+    console.error('读取默认时长失败', e)
+  }
   
   await fetchCourseTypes()
   await fetchStudents()
@@ -235,6 +256,18 @@ const onDurationChange = (e) => {
   form.duration = durationValues[e.detail.value]
 }
 
+const toggleDefaultDuration = () => {
+  isDefaultDuration.value = !isDefaultDuration.value
+  if (isDefaultDuration.value) {
+    try {
+      uni.setStorageSync('defaultDuration', form.duration)
+      uni.showToast({ title: '已设置默认时长', icon: 'success' })
+    } catch (e) {
+      console.error('保存默认时长失败', e)
+    }
+  }
+}
+
 const onStatusChange = (e) => {
   statusIndex.value = e.detail.value
   form.status = statusValues[e.detail.value]
@@ -272,20 +305,20 @@ const handleSubmit = async () => {
     return
   }
   
-  const validCourses = courseList.value.filter(item => item.date && item.startTime)
-  if (validCourses.length === 0) {
-    uni.showToast({ title: '请至少添加一节完整的课程', icon: 'none' })
+  const incompleteCourses = courseList.value.filter(item => !item.date || !item.startTime)
+  if (incompleteCourses.length > 0) {
+    uni.showToast({ title: '请完善所有课程的日期和时间', icon: 'none' })
     return
   }
   
   loading.value = true
   
   try {
-    const promises = validCourses.map(item => {
+    const promises = courseList.value.map(item => {
       const startTime = new Date(`${item.date}T${item.startTime}:00`)
       const endTime = new Date(startTime.getTime() + form.duration * 60000)
       
-      return post('/courses', {
+      const coursePromise = post('/courses', {
         studentId: form.studentId,
         courseTypeId: form.courseTypeId || undefined,
         startTime: startTime.toISOString(),
@@ -293,10 +326,26 @@ const handleSubmit = async () => {
         status: form.status,
         notes: '批量添加'
       })
+      
+      if (form.status === 'completed') {
+        return coursePromise.then(courseRes => {
+          return post('/lesson-records', {
+            studentId: form.studentId,
+            courseId: courseRes.data._id,
+            courseStartTime: startTime.toISOString(),
+            lessonsConsumed: 1,
+            lessonContent: '',
+            isDeducted: true,
+            notes: '批量添加-自动消课'
+          })
+        })
+      }
+      
+      return coursePromise
     })
     
     await Promise.all(promises)
-    uni.showToast({ title: `成功创建${validCourses.length}节课程`, icon: 'success' })
+    uni.showToast({ title: `成功创建${courseList.value.length}节课程`, icon: 'success' })
     
     setTimeout(() => {
       uni.navigateBack()
@@ -352,6 +401,37 @@ const handleSubmit = async () => {
 .picker-arrow {
   font-size: 20rpx;
   color: #909399;
+}
+
+.default-duration-check {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+}
+
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  font-size: 24rpx;
+  color: #fff;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.checkbox.checked {
+  background: #409EFF;
+  border-color: #409EFF;
+}
+
+.checkbox-label {
+  font-size: 26rpx;
+  color: #606266;
 }
 
 .course-list-section {

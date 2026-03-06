@@ -3,6 +3,13 @@
     <view class="view-tabs">
       <view 
         class="tab-item" 
+        :class="{ active: viewMode === 'year' }" 
+        @click="viewMode = 'year'"
+      >
+        年
+      </view>
+      <view 
+        class="tab-item" 
         :class="{ active: viewMode === 'month' }" 
         @click="viewMode = 'month'"
       >
@@ -37,6 +44,38 @@
       <view class="today-btn" @click="goToday">
         <text>今天</text>
       </view>
+    </view>
+    
+    <view v-if="viewMode === 'year'" class="year-view">
+      <scroll-view scroll-y class="year-scroll">
+        <view 
+          v-for="month in yearMonths" 
+          :key="month.month" 
+          class="year-month-card"
+          @click="selectMonth(month.month)"
+        >
+          <view class="year-month-header">
+            <text class="year-month-title">{{ month.month + 1 }}月</text>
+            <text class="year-month-count">{{ month.courseCount }}节课</text>
+          </view>
+          <view class="year-month-grid">
+            <view class="year-day-name" v-for="name in dayNames" :key="name">{{ name }}</view>
+            <view 
+              v-for="(day, index) in month.days" 
+              :key="index"
+              class="year-day"
+              :class="{ 
+                'other-month': day.otherMonth,
+                'is-today': day.isToday,
+                'has-courses': day.courseCount > 0
+              }"
+            >
+              <text class="year-day-number">{{ day.dayNumber }}</text>
+              <view v-if="day.courseCount > 0" class="year-dot"></view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
     </view>
     
     <view v-if="viewMode === 'month'" class="month-view">
@@ -191,12 +230,75 @@ function formatDateString(date) {
 }
 
 const viewMode = ref('month')
+const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date())
 const currentWeekStart = ref(new Date())
 const selectedDate = ref(formatDateString(new Date()))
 const courses = ref([])
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+
+const yearMonths = computed(() => {
+  const months = []
+  const today = formatDateString(new Date())
+  
+  for (let m = 0; m < 12; m++) {
+    const days = []
+    const year = currentYear.value
+    const firstDay = new Date(year, m, 1)
+    const lastDay = new Date(year, m + 1, 0)
+    const startDayOfWeek = firstDay.getDay()
+    const daysInMonth = lastDay.getDate()
+    
+    const prevMonth = new Date(year, m, 0)
+    const prevMonthDays = prevMonth.getDate()
+    
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const day = prevMonthDays - i
+      const date = formatDateString(new Date(year, m - 1, day))
+      days.push({
+        date,
+        dayNumber: day,
+        otherMonth: true,
+        isToday: false,
+        courseCount: getCourseCount(date)
+      })
+    }
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = formatDateString(new Date(year, m, i))
+      days.push({
+        date,
+        dayNumber: i,
+        otherMonth: false,
+        isToday: date === today,
+        courseCount: getCourseCount(date)
+      })
+    }
+    
+    const remainingDays = 42 - days.length
+    for (let i = 1; i <= remainingDays; i++) {
+      const date = formatDateString(new Date(year, m + 1, i))
+      days.push({
+        date,
+        dayNumber: i,
+        otherMonth: true,
+        isToday: false,
+        courseCount: getCourseCount(date)
+      })
+    }
+    
+    const courseCount = days.reduce((sum, d) => sum + d.courseCount, 0)
+    
+    months.push({
+      month: m,
+      days,
+      courseCount
+    })
+  }
+  
+  return months
+})
 
 const monthDays = computed(() => {
   const days = []
@@ -272,7 +374,9 @@ const weekDays = computed(() => {
 })
 
 const periodText = computed(() => {
-  if (viewMode.value === 'month') {
+  if (viewMode.value === 'year') {
+    return `${currentYear.value}年`
+  } else if (viewMode.value === 'month') {
     const year = currentMonth.value.getFullYear()
     const month = currentMonth.value.getMonth() + 1
     return `${year}年${month}月`
@@ -349,7 +453,9 @@ function getStatusText(status) {
 }
 
 const prevPeriod = () => {
-  if (viewMode.value === 'month') {
+  if (viewMode.value === 'year') {
+    currentYear.value -= 1
+  } else if (viewMode.value === 'month') {
     const newDate = new Date(currentMonth.value)
     newDate.setMonth(newDate.getMonth() - 1)
     currentMonth.value = newDate
@@ -366,7 +472,9 @@ const prevPeriod = () => {
 }
 
 const nextPeriod = () => {
-  if (viewMode.value === 'month') {
+  if (viewMode.value === 'year') {
+    currentYear.value += 1
+  } else if (viewMode.value === 'month') {
     const newDate = new Date(currentMonth.value)
     newDate.setMonth(newDate.getMonth() + 1)
     currentMonth.value = newDate
@@ -384,12 +492,18 @@ const nextPeriod = () => {
 
 const goToday = () => {
   const today = new Date()
+  currentYear.value = today.getFullYear()
   currentMonth.value = new Date(today.getFullYear(), today.getMonth(), 1)
   const dayOfWeek = today.getDay()
   currentWeekStart.value = new Date(today)
   currentWeekStart.value.setDate(today.getDate() - dayOfWeek)
   selectedDate.value = formatDateString(today)
   fetchCourses()
+}
+
+const selectMonth = (month) => {
+  currentMonth.value = new Date(currentYear.value, month, 1)
+  viewMode.value = 'month'
 }
 
 const selectDate = (day) => {
@@ -411,7 +525,12 @@ const fetchCourses = async () => {
   try {
     let start, end
     
-    if (viewMode.value === 'month') {
+    if (viewMode.value === 'year') {
+      start = new Date(currentYear.value, 0, 1)
+      start.setDate(start.getDate() - start.getDay())
+      end = new Date(currentYear.value, 11, 31)
+      end.setDate(end.getDate() + (6 - end.getDay()))
+    } else if (viewMode.value === 'month') {
       start = new Date(currentMonth.value.getFullYear(), currentMonth.value.getMonth(), 1)
       start.setDate(start.getDate() - start.getDay())
       end = new Date(start)
@@ -618,6 +737,99 @@ onShow(() => {
 }
 
 .month-day.is-selected .dot {
+  background-color: #fff;
+}
+
+.year-view {
+  background-color: #f8f8f8;
+  height: calc(100vh - 200rpx);
+}
+
+.year-scroll {
+  height: 100%;
+}
+
+.year-month-card {
+  background-color: #fff;
+  margin: 20rpx;
+  padding: 20rpx;
+  border-radius: 16rpx;
+}
+
+.year-month-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.year-month-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.year-month-count {
+  font-size: 24rpx;
+  color: #409EFF;
+}
+
+.year-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2rpx;
+}
+
+.year-day-name {
+  text-align: center;
+  font-size: 20rpx;
+  color: #909399;
+  padding: 4rpx 0;
+}
+
+.year-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4rpx;
+  position: relative;
+}
+
+.year-day-number {
+  font-size: 20rpx;
+  color: #333;
+}
+
+.year-day.other-month .year-day-number {
+  color: #c0c4cc;
+}
+
+.year-day.is-today {
+  background-color: #409EFF;
+}
+
+.year-day.is-today .year-day-number {
+  color: #fff;
+}
+
+.year-day.has-courses .year-day-number {
+  font-weight: bold;
+}
+
+.year-dot {
+  width: 6rpx;
+  height: 6rpx;
+  border-radius: 50%;
+  background-color: #409EFF;
+  position: absolute;
+  bottom: 4rpx;
+}
+
+.year-day.is-today .year-dot {
   background-color: #fff;
 }
 

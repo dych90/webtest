@@ -135,7 +135,8 @@ const createLessonRecord = async (req, res) => {
     const lessonRecordData = {
       ...req.body,
       unitPrice,
-      isGiftLesson
+      isGiftLesson,
+      isDeducted: req.body.isDeducted === true || req.body.isDeducted === 'true'
     }
     
     const lessonRecord = await LessonRecord.create(lessonRecordData)
