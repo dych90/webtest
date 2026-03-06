@@ -39,4 +39,9 @@ router.delete('/courses/group/:groupId', authenticateToken, (req, res, next) => 
   next()
 }, courseController.deleteCoursesByGroup)
 
+router.post('/courses/group/:groupId/reschedule', authenticateToken, (req, res, next) => {
+  console.log('POST /courses/group/:groupId/reschedule - 批量修改课程组时间，groupId:', req.params.groupId)
+  next()
+}, courseController.rescheduleCourseGroup)
+
 module.exports = router

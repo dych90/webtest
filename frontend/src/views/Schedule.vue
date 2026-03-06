@@ -136,13 +136,69 @@
         <el-form-item v-if="form.groupId && dialogTitle === '编辑课程'" label="批量操作">
           <el-checkbox v-model="form.applyToGroup">应用到同组课程</el-checkbox>
         </el-form-item>
-        <el-form-item v-if="form.applyToGroup && form.groupId" label="更新范围">
+        <el-form-item v-if="form.applyToGroup && form.groupId" label="修改模式">
           <el-radio-group v-model="form.updateScope">
-            <el-radio label="all">全部更新（{{ form.groupCourseCount }}节）</el-radio>
-            <el-radio label="fromCurrent">从当前课程开始更新（{{ form.groupCourseCount - form.courseIndex }}节）</el-radio>
-            <el-radio label="uncompleted">只更新未上课的课程</el-radio>
+            <el-radio label="timeOnly">仅修改时间（{{ form.groupCourseCount - form.courseIndex }}节）</el-radio>
+            <el-radio label="reschedule">重新排课（修改日期范围和星期）</el-radio>
           </el-radio-group>
         </el-form-item>
+        <template v-if="form.applyToGroup && form.groupId && form.updateScope === 'reschedule'">
+          <el-form-item label="新开始日期">
+            <el-date-picker
+              v-model="form.newStartDate"
+              type="date"
+              placeholder="选择新的开始日期"
+              style="width: 100%"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+          <el-form-item label="新结束日期">
+            <el-date-picker
+              v-model="form.newEndDate"
+              type="date"
+              placeholder="选择新的结束日期"
+              style="width: 100%"
+              value-format="YYYY-MM-DD"
+            />
+          </el-form-item>
+          <el-form-item label="新星期">
+            <el-select v-model="form.newDayOfWeek" placeholder="选择新的星期" style="width: 100%">
+              <el-option label="周日" :value="0" />
+              <el-option label="周一" :value="1" />
+              <el-option label="周二" :value="2" />
+              <el-option label="周三" :value="3" />
+              <el-option label="周四" :value="4" />
+              <el-option label="周五" :value="5" />
+              <el-option label="周六" :value="6" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="新开始时间">
+            <el-time-select
+              v-model="form.newStartTime"
+              start="06:00"
+              step="00:15"
+              end="23:00"
+              placeholder="选择新的开始时间"
+              style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="课程时长">
+            <el-select v-model="form.duration" placeholder="选择时长" style="width: 100%">
+              <el-option label="30分钟" :value="30" />
+              <el-option label="45分钟" :value="45" />
+              <el-option label="50分钟" :value="50" />
+              <el-option label="60分钟" :value="60" />
+              <el-option label="70分钟" :value="70" />
+              <el-option label="90分钟" :value="90" />
+              <el-option label="120分钟" :value="120" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="修改范围">
+            <el-alert type="info" :closable="false" style="margin-bottom: 10px">
+              从当前课程开始修改，前面的 {{ form.courseIndex }} 节课程保持不变
+            </el-alert>
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -187,8 +243,13 @@ const form = ref({
   notes: '',
   groupId: '',
   groupCourseCount: 0,
+  courseIndex: 0,
   applyToGroup: false,
-  updateScope: 'all'
+  updateScope: 'timeOnly',
+  newStartDate: '',
+  newEndDate: '',
+  newDayOfWeek: undefined,
+  newStartTime: ''
 })
 
 const isMobile = computed(() => window.innerWidth < 768)
@@ -320,10 +381,16 @@ const calendarOptions = ref({
       
       let groupCourseCount = 0
       let courseIndex = 0
+      let lastCourseDate = dateStr
       if (course.groupId) {
         const groupCourses = courses.value.filter(c => c.groupId === course.groupId)
         groupCourseCount = groupCourses.length
         courseIndex = groupCourses.findIndex(c => c._id === course._id)
+        if (groupCourses.length > 0) {
+          const lastCourse = groupCourses[groupCourses.length - 1]
+          const lastDate = new Date(lastCourse.startTime)
+          lastCourseDate = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}-${String(lastDate.getDate()).padStart(2, '0')}`
+        }
       }
       
       form.value = {
@@ -342,8 +409,11 @@ const calendarOptions = ref({
         groupCourseCount: groupCourseCount,
         courseIndex: courseIndex,
         applyToGroup: false,
-        updateScope: 'all',
-        timeAdjustMode: 'timeOnly'
+        updateScope: 'timeOnly',
+        newStartDate: dateStr,
+        newEndDate: lastCourseDate,
+        newDayOfWeek: startTime.getDay(),
+        newStartTime: `${hours}:${minutes}`
       }
       dialogVisible.value = true
     }
@@ -459,7 +529,11 @@ const handleAdd = () => {
     groupCourseCount: 0,
     courseIndex: 0,
     applyToGroup: false,
-    updateScope: 'all'
+    updateScope: 'timeOnly',
+    newStartDate: '',
+    newEndDate: '',
+    newDayOfWeek: undefined,
+    newStartTime: ''
   }
   dialogVisible.value = true
 }
@@ -566,39 +640,52 @@ const handleSave = async () => {
       }
     } else {
       if (form.value.applyToGroup && form.value.groupId) {
-        const groupCourses = courses.value.filter(c => c.groupId === form.value.groupId)
-        const [hours, minutes] = form.value.startTime.split(':')
-        
-        let coursesToUpdate = []
-        
-        if (form.value.updateScope === 'all') {
-          coursesToUpdate = [...groupCourses]
-        } else if (form.value.updateScope === 'fromCurrent') {
-          const currentIndex = groupCourses.findIndex(c => c._id === form.value._id)
-          coursesToUpdate = groupCourses.slice(currentIndex)
-        } else if (form.value.updateScope === 'uncompleted') {
-          coursesToUpdate = groupCourses.filter(c => c.status !== 'completed')
-        }
-        
-        const updatePromises = coursesToUpdate.map(course => {
-          const originalDate = new Date(course.startTime)
-          const newStartTime = new Date(originalDate)
-          newStartTime.setHours(parseInt(hours))
-          newStartTime.setMinutes(parseInt(minutes))
-          const newEndTime = new Date(newStartTime.getTime() + form.value.duration * 60000)
+        if (form.value.updateScope === 'reschedule') {
+          if (!form.value.newStartDate || !form.value.newEndDate || form.value.newDayOfWeek === undefined || !form.value.newStartTime) {
+            ElMessage.error('请填写完整的重新排课信息')
+            return
+          }
           
-          return request.put(`/courses/${course._id}`, {
-            studentId: form.value.studentId || null,
-            courseTypeId: form.value.courseTypeId || null,
-            startTime: newStartTime.toISOString(),
-            endTime: newEndTime.toISOString(),
-            status: form.value.status,
-            notes: form.value.notes
+          const response = await request.post(`/courses/group/${form.value.groupId}/reschedule`, {
+            fromCourseId: form.value._id,
+            newStartDate: form.value.newStartDate,
+            newEndDate: form.value.newEndDate,
+            newDayOfWeek: form.value.newDayOfWeek,
+            newStartTime: form.value.newStartTime,
+            duration: form.value.duration,
+            studentId: form.value.studentId || undefined,
+            courseTypeId: form.value.courseTypeId || undefined,
+            notes: form.value.notes || undefined
           })
-        })
-        
-        await Promise.all(updatePromises)
-        ElMessage.success(`成功更新${coursesToUpdate.length}节课程`)
+          
+          ElMessage.success(response.message)
+        } else {
+          const groupCourses = courses.value.filter(c => c.groupId === form.value.groupId)
+          const [hours, minutes] = form.value.startTime.split(':')
+          
+          const currentIndex = groupCourses.findIndex(c => c._id === form.value._id)
+          const coursesToUpdate = groupCourses.slice(currentIndex)
+          
+          const updatePromises = coursesToUpdate.map(course => {
+            const originalDate = new Date(course.startTime)
+            const newStartTime = new Date(originalDate)
+            newStartTime.setHours(parseInt(hours))
+            newStartTime.setMinutes(parseInt(minutes))
+            const newEndTime = new Date(newStartTime.getTime() + form.value.duration * 60000)
+            
+            return request.put(`/courses/${course._id}`, {
+              studentId: form.value.studentId || null,
+              courseTypeId: form.value.courseTypeId || null,
+              startTime: newStartTime.toISOString(),
+              endTime: newEndTime.toISOString(),
+              status: form.value.status,
+              notes: form.value.notes
+            })
+          })
+          
+          await Promise.all(updatePromises)
+          ElMessage.success(`成功更新${coursesToUpdate.length}节课程`)
+        }
       } else {
         await request.put(`/courses/${form.value._id}`, dataToSend)
         ElMessage.success('更新成功')

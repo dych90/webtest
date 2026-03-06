@@ -222,6 +222,143 @@ const deleteCoursesByGroup = async (req, res) => {
   }
 }
 
+const rescheduleCourseGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params
+    const user = await User.findById(req.userId)
+    
+    if (!groupId) {
+      return res.status(400).json({ message: 'groupId 不能为空' })
+    }
+    
+    const {
+      fromCourseId,
+      newStartDate,
+      newEndDate,
+      newDayOfWeek,
+      newStartTime,
+      duration,
+      studentId,
+      courseTypeId,
+      notes
+    } = req.body
+    
+    if (!newStartDate || !newEndDate || newDayOfWeek === undefined || !newStartTime || !duration) {
+      return res.status(400).json({ message: '缺少必要参数' })
+    }
+    
+    const baseFilter = { groupId }
+    if (user.role !== 'admin') {
+      baseFilter.teacherId = req.userId
+    }
+    
+    const allGroupCourses = await Course.find(baseFilter)
+      .sort({ startTime: 1 })
+      .populate('teacherId')
+    
+    if (allGroupCourses.length === 0) {
+      return res.status(404).json({ message: '未找到课程组' })
+    }
+    
+    const firstCourse = allGroupCourses[0]
+    const teacherId = firstCourse.teacherId?._id || firstCourse.teacherId
+    
+    let startIndex = 0
+    if (fromCourseId) {
+      startIndex = allGroupCourses.findIndex(c => c._id.toString() === fromCourseId)
+      if (startIndex === -1) {
+        startIndex = 0
+      }
+    }
+    
+    const coursesBefore = allGroupCourses.slice(0, startIndex)
+    const coursesToProcess = allGroupCourses.slice(startIndex)
+    
+    const startDate = new Date(newStartDate)
+    const endDate = new Date(newEndDate)
+    const [hours, minutes] = newStartTime.split(':').map(Number)
+    
+    const newDates = []
+    let currentDate = new Date(startDate)
+    while (currentDate <= endDate) {
+      if (currentDate.getDay() === newDayOfWeek) {
+        newDates.push(new Date(currentDate))
+      }
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+    
+    const newCourseTimes = newDates.map(date => {
+      const startTime = new Date(date)
+      startTime.setHours(hours, minutes, 0, 0)
+      const endTime = new Date(startTime.getTime() + duration * 60000)
+      return { startTime, endTime }
+    })
+    
+    let updatedCount = 0
+    let createdCount = 0
+    let deletedCount = 0
+    
+    const existingIds = new Set(coursesToProcess.map(c => c._id.toString()))
+    const usedIndices = new Set()
+    
+    for (let i = 0; i < newCourseTimes.length; i++) {
+      const { startTime, endTime } = newCourseTimes[i]
+      
+      const existingIndex = coursesToProcess.findIndex((c, idx) => {
+        if (usedIndices.has(idx)) return false
+        const existingStart = new Date(c.startTime)
+        return existingStart.getTime() === startTime.getTime()
+      })
+      
+      if (existingIndex !== -1) {
+        usedIndices.add(existingIndex)
+        const course = coursesToProcess[existingIndex]
+        await Course.findByIdAndUpdate(course._id, {
+          startTime,
+          endTime,
+          studentId: studentId || course.studentId,
+          courseTypeId: courseTypeId || course.courseTypeId,
+          notes: notes !== undefined ? notes : course.notes
+        })
+        updatedCount++
+      } else {
+        const courseData = {
+          studentId: studentId || firstCourse.studentId,
+          courseTypeId: courseTypeId || firstCourse.courseTypeId,
+          teacherId: teacherId,
+          startTime,
+          endTime,
+          status: 'normal',
+          groupId: groupId,
+          notes: notes !== undefined ? notes : firstCourse.notes
+        }
+        await Course.create(courseData)
+        createdCount++
+      }
+    }
+    
+    for (let i = 0; i < coursesToProcess.length; i++) {
+      if (!usedIndices.has(i)) {
+        await Course.findByIdAndDelete(coursesToProcess[i]._id)
+        deletedCount++
+      }
+    }
+    
+    res.json({
+      message: `成功修改课程组：更新${updatedCount}节，新增${createdCount}节，删除${deletedCount}节`,
+      data: {
+        updatedCount,
+        createdCount,
+        deletedCount,
+        totalCourses: coursesBefore.length + newCourseTimes.length
+      }
+    })
+  } catch (error) {
+    console.error('批量修改课程组时间错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 module.exports = {
   getCourses,
   getCourseById,
@@ -229,5 +366,6 @@ module.exports = {
   updateCourse,
   deleteCourse,
   updateCoursesByGroup,
-  deleteCoursesByGroup
+  deleteCoursesByGroup,
+  rescheduleCourseGroup
 }
