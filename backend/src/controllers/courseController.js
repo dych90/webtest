@@ -86,7 +86,8 @@ const createCourse = async (req, res) => {
     
     const courseData = {
       ...req.body,
-      teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
+      teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId,
+      groupId: req.body.groupId || null
     }
     
     const course = await Course.create(courseData)
@@ -157,10 +158,76 @@ const deleteCourse = async (req, res) => {
   }
 }
 
+const updateCoursesByGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params
+    const user = await User.findById(req.userId)
+    
+    if (!groupId) {
+      return res.status(400).json({ message: 'groupId 不能为空' })
+    }
+    
+    const filter = { groupId }
+    
+    if (user.role !== 'admin') {
+      filter.teacherId = req.userId
+    }
+    
+    const { studentId, courseTypeId, startTime, endTime, status, notes } = req.body
+    
+    const updateData = {}
+    if (studentId !== undefined) updateData.studentId = studentId
+    if (courseTypeId !== undefined) updateData.courseTypeId = courseTypeId
+    if (startTime !== undefined) updateData.startTime = startTime
+    if (endTime !== undefined) updateData.endTime = endTime
+    if (status !== undefined) updateData.status = status
+    if (notes !== undefined) updateData.notes = notes
+    
+    const result = await Course.updateMany(filter, updateData)
+    
+    res.json({
+      message: `成功更新${result.modifiedCount}节课程`,
+      data: { modifiedCount: result.modifiedCount }
+    })
+  } catch (error) {
+    console.error('批量更新课程错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const deleteCoursesByGroup = async (req, res) => {
+  try {
+    const { groupId } = req.params
+    const user = await User.findById(req.userId)
+    
+    if (!groupId) {
+      return res.status(400).json({ message: 'groupId 不能为空' })
+    }
+    
+    const filter = { groupId }
+    
+    if (user.role !== 'admin') {
+      filter.teacherId = req.userId
+    }
+    
+    const result = await Course.deleteMany(filter)
+    
+    res.json({
+      message: `成功删除${result.deletedCount}节课程`,
+      data: { deletedCount: result.deletedCount }
+    })
+  } catch (error) {
+    console.error('批量删除课程错误:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 module.exports = {
   getCourses,
   getCourseById,
   createCourse,
   updateCourse,
-  deleteCourse
+  deleteCourse,
+  updateCoursesByGroup,
+  deleteCoursesByGroup
 }

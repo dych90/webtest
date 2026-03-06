@@ -29,4 +29,14 @@ router.delete('/courses/:id', authenticateToken, (req, res, next) => {
   next()
 }, courseController.deleteCourse)
 
+router.put('/courses/group/:groupId', authenticateToken, (req, res, next) => {
+  console.log('PUT /courses/group/:groupId - 批量更新课程，groupId:', req.params.groupId)
+  next()
+}, courseController.updateCoursesByGroup)
+
+router.delete('/courses/group/:groupId', authenticateToken, (req, res, next) => {
+  console.log('DELETE /courses/group/:groupId - 批量删除课程，groupId:', req.params.groupId)
+  next()
+}, courseController.deleteCoursesByGroup)
+
 module.exports = router

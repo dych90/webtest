@@ -7,6 +7,7 @@ const courseSchema = new mongoose.Schema({
   endTime: { type: Date, required: true },
   isRecurring: { type: Boolean, default: false },
   recurringPattern: String,
+  groupId: { type: String, index: true },
   status: { type: String, default: 'normal', enum: ['normal', 'cancelled', 'rescheduled', 'completed'] },
   isGiftLesson: { type: Boolean, default: false },
   originalTime: Date,

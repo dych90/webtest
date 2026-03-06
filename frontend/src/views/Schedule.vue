@@ -133,11 +133,15 @@
         <el-form-item label="备注">
           <el-input v-model="form.notes" type="textarea" :rows="2" placeholder="请输入备注" />
         </el-form-item>
+        <el-form-item v-if="form.groupId && dialogTitle === '编辑课程'" label="批量操作">
+          <el-checkbox v-model="form.applyToGroup">应用到同组课程（共{{ form.groupCourseCount }}节）</el-checkbox>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSave">保存</el-button>
         <el-button v-if="dialogTitle === '编辑课程'" type="danger" @click="handleDelete">删除</el-button>
+        <el-button v-if="dialogTitle === '编辑课程' && form.groupId" type="warning" @click="handleDeleteGroup">批量删除同组</el-button>
       </template>
     </el-dialog>
   </div>
@@ -173,7 +177,10 @@ const form = ref({
   recurringStartDate: '',
   recurringEndDate: '',
   status: 'normal',
-  notes: ''
+  notes: '',
+  groupId: '',
+  groupCourseCount: 0,
+  applyToGroup: false
 })
 
 const isMobile = computed(() => window.innerWidth < 768)
@@ -302,6 +309,12 @@ const calendarOptions = ref({
       const hours = startTime.getHours().toString().padStart(2, '0')
       const minutes = startTime.getMinutes().toString().padStart(2, '0')
       const dateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`
+      
+      let groupCourseCount = 0
+      if (course.groupId) {
+        groupCourseCount = courses.value.filter(c => c.groupId === course.groupId).length
+      }
+      
       form.value = {
         _id: course._id,
         studentId: course.studentId?._id || '',
@@ -313,7 +326,10 @@ const calendarOptions = ref({
         recurringStartDate: dateStr,
         recurringEndDate: '',
         status: course.status || 'normal',
-        notes: course.notes || ''
+        notes: course.notes || '',
+        groupId: course.groupId || '',
+        groupCourseCount: groupCourseCount,
+        applyToGroup: false
       }
       dialogVisible.value = true
     }
@@ -420,7 +436,10 @@ const handleAdd = () => {
     recurringStartDate: dateStr,
     recurringEndDate: '',
     status: 'normal',
-    notes: ''
+    notes: '',
+    groupId: '',
+    groupCourseCount: 0,
+    applyToGroup: false
   }
   dialogVisible.value = true
 }
@@ -440,6 +459,25 @@ const handleDelete = async () => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除课程失败', error)
+    }
+  }
+}
+
+const handleDeleteGroup = async () => {
+  try {
+    await ElMessageBox.confirm(`确定要删除同组的${form.value.groupCourseCount}节课程吗？此操作不可恢复！`, '批量删除确认', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    await request.delete(`/courses/group/${form.value.groupId}`)
+    ElMessage.success(`成功删除${form.value.groupCourseCount}节课程`)
+    dialogVisible.value = false
+    await fetchCourses()
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除课程失败', error)
     }
   }
 }
@@ -482,6 +520,8 @@ const handleSave = async () => {
           currentDate.setDate(currentDate.getDate() + 1)
         }
         
+        const groupId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+        
         const promises = dates.map(date => {
           const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
           const courseStartTime = new Date(`${dateStr}T${form.value.startTime}:00`)
@@ -493,7 +533,8 @@ const handleSave = async () => {
             startTime: courseStartTime.toISOString(),
             endTime: courseEndTime.toISOString(),
             status: 'normal',
-            notes: form.value.notes
+            notes: form.value.notes,
+            groupId: groupId
           })
         })
         
@@ -504,44 +545,49 @@ const handleSave = async () => {
         ElMessage.success('添加成功')
       }
     } else {
-      await request.put(`/courses/${form.value._id}`, dataToSend)
-      
-      if (form.value.isRecurring && form.value.recurringStartDate && form.value.recurringEndDate) {
-        const startDate = new Date(form.value.recurringStartDate)
-        const endDate = new Date(form.value.recurringEndDate)
-        const targetDayOfWeek = startTime.getDay()
-        
-        const dates = []
-        let currentDate = new Date(startDate)
-        while (currentDate <= endDate) {
-          if (currentDate.getDay() === targetDayOfWeek) {
-            const dateStr = formatDate(currentDate)
-            if (dateStr !== form.value.date) {
-              dates.push(new Date(currentDate))
-            }
-          }
-          currentDate.setDate(currentDate.getDate() + 1)
-        }
-        
-        const promises = dates.map(date => {
-          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-          const courseStartTime = new Date(`${dateStr}T${form.value.startTime}:00`)
-          const courseEndTime = new Date(courseStartTime.getTime() + form.value.duration * 60000)
-          
-          return request.post('/courses', {
-            studentId: form.value.studentId || undefined,
-            courseTypeId: form.value.courseTypeId || undefined,
-            startTime: courseStartTime.toISOString(),
-            endTime: courseEndTime.toISOString(),
-            status: 'normal',
-            notes: form.value.notes
-          })
-        })
-        
-        await Promise.all(promises)
-        ElMessage.success(`保存成功，新增${dates.length}节课程`)
+      if (form.value.applyToGroup && form.value.groupId) {
+        await request.put(`/courses/group/${form.value.groupId}`, dataToSend)
+        ElMessage.success(`成功更新${form.value.groupCourseCount}节课程`)
       } else {
-        ElMessage.success('更新成功')
+        await request.put(`/courses/${form.value._id}`, dataToSend)
+        
+        if (form.value.isRecurring && form.value.recurringStartDate && form.value.recurringEndDate) {
+          const startDate = new Date(form.value.recurringStartDate)
+          const endDate = new Date(form.value.recurringEndDate)
+          const targetDayOfWeek = startTime.getDay()
+          
+          const dates = []
+          let currentDate = new Date(startDate)
+          while (currentDate <= endDate) {
+            if (currentDate.getDay() === targetDayOfWeek) {
+              const dateStr = formatDate(currentDate)
+              if (dateStr !== form.value.date) {
+                dates.push(new Date(currentDate))
+              }
+            }
+            currentDate.setDate(currentDate.getDate() + 1)
+          }
+          
+          const promises = dates.map(date => {
+            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+            const courseStartTime = new Date(`${dateStr}T${form.value.startTime}:00`)
+            const courseEndTime = new Date(courseStartTime.getTime() + form.value.duration * 60000)
+            
+            return request.post('/courses', {
+              studentId: form.value.studentId || undefined,
+              courseTypeId: form.value.courseTypeId || undefined,
+              startTime: courseStartTime.toISOString(),
+              endTime: courseEndTime.toISOString(),
+              status: 'normal',
+              notes: form.value.notes
+            })
+          })
+          
+          await Promise.all(promises)
+          ElMessage.success(`保存成功，新增${dates.length}节课程`)
+        } else {
+          ElMessage.success('更新成功')
+        }
       }
     }
     
