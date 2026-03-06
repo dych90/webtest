@@ -159,9 +159,22 @@
       </view>
     </view>
     
-    <view class="add-btn" @click="handleAdd">
-      <text>+</text>
+    <view class="add-btn" @click="showAddMenu = true">
+  <text>+</text>
+</view>
+
+<view class="add-menu-popup" v-if="showAddMenu" @click.self="showAddMenu = false">
+  <view class="menu-content" @click.stop>
+    <view class="menu-item" @click="handleSingleAdd">
+      <text class="menu-icon">📝</text>
+      <text class="menu-text">添加单节课程</text>
     </view>
+    <view class="menu-item" @click="handleBatchAdd">
+      <text class="menu-icon">📋</text>
+      <text class="menu-text">批量添加课程</text>
+    </view>
+  </view>
+</view>
   </view>
 </template>
 
@@ -436,9 +449,19 @@ const goToDetail = (course) => {
   })
 }
 
-const handleAdd = () => {
+const showAddMenu = ref(false)
+
+const handleSingleAdd = () => {
+  showAddMenu.value = false
   uni.navigateTo({
     url: `/pages/schedule/add?date=${selectedDate.value}`
+  })
+}
+
+const handleBatchAdd = () => {
+  showAddMenu.value = false
+  uni.navigateTo({
+    url: '/pages/schedule/batch-add'
   })
 }
 
@@ -883,5 +906,50 @@ onShow(() => {
   color: #fff;
   font-size: 48rpx;
   font-weight: 300;
+}
+
+.add-menu-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 999;
+}
+
+.menu-content {
+  width: 100%;
+  background-color: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 36rpx 40rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-item:active {
+  background-color: #f5f7fa;
+}
+
+.menu-icon {
+  font-size: 40rpx;
+  margin-right: 24rpx;
+}
+
+.menu-text {
+  font-size: 32rpx;
+  color: #333;
 }
 </style>

@@ -73,6 +73,14 @@
       }
     },
     {
+      "path": "pages/schedule/batch-add",
+      "style": {
+        "navigationBarTitleText": "批量添加课程",
+        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/lessons/lessons",
       "style": {
         "navigationBarTitleText": "消课管理",
