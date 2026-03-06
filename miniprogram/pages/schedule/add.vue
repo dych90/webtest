@@ -656,14 +656,16 @@ const handleSubmit = async () => {
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
   z-index: 999;
 }
 
 .student-picker-dialog {
-  width: 100%;
+  width: 90%;
+  max-width: 600rpx;
   background-color: #fff;
-  border-radius: 24rpx 24rpx 0 0;
+  border-radius: 24rpx;
   max-height: 70vh;
   display: flex;
   flex-direction: column;
@@ -705,7 +707,8 @@ const handleSubmit = async () => {
 
 .picker-list {
   flex: 1;
-  max-height: 50vh;
+  height: 50vh;
+  overflow-y: auto;
 }
 
 .picker-item {
