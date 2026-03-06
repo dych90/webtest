@@ -581,11 +581,17 @@ const handleSave = async () => {
         }
         
         const updatePromises = coursesToUpdate.map(course => {
+          const originalDate = new Date(course.startTime)
+          const newStartTime = new Date(originalDate)
+          newStartTime.setHours(parseInt(hours))
+          newStartTime.setMinutes(parseInt(minutes))
+          const newEndTime = new Date(newStartTime.getTime() + form.value.duration * 60000)
+          
           return request.put(`/courses/${course._id}`, {
             studentId: form.value.studentId || null,
             courseTypeId: form.value.courseTypeId || null,
-            startTime: dataToSend.startTime,
-            endTime: dataToSend.endTime,
+            startTime: newStartTime.toISOString(),
+            endTime: newEndTime.toISOString(),
             status: form.value.status,
             notes: form.value.notes
           })
