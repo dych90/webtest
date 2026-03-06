@@ -53,21 +53,6 @@
           <text class="menu-text" :class="{ 'subscribed-text': isSubscribed }">{{ isSubscribed ? '已订阅上课提醒' : '订阅上课提醒' }}</text>
           <text class="menu-arrow" :class="{ 'subscribed-arrow': isSubscribed }">{{ isSubscribed ? '✓' : '›' }}</text>
         </view>
-        <view class="menu-item" @click="handleTestPush" v-if="isSubscribed">
-          <view class="menu-icon">🧪</view>
-          <text class="menu-text">发送测试消息</text>
-          <text class="menu-arrow">›</text>
-        </view>
-        <view class="menu-item" @click="handleTestMorningReminder" v-if="isSubscribed">
-          <view class="menu-icon">🌅</view>
-          <text class="menu-text">测试早上提醒</text>
-          <text class="menu-arrow">›</text>
-        </view>
-        <view class="menu-item" @click="handleTestEveningReminder" v-if="isSubscribed">
-          <view class="menu-icon">🌙</view>
-          <text class="menu-text">测试晚上提醒</text>
-          <text class="menu-arrow">›</text>
-        </view>
       </view>
       
       <view class="menu-group">
@@ -216,108 +201,6 @@ const handleSubscribeMessage = async () => {
       icon: 'none'
     })
   }
-}
-
-const handleTestPush = async () => {
-  if (!isSubscribed.value) {
-    uni.showToast({
-      title: '请先订阅消息',
-      icon: 'none'
-    })
-    return
-  }
-  
-  uni.showModal({
-    title: '发送测试消息',
-    content: '将直接向你发送一条测试消息，确定发送吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          uni.showLoading({ title: '发送中...' })
-          const result = await post('/send-test-message')
-          uni.hideLoading()
-          uni.showToast({
-            title: result.message || '已发送',
-            icon: 'success'
-          })
-        } catch (error) {
-          uni.hideLoading()
-          uni.showToast({
-            title: error.message || '发送失败',
-            icon: 'none'
-          })
-        }
-      }
-    }
-  })
-}
-
-const handleTestMorningReminder = async () => {
-  if (!isSubscribed.value) {
-    uni.showToast({
-      title: '请先订阅消息',
-      icon: 'none'
-    })
-    return
-  }
-  
-  uni.showModal({
-    title: '测试早上提醒',
-    content: '将触发早上提醒逻辑，确定测试吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          uni.showLoading({ title: '发送中...' })
-          const result = await post('/test-morning-reminder')
-          uni.hideLoading()
-          uni.showToast({
-            title: result.message || '已发送',
-            icon: 'success'
-          })
-        } catch (error) {
-          uni.hideLoading()
-          uni.showToast({
-            title: error.message || '发送失败',
-            icon: 'none'
-          })
-        }
-      }
-    }
-  })
-}
-
-const handleTestEveningReminder = async () => {
-  if (!isSubscribed.value) {
-    uni.showToast({
-      title: '请先订阅消息',
-      icon: 'none'
-    })
-    return
-  }
-  
-  uni.showModal({
-    title: '测试晚上提醒',
-    content: '将触发晚上提醒逻辑，确定测试吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          uni.showLoading({ title: '发送中...' })
-          const result = await post('/test-evening-reminder')
-          uni.hideLoading()
-          uni.showToast({
-            title: result.message || '已发送',
-            icon: 'success'
-          })
-        } catch (error) {
-          uni.hideLoading()
-          uni.showToast({
-            title: error.message || '发送失败',
-            icon: 'none'
-          })
-        }
-      }
-    }
-  })
 }
 
 onMounted(() => {
