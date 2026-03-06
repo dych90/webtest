@@ -64,6 +64,13 @@
       >
         删除课程
       </button>
+      <button 
+        class="btn-delete-group" 
+        @click="handleDeleteGroup"
+        v-if="course.groupId"
+      >
+        批量删除同组
+      </button>
     </view>
     
     <view class="dialog-mask" v-if="editDialogVisible" @click.self="editDialogVisible = false">
@@ -161,6 +168,40 @@
                 </text>
               </view>
             </view>
+            <view v-if="course.groupId" class="batch-operation-section">
+              <view class="batch-operation-item" @click="toggleApplyToGroup">
+                <view class="checkbox" :class="{ checked: applyToGroup }">
+                  <text v-if="applyToGroup">✓</text>
+                </view>
+                <text class="batch-operation-label">应用到同组课程</text>
+              </view>
+            </view>
+            <view v-if="applyToGroup && course.groupId" class="batch-operation-section">
+              <view class="batch-operation-label">更新范围</view>
+              <view class="radio-group">
+                <view class="radio-item" @click="updateScope = 'all'">
+                  <view class="radio" :class="{ checked: updateScope === 'all' }">
+                    <text v-if="updateScope === 'all'">●</text>
+                    <text v-else>○</text>
+                  </view>
+                  <text class="radio-label">全部更新（{{ groupCourseCount }}节）</text>
+                </view>
+                <view class="radio-item" @click="updateScope = 'fromCurrent'">
+                  <view class="radio" :class="{ checked: updateScope === 'fromCurrent' }">
+                    <text v-if="updateScope === 'fromCurrent'">●</text>
+                    <text v-else>○</text>
+                  </view>
+                  <text class="radio-label">从当前课程开始更新（{{ groupCourseCount - courseIndex }}节）</text>
+                </view>
+                <view class="radio-item" @click="updateScope = 'uncompleted'">
+                  <view class="radio" :class="{ checked: updateScope === 'uncompleted' }">
+                    <text v-if="updateScope === 'uncompleted'">●</text>
+                    <text v-else>○</text>
+                  </view>
+                  <text class="radio-label">只更新未上课的课程</text>
+                </view>
+              </view>
+            </view>
           </view>
           <view class="form-item">
             <text class="form-label">备注</text>
@@ -205,6 +246,12 @@ const editForm = ref({
   recurringEndDate: '',
   notes: ''
 })
+
+const applyToGroup = ref(false)
+const groupCourseCount = ref(0)
+const courseIndex = ref(0)
+const allCourses = ref([])
+const updateScope = ref('all')
 
 const statusText = computed(() => {
   const map = { normal: '待上课', completed: '已完成', cancelled: '已取消' }
@@ -309,6 +356,19 @@ const fetchCourseTypes = async () => {
   }
 }
 
+const fetchAllCourses = async () => {
+  try {
+    const res = await get('/courses')
+    allCourses.value = res.data || []
+  } catch (error) {
+    console.error('获取课程列表失败', error)
+  }
+}
+
+const toggleApplyToGroup = () => {
+  applyToGroup.value = !applyToGroup.value
+}
+
 const formatDateTime = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -384,10 +444,20 @@ const onRecurringEndChange = (e) => {
 const handleEdit = async () => {
   await fetchStudents()
   await fetchCourseTypes()
+  await fetchAllCourses()
   
   const startTime = new Date(course.value.startTime)
   const endTime = new Date(course.value.endTime)
   const duration = Math.round((endTime - startTime) / 60000)
+  
+  if (course.value.groupId) {
+    const groupCourses = allCourses.value.filter(c => c.groupId === course.value.groupId)
+    groupCourseCount.value = groupCourses.length
+    courseIndex.value = groupCourses.findIndex(c => c._id === course.value._id)
+  } else {
+    groupCourseCount.value = 0
+    courseIndex.value = 0
+  }
   
   editForm.value = {
     studentId: course.value.studentId?._id || '',
@@ -400,6 +470,9 @@ const handleEdit = async () => {
     recurringEndDate: '',
     notes: course.value.notes || ''
   }
+  
+  applyToGroup.value = false
+  updateScope.value = 'all'
   
   const durIdx = durationValues.findIndex(d => d === duration)
   durationIndex.value = durIdx >= 0 ? durIdx : 3
@@ -423,28 +496,64 @@ const handleSaveEdit = async () => {
       notes: editForm.value.notes
     }
     
-    await put(`/courses/${courseId.value}`, updateData)
-    
-    if (editForm.value.isRecurring && recurringDates.value.length > 0) {
-      const promises = recurringDates.value.map(date => {
-        const dateStr = formatDate(date)
-        const courseStartTime = new Date(`${dateStr}T${editForm.value.startTime}:00`)
-        const courseEndTime = new Date(courseStartTime.getTime() + editForm.value.duration * 60000)
-        
-        return post('/courses', {
-          studentId: editForm.value.studentId || undefined,
-          courseTypeId: editForm.value.courseTypeId || undefined,
-          startTime: courseStartTime.toISOString(),
-          endTime: courseEndTime.toISOString(),
-          status: 'normal',
-          notes: editForm.value.notes
-        })
-      })
+    if (applyToGroup.value && course.value.groupId) {
+      const groupCourses = allCourses.value.filter(c => c.groupId === course.value.groupId)
+      const [hours, minutes] = editForm.value.startTime.split(':')
       
-      await Promise.all(promises)
-      uni.showToast({ title: `保存成功，新增${recurringDates.value.length}节课程`, icon: 'success' })
+      let coursesToUpdate = []
+      
+      if (updateScope.value === 'all') {
+        coursesToUpdate = [...groupCourses]
+      } else if (updateScope.value === 'fromCurrent') {
+        coursesToUpdate = groupCourses.slice(courseIndex.value)
+      } else if (updateScope.value === 'uncompleted') {
+        coursesToUpdate = groupCourses.filter(c => c.status !== 'completed')
+      }
+      
+      if (timeAdjustMode.value === 'timeOnly') {
+        const updatePromises = coursesToUpdate.map(courseItem => {
+          const originalDate = new Date(courseItem.startTime)
+          const newStartTime = new Date(originalDate)
+          newStartTime.setHours(parseInt(hours))
+          newStartTime.setMinutes(parseInt(minutes))
+          const newEndTime = new Date(newStartTime.getTime() + editForm.value.duration * 60000)
+          
+          return put(`/courses/${courseItem._id}`, {
+            studentId: editForm.value.studentId || null,
+            courseTypeId: editForm.value.courseTypeId || null,
+            startTime: newStartTime.toISOString(),
+            endTime: newEndTime.toISOString(),
+            notes: editForm.value.notes
+          })
+        })
+        
+        await Promise.all(updatePromises)
+        uni.showToast({ title: '更新成功', icon: 'success' })
+      }
     } else {
-      uni.showToast({ title: '保存成功', icon: 'success' })
+      await put(`/courses/${courseId.value}`, updateData)
+      
+      if (editForm.value.isRecurring && recurringDates.value.length > 0) {
+        const promises = recurringDates.value.map(date => {
+          const dateStr = formatDate(date)
+          const courseStartTime = new Date(`${dateStr}T${editForm.value.startTime}:00`)
+          const courseEndTime = new Date(courseStartTime.getTime() + editForm.value.duration * 60000)
+          
+          return post('/courses', {
+            studentId: editForm.value.studentId || undefined,
+            courseTypeId: editForm.value.courseTypeId || undefined,
+            startTime: courseStartTime.toISOString(),
+            endTime: courseEndTime.toISOString(),
+            status: 'normal',
+            notes: editForm.value.notes
+          })
+        })
+        
+        await Promise.all(promises)
+        uni.showToast({ title: `保存成功`, icon: 'success' })
+      } else {
+        uni.showToast({ title: '保存成功', icon: 'success' })
+      }
     }
     
     editDialogVisible.value = false
@@ -556,6 +665,30 @@ const handleDelete = async () => {
           }, 1000)
         } catch (error) {
           uni.showToast({ title: error.message || '删除失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+const handleDeleteGroup = async () => {
+  await fetchAllCourses()
+  const count = allCourses.value.filter(c => c.groupId === course.value.groupId).length
+  
+  uni.showModal({
+    title: '批量删除确认',
+    content: `确定要删除同组的${count}节课程吗？此操作不可恢复！`,
+    confirmColor: '#F56C6C',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await del(`/courses/group/${course.value.groupId}`)
+          uni.showToast({ title: `成功删除${count}节课程`, icon: 'success' })
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1000)
+        } catch (error) {
+          uni.showToast({ title: error.message || '批量删除失败', icon: 'none' })
         }
       }
     }
@@ -701,6 +834,18 @@ const handleDelete = async () => {
   font-size: 28rpx;
 }
 
+.btn-delete-group {
+  flex: 1;
+  min-width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #fff;
+  color: #E6A23C;
+  border: 2rpx solid #E6A23C;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
 .dialog-mask {
   position: fixed;
   top: 0;
@@ -796,6 +941,26 @@ const handleDelete = async () => {
   margin-bottom: 0;
 }
 
+.checkbox {
+  width: 36rpx;
+  height: 36rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkbox.checked {
+  background-color: #E6A23C;
+  border-color: #E6A23C;
+}
+
+.checkbox text {
+  color: #fff;
+  font-size: 24rpx;
+}
+
 .recurring-section {
   background-color: #f5f7fa;
   border-radius: 12rpx;
@@ -845,32 +1010,25 @@ const handleDelete = async () => {
   color: #909399;
 }
 
-.form-textarea {
-  width: 100%;
-  height: 160rpx;
+.batch-operation-section {
+  background-color: #fff7e6;
+  border-radius: 12rpx;
   padding: 20rpx;
-  border: 2rpx solid #dcdfe6;
-  border-radius: 8rpx;
-  font-size: 28rpx;
-  box-sizing: border-box;
+  margin-bottom: 24rpx;
+  border: 1rpx solid #ffd591;
 }
 
-.dialog-footer {
+.batch-operation-item {
   display: flex;
-  gap: 20rpx;
-  padding: 20rpx 30rpx 30rpx;
-  border-top: 1rpx solid #f0f0f0;
+  align-items: center;
+  padding: 12rpx;
 }
 
-.btn-dialog-cancel {
+.batch-operation-label {
   flex: 1;
-  height: 80rpx;
-  line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
-  border: 2rpx solid #dcdfe6;
-  border-radius: 8rpx;
-  font-size: 28rpx;
+  font-size: 26rpx;
+  color: #E6A23C;
+  margin-left: 12rpx;
 }
 
 .btn-dialog-save {

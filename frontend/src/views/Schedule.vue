@@ -134,7 +134,14 @@
           <el-input v-model="form.notes" type="textarea" :rows="2" placeholder="请输入备注" />
         </el-form-item>
         <el-form-item v-if="form.groupId && dialogTitle === '编辑课程'" label="批量操作">
-          <el-checkbox v-model="form.applyToGroup">应用到同组课程（共{{ form.groupCourseCount }}节）</el-checkbox>
+          <el-checkbox v-model="form.applyToGroup">应用到同组课程</el-checkbox>
+        </el-form-item>
+        <el-form-item v-if="form.applyToGroup && form.groupId" label="更新范围">
+          <el-radio-group v-model="form.updateScope">
+            <el-radio label="all">全部更新（{{ form.groupCourseCount }}节）</el-radio>
+            <el-radio label="fromCurrent">从当前课程开始更新（{{ form.groupCourseCount - form.courseIndex }}节）</el-radio>
+            <el-radio label="uncompleted">只更新未上课的课程</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -180,7 +187,8 @@ const form = ref({
   notes: '',
   groupId: '',
   groupCourseCount: 0,
-  applyToGroup: false
+  applyToGroup: false,
+  updateScope: 'all'
 })
 
 const isMobile = computed(() => window.innerWidth < 768)
@@ -311,8 +319,11 @@ const calendarOptions = ref({
       const dateStr = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`
       
       let groupCourseCount = 0
+      let courseIndex = 0
       if (course.groupId) {
-        groupCourseCount = courses.value.filter(c => c.groupId === course.groupId).length
+        const groupCourses = courses.value.filter(c => c.groupId === course.groupId)
+        groupCourseCount = groupCourses.length
+        courseIndex = groupCourses.findIndex(c => c._id === course._id)
       }
       
       form.value = {
@@ -329,7 +340,10 @@ const calendarOptions = ref({
         notes: course.notes || '',
         groupId: course.groupId || '',
         groupCourseCount: groupCourseCount,
-        applyToGroup: false
+        courseIndex: courseIndex,
+        applyToGroup: false,
+        updateScope: 'all',
+        timeAdjustMode: 'timeOnly'
       }
       dialogVisible.value = true
     }
@@ -345,6 +359,10 @@ const fetchCourses = async () => {
     }
     const response = await request.get('/courses', { params })
     courses.value = response.data
+    
+    console.log('获取到的课程数据:', response.data)
+    console.log('第一个课程的 groupId:', response.data[0]?.groupId)
+    
     calendarOptions.value.events = response.data.map(course => {
       let backgroundColor = '#3a8ee6'
       let title = `${course.studentId?.name || '未分配'}<br>${formatTime(course.startTime)}`
@@ -439,7 +457,9 @@ const handleAdd = () => {
     notes: '',
     groupId: '',
     groupCourseCount: 0,
-    applyToGroup: false
+    courseIndex: 0,
+    applyToGroup: false,
+    updateScope: 'all'
   }
   dialogVisible.value = true
 }
@@ -546,10 +566,36 @@ const handleSave = async () => {
       }
     } else {
       if (form.value.applyToGroup && form.value.groupId) {
-        await request.put(`/courses/group/${form.value.groupId}`, dataToSend)
-        ElMessage.success(`成功更新${form.value.groupCourseCount}节课程`)
+        const groupCourses = courses.value.filter(c => c.groupId === form.value.groupId)
+        const [hours, minutes] = form.value.startTime.split(':')
+        
+        let coursesToUpdate = []
+        
+        if (form.value.updateScope === 'all') {
+          coursesToUpdate = [...groupCourses]
+        } else if (form.value.updateScope === 'fromCurrent') {
+          const currentIndex = groupCourses.findIndex(c => c._id === form.value._id)
+          coursesToUpdate = groupCourses.slice(currentIndex)
+        } else if (form.value.updateScope === 'uncompleted') {
+          coursesToUpdate = groupCourses.filter(c => c.status !== 'completed')
+        }
+        
+        const updatePromises = coursesToUpdate.map(course => {
+          return request.put(`/courses/${course._id}`, {
+            studentId: form.value.studentId || null,
+            courseTypeId: form.value.courseTypeId || null,
+            startTime: dataToSend.startTime,
+            endTime: dataToSend.endTime,
+            status: form.value.status,
+            notes: form.value.notes
+          })
+        })
+        
+        await Promise.all(updatePromises)
+        ElMessage.success(`成功更新${coursesToUpdate.length}节课程`)
       } else {
         await request.put(`/courses/${form.value._id}`, dataToSend)
+        ElMessage.success('更新成功')
         
         if (form.value.isRecurring && form.value.recurringStartDate && form.value.recurringEndDate) {
           const startDate = new Date(form.value.recurringStartDate)

@@ -417,6 +417,8 @@ const handleSubmit = async () => {
   
   try {
     if (form.isRecurring && recurringDates.value.length > 0) {
+      const groupId = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+      
       const promises = recurringDates.value.map(date => {
         const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
         const startTime = new Date(`${dateStr}T${form.startTime}:00`)
@@ -428,7 +430,8 @@ const handleSubmit = async () => {
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
           status: form.status,
-          notes: form.notes
+          notes: form.notes,
+          groupId: groupId
         })
       })
       
