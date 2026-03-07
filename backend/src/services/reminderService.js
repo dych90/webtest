@@ -18,6 +18,21 @@ const checkAndSendReminders = async () => {
     const oneHourLaterCeiled = new Date(Math.ceil(oneHourLater.getTime() / 60000) * 60000 + 1000)
 
     console.log(`查询时间范围: ${nowFloored.toISOString()} 到 ${oneHourLaterCeiled.toISOString()}`)
+    console.log(`查询时间范围(北京时间): ${nowFloored.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 到 ${oneHourLaterCeiled.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`)
+
+    const allCoursesInHour = await Course.find({
+      startTime: {
+        $gte: nowFloored,
+        $lte: oneHourLaterCeiled
+      },
+      status: 'normal'
+    }).populate('studentId').populate('teacherId').populate('courseTypeId')
+
+    console.log(`时间范围内共有 ${allCoursesInHour.length} 节课程(status=normal)`)
+    
+    for (const c of allCoursesInHour) {
+      console.log(`  - 课程ID: ${c._id}, 开始时间: ${c.startTime}, reminderSent: ${c.reminderSent}`)
+    }
 
     const courses = await Course.find({
       startTime: {
@@ -28,7 +43,7 @@ const checkAndSendReminders = async () => {
       reminderSent: false
     }).populate('studentId').populate('teacherId').populate('courseTypeId')
 
-    console.log(`找到 ${courses.length} 节即将开始的课程`)
+    console.log(`找到 ${courses.length} 节即将开始的课程(reminderSent=false)`)
 
     for (const course of courses) {
       try {
