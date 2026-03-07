@@ -163,7 +163,7 @@ const createLessonRecord = async (req, res) => {
       if (unitPrice > 0) {
         await Payment.create({
           studentId: lessonRecord.studentId,
-          paymentType: '现金',
+          paymentType: '微信',
           amount: unitPrice * lessonRecord.lessonsConsumed,
           totalLessons: 0,
           bonusLessons: 0,

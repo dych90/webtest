@@ -12,8 +12,33 @@
       </view>
       
       <view class="form-item">
+        <text class="form-label">上课日期</text>
+        <picker mode="date" :value="form.courseDate" @change="onDateChange">
+          <view class="form-picker">
+            <text>{{ form.courseDate || '请选择日期' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">上课时间</text>
+        <picker mode="time" :value="form.courseTime" start="08:00" end="23:00" @change="onTimeChange">
+          <view class="form-picker">
+            <text>{{ form.courseTime || '请选择时间' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
         <text class="form-label">消课数量 *</text>
-        <input class="form-input" v-model="form.lessonsConsumed" type="number" placeholder="请输入消课数量" />
+        <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonChange">
+          <view class="form-picker">
+            <text>{{ lessonCountOptions[lessonCountIndex] }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
       </view>
       
       <view class="form-item">
@@ -47,9 +72,14 @@ const students = ref([])
 const studentIndex = ref(-1)
 const loading = ref(false)
 const recordId = ref('')
+const lessonCountIndex = ref(1)
+const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
+const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const form = reactive({
   studentId: '',
+  courseDate: '',
+  courseTime: '',
   lessonsConsumed: '',
   lessonContent: '',
   isDeducted: true,
@@ -71,10 +101,19 @@ const fetchRecord = async () => {
     const res = await get(`/lesson-records/${recordId.value}`)
     const data = res.data || {}
     form.studentId = data.studentId?._id || data.studentId || ''
-    form.lessonsConsumed = data.lessonsConsumed || ''
+    form.lessonsConsumed = data.lessonsConsumed || 1
     form.lessonContent = data.lessonContent || ''
     form.isDeducted = data.isDeducted !== false
     form.notes = data.notes || ''
+    
+    if (data.courseStartTime) {
+      const date = new Date(data.courseStartTime)
+      form.courseDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+      form.courseTime = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    }
+    
+    const idx = lessonCountValues.indexOf(data.lessonsConsumed)
+    lessonCountIndex.value = idx >= 0 ? idx : 1
   } catch (error) {
     uni.showToast({ title: '获取消课记录失败', icon: 'none' })
   }
@@ -97,8 +136,21 @@ const onStudentChange = (e) => {
   form.studentId = students.value[e.detail.value]?._id || ''
 }
 
+const onDateChange = (e) => {
+  form.courseDate = e.detail.value
+}
+
+const onTimeChange = (e) => {
+  form.courseTime = e.detail.value
+}
+
 const onDeductedChange = (e) => {
   form.isDeducted = e.detail.value
+}
+
+const onLessonChange = (e) => {
+  lessonCountIndex.value = e.detail.value
+  form.lessonsConsumed = lessonCountValues[e.detail.value]
 }
 
 const handleCancel = () => {
@@ -106,8 +158,9 @@ const handleCancel = () => {
 }
 
 const handleSubmit = async () => {
-  if (!form.lessonsConsumed || form.lessonsConsumed <= 0) {
-    uni.showToast({ title: '请输入有效的消课数量', icon: 'none' })
+  const lessonsConsumed = lessonCountValues[lessonCountIndex.value]
+  if (!lessonsConsumed || lessonsConsumed <= 0) {
+    uni.showToast({ title: '请选择有效的消课数量', icon: 'none' })
     return
   }
   
@@ -115,10 +168,14 @@ const handleSubmit = async () => {
   
   const submitData = {
     studentId: form.studentId,
-    lessonsConsumed: Number(form.lessonsConsumed),
+    lessonsConsumed: lessonsConsumed,
     lessonContent: form.lessonContent,
     isDeducted: form.isDeducted,
     notes: form.notes
+  }
+  
+  if (form.courseDate && form.courseTime) {
+    submitData.courseStartTime = new Date(`${form.courseDate}T${form.courseTime}:00`).toISOString()
   }
   
   try {
