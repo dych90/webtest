@@ -6,6 +6,38 @@ const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 
 let lastDailyReminderDate = null
 
+const getTeacherOpenIds = (teacher) => {
+  if (!teacher) return []
+  
+  const openIds = []
+  
+  if (teacher.openIds && teacher.openIds.length > 0) {
+    openIds.push(...teacher.openIds)
+  }
+  
+  if (teacher.openId && !openIds.includes(teacher.openId)) {
+    openIds.push(teacher.openId)
+  }
+  
+  return openIds
+}
+
+const sendReminderToAllOpenIds = async (openIds, messageData, page) => {
+  const results = []
+  
+  for (const openId of openIds) {
+    try {
+      await sendSubscribeMessage(openId, messageData, page)
+      results.push({ openId, success: true })
+    } catch (error) {
+      console.error(`发送到 ${openId} 失败:`, error.message)
+      results.push({ openId, success: false, error: error.message })
+    }
+  }
+  
+  return results
+}
+
 const checkAndSendReminders = async () => {
   try {
     console.log('开始检查课程提醒...')
@@ -58,15 +90,19 @@ const checkAndSendReminders = async () => {
         const courseType = course.courseTypeId
 
         console.log(`处理课程: ${course._id}`)
-        console.log(`  教师: ${teacher?.name || '未知'}, openId: ${teacher?.openId || '无'}`)
+        console.log(`  教师: ${teacher?.name || '未知'}`)
         console.log(`  学生: ${student?.name || '未知'}`)
         console.log(`  课程类型: ${courseType?.name || '未知'}`)
         console.log(`  开始时间: ${course.startTime}`)
 
-        if (!teacher || !teacher.openId) {
+        const openIds = getTeacherOpenIds(teacher)
+        
+        if (openIds.length === 0) {
           console.log(`教师 ${teacher?.name || '未知'} 未绑定 openId,跳过提醒`)
           continue
         }
+
+        console.log(`  发送到 ${openIds.length} 个微信账号`)
 
         const messageData = {
           time2: {
@@ -83,7 +119,10 @@ const checkAndSendReminders = async () => {
           }
         }
 
-        await sendSubscribeMessage(teacher.openId, messageData, 'pages/schedule/schedule')
+        const results = await sendReminderToAllOpenIds(openIds, messageData, 'pages/schedule/schedule')
+        
+        const successCount = results.filter(r => r.success).length
+        console.log(`  发送结果: ${successCount}/${openIds.length} 成功`)
         
         await Course.findByIdAndUpdate(course._id, { reminderSent: true })
         
@@ -175,7 +214,8 @@ const sendMorningDailyReminder = async () => {
     
     for (const course of courses) {
       const teacher = course.teacherId
-      if (!teacher || !teacher.openId) continue
+      const openIds = getTeacherOpenIds(teacher)
+      if (openIds.length === 0) continue
       
       if (!teachersToRemind[teacher._id]) {
         teachersToRemind[teacher._id] = {
@@ -186,12 +226,14 @@ const sendMorningDailyReminder = async () => {
       teachersToRemind[teacher._id].courses.push(course)
     }
 
-    console.log(`早上8点半：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
+    console.log(`早上8点：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
 
     for (const teacherId in teachersToRemind) {
       const { teacher, courses } = teachersToRemind[teacherId]
       
       try {
+        const openIds = getTeacherOpenIds(teacher)
+        
         const messageData = {
           time2: {
             value: formatTime(now)
@@ -207,8 +249,9 @@ const sendMorningDailyReminder = async () => {
           }
         }
 
-        await sendSubscribeMessage(teacher.openId, messageData, 'pages/lessons/lessons')
-        console.log(`已向教师 ${teacher.name} 发送早上提醒，今日课程: ${courses.length}节`)
+        const results = await sendReminderToAllOpenIds(openIds, messageData, 'pages/lessons/lessons')
+        const successCount = results.filter(r => r.success).length
+        console.log(`已向教师 ${teacher.name} 发送早上提醒(${successCount}/${openIds.length}个微信)，今日课程: ${courses.length}节`)
       } catch (error) {
         console.error(`发送早上提醒失败:`, error.message)
       }
@@ -226,6 +269,9 @@ const sendEveningDailyReminder = async () => {
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
 
+    console.log(`晚上提醒查询时间范围: ${todayStart.toISOString()} 到 ${todayEnd.toISOString()}`)
+    console.log(`晚上提醒查询时间范围(北京时间): ${todayStart.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 到 ${todayEnd.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`)
+
     const courses = await Course.find({
       startTime: {
         $gte: todayStart,
@@ -234,11 +280,18 @@ const sendEveningDailyReminder = async () => {
       status: 'normal'
     }).populate('teacherId')
 
+    console.log(`晚上提醒：找到 ${courses.length} 节今日课程(status=normal)`)
+
+    for (const course of courses) {
+      console.log(`  - 课程ID: ${course._id}, 开始时间: ${course.startTime}, 教师ID: ${course.teacherId?._id || '无'}, 教师openIds: ${JSON.stringify(course.teacherId?.openIds || [])}`)
+    }
+
     const teachersToRemind = {}
     
     for (const course of courses) {
       const teacher = course.teacherId
-      if (!teacher || !teacher.openId) continue
+      const openIds = getTeacherOpenIds(teacher)
+      if (openIds.length === 0) continue
       
       if (!teachersToRemind[teacher._id]) {
         teachersToRemind[teacher._id] = {
@@ -255,6 +308,8 @@ const sendEveningDailyReminder = async () => {
       const { teacher, courses } = teachersToRemind[teacherId]
       
       try {
+        const openIds = getTeacherOpenIds(teacher)
+        
         const messageData = {
           time2: {
             value: formatTime(now)
@@ -270,8 +325,9 @@ const sendEveningDailyReminder = async () => {
           }
         }
 
-        await sendSubscribeMessage(teacher.openId, messageData, 'pages/lessons/lessons')
-        console.log(`已向教师 ${teacher.name} 发送晚上提醒，今日课程: ${courses.length}节`)
+        const results = await sendReminderToAllOpenIds(openIds, messageData, 'pages/lessons/lessons')
+        const successCount = results.filter(r => r.success).length
+        console.log(`已向教师 ${teacher.name} 发送晚上提醒(${successCount}/${openIds.length}个微信)，今日课程: ${courses.length}节`)
       } catch (error) {
         console.error(`发送晚上提醒失败:`, error.message)
       }

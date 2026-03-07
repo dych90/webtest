@@ -105,11 +105,16 @@ onMounted(() => {
   const savedUsername = uni.getStorageSync('savedUsername')
   const savedPassword = uni.getStorageSync('savedPassword')
   const savedRemember = uni.getStorageSync('rememberPassword')
+  const savedAgreed = uni.getStorageSync('agreedToTerms')
   
   if (savedRemember === 'true' || savedRemember === true) {
     form.value.username = savedUsername || ''
     form.value.password = savedPassword || ''
     rememberPassword.value = true
+  }
+  
+  if (savedAgreed === 'true' || savedAgreed === true) {
+    agreedToTerms.value = true
   }
 })
 
@@ -144,6 +149,8 @@ const handleLogin = async () => {
     const res = await post('/login', form.value)
     
     if (res.data && res.data.token) {
+      uni.setStorageSync('agreedToTerms', 'true')
+      
       if (rememberPassword.value) {
         uni.setStorageSync('savedUsername', form.value.username)
         uni.setStorageSync('savedPassword', form.value.password)

@@ -179,19 +179,28 @@ const bindOpenId = async (req, res) => {
       return res.status(400).json({ message: '缺少 openId 参数' })
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { openId },
-      { new: true }
-    ).select('-password')
-
+    const user = await User.findById(userId)
     if (!user) {
       return res.status(404).json({ message: '用户不存在' })
     }
 
+    if (!user.openIds) {
+      user.openIds = []
+    }
+
+    if (!user.openIds.includes(openId)) {
+      user.openIds.push(openId)
+    }
+
+    user.openId = openId
+
+    await user.save()
+
+    const updatedUser = await User.findById(userId).select('-password')
+
     res.json({
       message: '绑定成功',
-      data: user
+      data: updatedUser
     })
   } catch (error) {
     console.error('绑定 openId 错误:', error)
