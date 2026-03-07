@@ -165,24 +165,16 @@ const deletePayment = async (req, res) => {
 const updateLessonBalance = async (studentId, lessonsChange) => {
   try {
     console.log('updateLessonBalance调用，学生ID:', studentId, '课时变化:', lessonsChange)
-    const balance = await LessonBalance.findOne({ studentId })
     
-    console.log('找到的余额记录:', balance)
-    
-    if (balance) {
-      const oldRemaining = balance.remainingLessons
-      balance.remainingLessons += lessonsChange
-      balance.lastUpdated = new Date()
-      await balance.save()
-      console.log('更新余额，从', oldRemaining, '到', balance.remainingLessons)
-    } else {
-      const newBalance = await LessonBalance.create({
-        studentId,
-        remainingLessons: Math.max(0, lessonsChange),
-        lastUpdated: new Date()
-      })
-      console.log('创建新余额记录:', newBalance)
-    }
+    const result = await LessonBalance.findOneAndUpdate(
+      { studentId },
+      { 
+        $inc: { remainingLessons: lessonsChange },
+        $set: { lastUpdated: new Date() }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    )
+    console.log('更新后余额:', result.remainingLessons)
   } catch (error) {
     console.error('更新课费余额错误:', error)
   }

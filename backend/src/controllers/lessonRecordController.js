@@ -365,22 +365,15 @@ const updateLessonBalance = async (studentId, lessonsChange) => {
       return
     }
     
-    const balance = await LessonBalance.findOne({ studentId: studentObjectId })
-    console.log('查找到的余额记录:', balance)
-    
-    if (balance) {
-      balance.remainingLessons += lessonsChange
-      balance.lastUpdated = new Date()
-      await balance.save()
-      console.log('更新后余额:', balance.remainingLessons)
-    } else {
-      const newBalance = await LessonBalance.create({
-        studentId: studentObjectId,
-        remainingLessons: Math.max(0, lessonsChange),
-        lastUpdated: new Date()
-      })
-      console.log('创建新余额记录:', newBalance)
-    }
+    const result = await LessonBalance.findOneAndUpdate(
+      { studentId: studentObjectId },
+      { 
+        $inc: { remainingLessons: lessonsChange },
+        $set: { lastUpdated: new Date() }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    )
+    console.log('更新后余额:', result.remainingLessons)
   } catch (error) {
     console.error('更新课费余额错误:', error)
   }
