@@ -54,6 +54,18 @@
           </view>
         </view>
         
+        <view class="agreement-row">
+          <view class="agreement-checkbox" @click="agreedToTerms = !agreedToTerms">
+            <view class="checkbox" :class="{ checked: agreedToTerms }">
+              <text v-if="agreedToTerms">✓</text>
+            </view>
+          </view>
+          <text class="agreement-text">我已阅读并同意</text>
+          <text class="agreement-link" @click.stop="goToUserAgreement">《用户服务协议》</text>
+          <text class="agreement-text">和</text>
+          <text class="agreement-link" @click.stop="goToPrivacyPolicy">《隐私政策》</text>
+        </view>
+        
         <button class="login-btn" :loading="loading" @tap="handleLogin">
           <text class="btn-text">登 录</text>
         </button>
@@ -87,6 +99,7 @@ const form = ref({
 const loading = ref(false)
 const showPassword = ref(false)
 const rememberPassword = ref(false)
+const agreedToTerms = ref(false)
 
 onMounted(() => {
   const savedUsername = uni.getStorageSync('savedUsername')
@@ -112,6 +125,14 @@ const handleLogin = async () => {
   if (!form.value.password) {
     uni.showToast({
       title: '请输入密码',
+      icon: 'none'
+    })
+    return
+  }
+  
+  if (!agreedToTerms.value) {
+    uni.showToast({
+      title: '请先阅读并同意用户协议和隐私政策',
       icon: 'none'
     })
     return
@@ -160,6 +181,18 @@ const handleLogin = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const goToUserAgreement = () => {
+  uni.navigateTo({
+    url: '/pages/agreement/user-agreement'
+  })
+}
+
+const goToPrivacyPolicy = () => {
+  uni.navigateTo({
+    url: '/pages/agreement/privacy-policy'
+  })
 }
 </script>
 
@@ -303,6 +336,29 @@ const handleLogin = async () => {
 .remember-text {
   font-size: 26rpx;
   color: #606266;
+}
+
+.agreement-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 24rpx;
+}
+
+.agreement-checkbox {
+  display: flex;
+  align-items: center;
+  margin-right: 8rpx;
+}
+
+.agreement-text {
+  font-size: 24rpx;
+  color: #606266;
+}
+
+.agreement-link {
+  font-size: 24rpx;
+  color: #667eea;
 }
 
 .input-wrapper {
