@@ -31,7 +31,10 @@ const checkAndSendReminders = async () => {
     console.log(`时间范围内共有 ${allCoursesInHour.length} 节课程(status=normal)`)
     
     for (const c of allCoursesInHour) {
-      console.log(`  - 课程ID: ${c._id}, 开始时间: ${c.startTime}, reminderSent: ${c.reminderSent}`)
+      console.log(`  - 课程ID: ${c._id}, 开始时间: ${c.startTime}, reminderSent: ${c.reminderSent}, reminderSent类型: ${typeof c.reminderSent}`)
+      
+      const directQuery = await Course.findById(c._id).select('reminderSent')
+      console.log(`    直接查询reminderSent: ${directQuery?.reminderSent}, 类型: ${typeof directQuery?.reminderSent}`)
     }
 
     const courses = await Course.find({
@@ -40,7 +43,10 @@ const checkAndSendReminders = async () => {
         $lte: oneHourLaterCeiled
       },
       status: 'normal',
-      reminderSent: false
+      $or: [
+        { reminderSent: false },
+        { reminderSent: { $exists: false } }
+      ]
     }).populate('studentId').populate('teacherId').populate('courseTypeId')
 
     console.log(`找到 ${courses.length} 节即将开始的课程(reminderSent=false)`)
@@ -93,9 +99,33 @@ const checkAndSendReminders = async () => {
   }
 }
 
+const resetDailyReminderFlags = async () => {
+  try {
+    const now = new Date()
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    
+    const result = await Course.updateMany(
+      {
+        startTime: {
+          $gte: todayStart,
+          $lte: todayEnd
+        },
+        reminderSent: true
+      },
+      { reminderSent: false }
+    )
+    
+    console.log(`重置今日课程的提醒标志: ${result.modifiedCount} 节课程`)
+  } catch (error) {
+    console.error('重置提醒标志时出错:', error)
+  }
+}
+
 const startReminderService = () => {
   console.log('启动课程提醒定时任务服务...')
 
+  resetDailyReminderFlags()
   checkAndSendReminders()
 
   const cron = require('node-cron')
@@ -103,6 +133,11 @@ const startReminderService = () => {
   cron.schedule('*/5 * * * *', async () => {
     console.log('定时任务触发: 检查课程提醒')
     await checkAndSendReminders()
+  })
+
+  cron.schedule('0 0 * * *', async () => {
+    console.log('定时任务触发: 重置今日提醒标志')
+    await resetDailyReminderFlags()
   })
 
   cron.schedule('0 8 * * *', async () => {
@@ -117,6 +152,7 @@ const startReminderService = () => {
   
   console.log('定时任务已注册:')
   console.log('  - 课程提醒: 每5分钟检查一次')
+  console.log('  - 重置提醒标志: 每天0:00')
   console.log('  - 早上提醒: 每天8:00')
   console.log('  - 晚上提醒: 每天22:00')
 }
