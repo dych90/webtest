@@ -49,7 +49,7 @@
           <span>{{ form.currentRemainingLessons }} 课时</span>
         </el-form-item>
         <el-form-item label="新余额">
-          <el-input-number v-model="form.remainingLessons" :min="0" />
+          <el-input-number v-model="form.remainingLessons" />
         </el-form-item>
       </el-form>
       <template #footer>

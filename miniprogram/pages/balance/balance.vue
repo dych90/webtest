@@ -70,7 +70,7 @@
           <view class="form-item">
             <text class="form-label">新余额</text>
             <view class="number-input">
-              <button class="minus-btn" @click="form.remainingLessons = Math.max(0, form.remainingLessons - 1)">-</button>
+              <button class="minus-btn" @click="form.remainingLessons--">-</button>
               <input class="number-field" v-model="form.remainingLessons" type="number" />
               <button class="plus-btn" @click="form.remainingLessons++">+</button>
             </view>

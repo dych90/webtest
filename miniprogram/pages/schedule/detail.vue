@@ -285,6 +285,35 @@
         </view>
       </view>
     </view>
+    
+    <view class="dialog-mask" v-if="attendDialogVisible" @click.self="attendDialogVisible = false">
+      <view class="dialog-content" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">确认上课</text>
+          <text class="dialog-close" @click="attendDialogVisible = false">×</text>
+        </view>
+        <view class="dialog-body">
+          <view class="attend-info">
+            <text class="attend-student">{{ formatStudentName(course.studentId?.name) }}</text>
+            <text class="attend-course">{{ course.courseTypeId?.name || '未设置' }}</text>
+            <text class="attend-time">{{ formatDateTime(course.startTime) }}</text>
+          </view>
+          <view class="form-item">
+            <text class="form-label">消课数量</text>
+            <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonCountChange">
+              <view class="form-picker">
+                <text>{{ lessonCountOptions[lessonCountIndex] }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+        <view class="dialog-footer">
+          <button class="btn-dialog-cancel" @click="attendDialogVisible = false">取消</button>
+          <button class="btn-dialog-save" @click="confirmAttendFromDialog">确认上课</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -332,6 +361,10 @@ const groupCourseCount = ref(0)
 const courseIndex = ref(0)
 const allCourses = ref([])
 const updateScope = ref('all')
+const attendDialogVisible = ref(false)
+const lessonCountIndex = ref(1)
+const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
+const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const statusText = computed(() => {
   const map = { normal: '待上课', completed: '已完成', cancelled: '已取消' }
@@ -735,17 +768,28 @@ const handleAttend = async () => {
       content: '该课程未设置课程类型，上课后无法记录收入。是否继续上课？',
       success: async (res) => {
         if (res.confirm) {
-          await doAttend()
+          lessonCountIndex.value = 1
+          attendDialogVisible.value = true
         }
       }
     })
     return
   }
   
-  await doAttend()
+  lessonCountIndex.value = 1
+  attendDialogVisible.value = true
 }
 
-const doAttend = async () => {
+const onLessonCountChange = (e) => {
+  lessonCountIndex.value = e.detail.value
+}
+
+const confirmAttendFromDialog = async () => {
+  attendDialogVisible.value = false
+  await doAttend(lessonCountValues[lessonCountIndex.value])
+}
+
+const doAttend = async (lessonsConsumed = 1) => {
   try {
     await put(`/courses/${courseId.value}`, { status: 'completed' })
     
@@ -759,7 +803,7 @@ const doAttend = async () => {
       studentId: studentId,
       courseId: course.value._id,
       courseStartTime: course.value.startTime,
-      lessonsConsumed: 1,
+      lessonsConsumed: lessonsConsumed,
       lessonContent: '',
       isDeducted: true,
       notes: '从课程详情上课'
@@ -1274,5 +1318,34 @@ const handleDeleteGroup = async () => {
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
+}
+
+.attend-info {
+  text-align: center;
+  margin-bottom: 30rpx;
+  padding: 20rpx;
+  background-color: #f5f7fa;
+  border-radius: 12rpx;
+}
+
+.attend-student {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.attend-course {
+  display: block;
+  font-size: 26rpx;
+  color: #606266;
+  margin-bottom: 4rpx;
+}
+
+.attend-time {
+  display: block;
+  font-size: 24rpx;
+  color: #909399;
 }
 </style>

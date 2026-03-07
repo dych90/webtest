@@ -2,6 +2,8 @@ const Course = require('../models/Course')
 const Student = require('../models/Student')
 const CourseType = require('../models/CourseType')
 const User = require('../models/User')
+const LessonRecord = require('../models/LessonRecord')
+const LessonBalance = require('../models/LessonBalance')
 
 const getCourses = async (req, res) => {
   try {
@@ -156,6 +158,26 @@ const deleteCourse = async (req, res) => {
       return res.status(403).json({ message: '无权限删除此课程' })
     }
     
+    const lessonRecord = await LessonRecord.findOne({ courseId: id })
+    if (lessonRecord) {
+      const student = await Student.findById(lessonRecord.studentId)
+      
+      if (student && student.paymentType === 'prepaid' && lessonRecord.isDeducted) {
+        const studentIdStr = lessonRecord.studentId.toString()
+        await LessonBalance.findOneAndUpdate(
+          { studentId: studentIdStr },
+          { 
+            $inc: { remainingLessons: lessonRecord.lessonsConsumed },
+            $set: { lastUpdated: new Date() }
+          }
+        )
+        console.log('删除课程时返还课时:', lessonRecord.lessonsConsumed)
+      }
+      
+      await LessonRecord.findByIdAndDelete(lessonRecord._id)
+      console.log('删除课程时同步删除消课记录:', lessonRecord._id)
+    }
+    
     await Course.findByIdAndDelete(id)
     
     res.json({ message: '删除成功' })
@@ -215,6 +237,31 @@ const deleteCoursesByGroup = async (req, res) => {
     
     if (user.role !== 'admin') {
       filter.teacherId = req.userId
+    }
+    
+    const courses = await Course.find(filter)
+    const courseIds = courses.map(c => c._id)
+    
+    const lessonRecords = await LessonRecord.find({ courseId: { $in: courseIds } })
+    
+    for (const record of lessonRecords) {
+      const student = await Student.findById(record.studentId)
+      
+      if (student && student.paymentType === 'prepaid' && record.isDeducted) {
+        const studentIdStr = record.studentId.toString()
+        await LessonBalance.findOneAndUpdate(
+          { studentId: studentIdStr },
+          { 
+            $inc: { remainingLessons: record.lessonsConsumed },
+            $set: { lastUpdated: new Date() }
+          }
+        )
+      }
+    }
+    
+    if (lessonRecords.length > 0) {
+      await LessonRecord.deleteMany({ courseId: { $in: courseIds } })
+      console.log('批量删除课程时同步删除消课记录:', lessonRecords.length, '条')
     }
     
     const result = await Course.deleteMany(filter)
