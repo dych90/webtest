@@ -247,9 +247,13 @@ const fetchCourseTypes = async () => {
 
 const handleAdd = () => {
   dialogTitle.value = '添加消课'
+  
+  const defaultStudent = students.value[0]?._id || ''
+  const defaultCourseType = courseTypes.value.find(ct => ct.name === '钢琴课')?._id || ''
+  
   form.value = {
-    studentId: '',
-    courseTypeId: '',
+    studentId: defaultStudent,
+    courseTypeId: defaultCourseType,
     courseId: '',
     courseStartTime: '',
     lessonsConsumed: 1,

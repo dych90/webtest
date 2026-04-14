@@ -147,6 +147,24 @@ const createLessonRecord = async (req, res) => {
       }
       await Course.findByIdAndUpdate(req.body.courseId, courseUpdate)
       console.log('更新课程状态:', req.body.courseId, courseUpdate)
+    } else if (req.body.courseStartTime) {
+      const courseStartTime = new Date(req.body.courseStartTime)
+      const duration = 60
+      const courseEndTime = new Date(courseStartTime.getTime() + duration * 60 * 1000)
+      
+      const newCourse = await Course.create({
+        studentId: req.body.studentId,
+        courseTypeId: req.body.courseTypeId,
+        startTime: courseStartTime,
+        endTime: courseEndTime,
+        status: lessonRecordData.isDeducted ? 'completed' : 'normal',
+        isGiftLesson: isGiftLesson,
+        teacherId: student.teacherId || req.userId
+      })
+      
+      lessonRecord.courseId = newCourse._id
+      await lessonRecord.save()
+      console.log('自动创建课程记录:', newCourse._id)
     }
     
     if (student.paymentType === 'prepaid') {

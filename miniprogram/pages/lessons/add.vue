@@ -152,6 +152,10 @@ const fetchStudents = async () => {
     const res = await get('/students')
     students.value = res.data || []
     filteredStudents.value = students.value
+    
+    if (students.value.length > 0 && !form.studentId) {
+      form.studentId = students.value[0]._id
+    }
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
@@ -182,6 +186,13 @@ const fetchCourseTypes = async () => {
   try {
     const res = await get('/course-types')
     courseTypes.value = res.data || []
+    
+    const pianoCourse = courseTypes.value.find(ct => ct.name === '钢琴课')
+    if (pianoCourse && !form.courseTypeId) {
+      const idx = courseTypes.value.indexOf(pianoCourse)
+      courseTypeIndex.value = idx >= 0 ? idx : -1
+      form.courseTypeId = pianoCourse._id
+    }
   } catch (error) {
     console.error('获取课程类型列表失败', error)
   }
