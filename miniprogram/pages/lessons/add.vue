@@ -105,7 +105,7 @@ const courseIndex = ref(0)
 const courseTypes = ref([])
 const courseTypeIndex = ref(-1)
 const loading = ref(false)
-const lessonCountIndex = ref(2)
+const lessonCountIndex = ref(1)
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]

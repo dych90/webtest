@@ -159,7 +159,8 @@ const createLessonRecord = async (req, res) => {
         endTime: courseEndTime,
         status: lessonRecordData.isDeducted ? 'completed' : 'normal',
         isGiftLesson: isGiftLesson,
-        teacherId: student.teacherId || req.userId
+        teacherId: student.teacherId || req.userId,
+        fromLessonRecord: true
       })
       
       lessonRecord.courseId = newCourse._id
@@ -370,8 +371,14 @@ const deleteLessonRecord = async (req, res) => {
     }
     
     if (record.courseId) {
-      await Course.findByIdAndUpdate(record.courseId, { isGiftLesson: false })
-      console.log('重置课程赠课标记:', record.courseId)
+      const course = await Course.findById(record.courseId)
+      if (course && course.fromLessonRecord) {
+        await Course.findByIdAndDelete(record.courseId)
+        console.log('删除由消课记录创建的课程:', record.courseId)
+      } else {
+        await Course.findByIdAndUpdate(record.courseId, { isGiftLesson: false, status: 'normal' })
+        console.log('重置课程状态:', record.courseId)
+      }
     }
     
     await LessonRecord.findByIdAndDelete(id)

@@ -288,6 +288,7 @@ const handleDelete = async (row) => {
     await request.delete(`/lesson-records/${row._id}`)
     ElMessage.success('删除成功')
     await fetchLessons()
+    await courseStore.fetchCourses()
   } catch (error) {
     console.error('删除消课记录失败', error)
   }
