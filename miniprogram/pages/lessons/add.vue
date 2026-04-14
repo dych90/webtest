@@ -3,12 +3,20 @@
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">学生 *</text>
-        <picker :value="studentIndex" :range="students" range-key="name" @change="onStudentChange">
-          <view class="form-picker">
-            <text>{{ students[studentIndex]?.name || '请选择学生' }}</text>
-            <text class="picker-arrow">▼</text>
-          </view>
-        </picker>
+        <view class="search-picker-container">
+          <input 
+            class="search-input" 
+            placeholder="搜索学生姓名" 
+            v-model="studentSearchKeyword"
+            @input="filterStudents"
+          />
+          <picker :value="studentIndex" :range="filteredStudents" range-key="name" @change="onStudentChange">
+            <view class="form-picker">
+              <text>{{ filteredStudents[studentIndex]?.name || '请选择学生' }}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
       </view>
       
       <view class="form-item">
@@ -22,10 +30,30 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">消课日期 *</text>
-        <picker mode="date" :value="form.recordDate" @change="onDateChange">
+        <text class="form-label">课程类型</text>
+        <picker :value="courseTypeIndex" :range="courseTypeOptions" @change="onCourseTypeChange">
           <view class="form-picker">
-            <text>{{ form.recordDate || '请选择日期' }}</text>
+            <text>{{ courseTypeOptions[courseTypeIndex] || '请选择课程类型' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">上课日期 *</text>
+        <picker mode="date" :value="form.courseDate" @change="onDateChange">
+          <view class="form-picker">
+            <text>{{ form.courseDate || '请选择日期' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">上课时间 *</text>
+        <picker mode="time" :value="form.courseTime" start="08:00" end="23:00" @change="onTimeChange">
+          <view class="form-picker">
+            <text>{{ form.courseTime || '请选择时间' }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -69,9 +97,13 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { get, post } from '@/utils/request'
 
 const students = ref([])
+const filteredStudents = ref([])
+const studentSearchKeyword = ref('')
 const studentIndex = ref(0)
 const courses = ref([])
 const courseIndex = ref(0)
+const courseTypes = ref([])
+const courseTypeIndex = ref(-1)
 const loading = ref(false)
 const lessonCountIndex = ref(2)
 
@@ -81,31 +113,60 @@ const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 const form = reactive({
   studentId: '',
   courseId: '',
-  recordDate: '',
+  courseTypeId: '',
+  courseDate: '',
+  courseTime: '',
   lessonsConsumed: 1,
   lessonContent: '',
   isDeducted: true,
   notes: ''
 })
 
+const courseTypeOptions = computed(() => {
+  return courseTypes.value.map(c => c.name)
+})
+
 const courseOptions = computed(() => {
-  return courses.value.map(c => `${c.studentId?.name || '未分配'} - ${c.courseTypeId?.name || '未设置'}`)
+  const filtered = courses.value.filter(c => {
+    const courseStudentId = c.studentId?._id || c.studentId
+    return courseStudentId === form.studentId
+  })
+  return filtered.map(c => {
+    const date = c.startTime ? new Date(c.startTime) : null
+    const timeStr = date ? `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}` : '未设置'
+    return `${c.courseTypeId?.name || '未设置'} - ${timeStr}`
+  })
 })
 
 onMounted(() => {
   const today = new Date()
-  form.recordDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  form.courseDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  form.courseTime = '10:00'
   fetchStudents()
   fetchCourses()
+  fetchCourseTypes()
 })
 
 const fetchStudents = async () => {
   try {
     const res = await get('/students')
     students.value = res.data || []
+    filteredStudents.value = students.value
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
+}
+
+const filterStudents = () => {
+  if (!studentSearchKeyword.value.trim()) {
+    filteredStudents.value = students.value
+  } else {
+    const keyword = studentSearchKeyword.value.trim().toLowerCase()
+    filteredStudents.value = students.value.filter(s => 
+      s.name && s.name.toLowerCase().includes(keyword)
+    )
+  }
+  studentIndex.value = 0
 }
 
 const fetchCourses = async () => {
@@ -117,9 +178,18 @@ const fetchCourses = async () => {
   }
 }
 
+const fetchCourseTypes = async () => {
+  try {
+    const res = await get('/course-types')
+    courseTypes.value = res.data || []
+  } catch (error) {
+    console.error('获取课程类型列表失败', error)
+  }
+}
+
 const onStudentChange = (e) => {
   studentIndex.value = e.detail.value
-  form.studentId = students.value[e.detail.value]?._id || ''
+  form.studentId = filteredStudents.value[e.detail.value]?._id || ''
 }
 
 const onCourseChange = (e) => {
@@ -127,8 +197,17 @@ const onCourseChange = (e) => {
   form.courseId = courses.value[e.detail.value]?._id || ''
 }
 
+const onCourseTypeChange = (e) => {
+  courseTypeIndex.value = e.detail.value
+  form.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
+}
+
 const onDateChange = (e) => {
-  form.recordDate = e.detail.value
+  form.courseDate = e.detail.value
+}
+
+const onTimeChange = (e) => {
+  form.courseTime = e.detail.value
 }
 
 const onDeductedChange = (e) => {
@@ -149,6 +228,10 @@ const handleSubmit = async () => {
     uni.showToast({ title: '请选择学生', icon: 'none' })
     return
   }
+  if (!form.courseDate || !form.courseTime) {
+    uni.showToast({ title: '请选择上课日期和时间', icon: 'none' })
+    return
+  }
   if (!form.lessonsConsumed || form.lessonsConsumed <= 0) {
     uni.showToast({ title: '请选择消课数量', icon: 'none' })
     return
@@ -159,7 +242,8 @@ const handleSubmit = async () => {
   const submitData = {
     studentId: form.studentId,
     courseId: form.courseId || undefined,
-    recordDate: form.recordDate,
+    courseTypeId: form.courseTypeId || undefined,
+    courseStartTime: new Date(`${form.courseDate}T${form.courseTime}:00`).toISOString(),
     lessonsConsumed: form.lessonsConsumed,
     lessonContent: form.lessonContent,
     isDeducted: form.isDeducted,
@@ -213,6 +297,15 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.search-input {
+  margin-bottom: 16rpx;
+}
+
+.search-picker-container {
+  display: flex;
+  flex-direction: column;
 }
 
 .form-picker {

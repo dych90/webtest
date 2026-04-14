@@ -3,9 +3,37 @@
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">学生</text>
-        <picker :value="studentIndex" :range="students" range-key="name" @change="onStudentChange">
+        <view class="search-picker-container">
+          <input 
+            class="search-input" 
+            placeholder="搜索学生姓名" 
+            v-model="studentSearchKeyword"
+            @input="filterStudents"
+          />
+          <picker :value="studentIndex" :range="filteredStudents" range-key="name" @change="onStudentChange">
+            <view class="form-picker">
+              <text>{{ filteredStudents[studentIndex]?.name || '请选择学生' }}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">课程</text>
+        <picker :value="courseIndex" :range="courseOptions" @change="onCourseChange">
           <view class="form-picker">
-            <text>{{ students[studentIndex]?.name || '请选择学生' }}</text>
+            <text>{{ courseOptions[courseIndex] || '请选择课程' }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+      
+      <view class="form-item">
+        <text class="form-label">课程类型</text>
+        <picker :value="courseTypeIndex" :range="courseTypeOptions" @change="onCourseTypeChange">
+          <view class="form-picker">
+            <text>{{ courseTypeOptions[courseTypeIndex] || '请选择课程类型' }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -65,11 +93,17 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { get, put } from '@/utils/request'
 
 const students = ref([])
+const filteredStudents = ref([])
+const studentSearchKeyword = ref('')
 const studentIndex = ref(-1)
+const courses = ref([])
+const courseIndex = ref(-1)
+const courseTypes = ref([])
+const courseTypeIndex = ref(-1)
 const loading = ref(false)
 const recordId = ref('')
 const lessonCountIndex = ref(1)
@@ -78,12 +112,30 @@ const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 const form = reactive({
   studentId: '',
+  courseId: '',
+  courseTypeId: '',
   courseDate: '',
   courseTime: '',
   lessonsConsumed: '',
   lessonContent: '',
   isDeducted: true,
   notes: ''
+})
+
+const courseTypeOptions = computed(() => {
+  return courseTypes.value.map(c => c.name)
+})
+
+const courseOptions = computed(() => {
+  const filtered = courses.value.filter(c => {
+    const courseStudentId = c.studentId?._id || c.studentId
+    return courseStudentId === form.studentId
+  })
+  return filtered.map(c => {
+    const date = c.startTime ? new Date(c.startTime) : null
+    const timeStr = date ? `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}` : '未设置'
+    return `${c.courseTypeId?.name || '未设置'} - ${timeStr}`
+  })
 })
 
 onMounted(() => {
@@ -93,6 +145,8 @@ onMounted(() => {
   if (recordId.value) {
     fetchRecord()
     fetchStudents()
+    fetchCourses()
+    fetchCourseTypes()
   }
 })
 
@@ -101,6 +155,8 @@ const fetchRecord = async () => {
     const res = await get(`/lesson-records/${recordId.value}`)
     const data = res.data || {}
     form.studentId = data.studentId?._id || data.studentId || ''
+    form.courseId = data.courseId?._id || data.courseId || ''
+    form.courseTypeId = data.courseTypeId?._id || data.courseTypeId || ''
     form.lessonsConsumed = data.lessonsConsumed || 1
     form.lessonContent = data.lessonContent || ''
     form.isDeducted = data.isDeducted !== false
@@ -123,17 +179,70 @@ const fetchStudents = async () => {
   try {
     const res = await get('/students')
     students.value = res.data || []
+    filteredStudents.value = students.value
     
-    const idx = students.value.findIndex(s => s._id === form.studentId)
+    const idx = filteredStudents.value.findIndex(s => s._id === form.studentId)
     studentIndex.value = idx >= 0 ? idx : -1
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
 }
 
+const fetchCourses = async () => {
+  try {
+    const res = await get('/courses')
+    courses.value = (res.data || []).filter(c => c.status === 'normal')
+    
+    const idx = courses.value.findIndex(c => (c._id || c) === form.courseId)
+    courseIndex.value = idx >= 0 ? idx : -1
+  } catch (error) {
+    console.error('获取课程列表失败', error)
+  }
+}
+
+const fetchCourseTypes = async () => {
+  try {
+    const res = await get('/course-types')
+    courseTypes.value = res.data || []
+    
+    const idx = courseTypes.value.findIndex(c => (c._id || c) === form.courseTypeId)
+    courseTypeIndex.value = idx >= 0 ? idx : -1
+  } catch (error) {
+    console.error('获取课程类型列表失败', error)
+  }
+}
+
+const filterStudents = () => {
+  if (!studentSearchKeyword.value.trim()) {
+    filteredStudents.value = students.value
+  } else {
+    const keyword = studentSearchKeyword.value.trim().toLowerCase()
+    filteredStudents.value = students.value.filter(s => 
+      s.name && s.name.toLowerCase().includes(keyword)
+    )
+  }
+  studentIndex.value = -1
+}
+
 const onStudentChange = (e) => {
   studentIndex.value = e.detail.value
-  form.studentId = students.value[e.detail.value]?._id || ''
+  form.studentId = filteredStudents.value[e.detail.value]?._id || ''
+  courseIndex.value = -1
+  form.courseId = ''
+}
+
+const onCourseChange = (e) => {
+  courseIndex.value = e.detail.value
+  const filteredCourses = courses.value.filter(c => {
+    const courseStudentId = c.studentId?._id || c.studentId
+    return courseStudentId === form.studentId
+  })
+  form.courseId = filteredCourses[e.detail.value]?._id || ''
+}
+
+const onCourseTypeChange = (e) => {
+  courseTypeIndex.value = e.detail.value
+  form.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
 }
 
 const onDateChange = (e) => {
@@ -168,6 +277,8 @@ const handleSubmit = async () => {
   
   const submitData = {
     studentId: form.studentId,
+    courseId: form.courseId || undefined,
+    courseTypeId: form.courseTypeId || undefined,
     lessonsConsumed: lessonsConsumed,
     lessonContent: form.lessonContent,
     isDeducted: form.isDeducted,
@@ -225,6 +336,15 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.search-input {
+  margin-bottom: 16rpx;
+}
+
+.search-picker-container {
+  display: flex;
+  flex-direction: column;
 }
 
 .form-picker {

@@ -341,12 +341,21 @@ const handleGenerateReportData = async () => {
       date: record.courseStartTime || record.recordDate,
       startTime: record.courseStartTime || record.recordDate,
       status: record.isDeducted ? 'attended' : 'missed',
-      isGiftLesson: record.isGiftLesson || false
+      isGiftLesson: record.isGiftLesson || false,
+      lessonsConsumed: record.lessonsConsumed || 0
     })).sort((a, b) => new Date(a.date) - new Date(b.date))
     
-    reportData.totalLessons = uniqueRecords.length
-    reportData.attendedLessons = uniqueRecords.filter(r => r.isDeducted).length
-    reportData.missedLessons = uniqueRecords.filter(r => !r.isDeducted).length
+    const attendedLessons = uniqueRecords
+      .filter(r => r.isDeducted)
+      .reduce((sum, r) => sum + (r.lessonsConsumed || 0), 0)
+    
+    const missedLessons = uniqueRecords
+      .filter(r => !r.isDeducted)
+      .reduce((sum, r) => sum + (r.lessonsConsumed || 0), 0)
+    
+    reportData.totalLessons = attendedLessons + missedLessons
+    reportData.attendedLessons = attendedLessons
+    reportData.missedLessons = missedLessons
     reportData.lessonDetails = lessonDetails
     reportData.remainingLessons = reportForm.remainingLessons
     reportData.paymentType = reportForm.paymentType

@@ -37,9 +37,10 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="isGiftLesson" label="课程类型">
+            <el-table-column prop="courseTypeId.name" label="课程类型" width="120" />
+            <el-table-column prop="isGiftLesson" label="赠课" width="80">
               <template #default="{ row }">
-                <el-tag v-if="row.isGiftLesson" type="warning">赠课</el-tag>
+                <el-tag v-if="row.isGiftLesson" type="warning">是</el-tag>
                 <span v-else>-</span>
               </template>
             </el-table-column>
@@ -80,7 +81,7 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="isMobile ? '95%' : '600px'" :style="isMobile ? 'margin: 5vh auto;' : ''">
       <el-form :model="form" label-width="100px">
         <el-form-item label="学生">
-          <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%">
+          <el-select v-model="form.studentId" placeholder="请选择学生" style="width: 100%" filterable>
             <el-option
               v-for="student in students"
               :key="student._id"
@@ -89,12 +90,32 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="课程">
-          <el-select v-model="form.courseId" placeholder="请选择课程" style="width: 100%">
+        <el-form-item label="上课时间">
+          <el-date-picker
+            v-model="form.courseStartTime"
+            type="datetime"
+            placeholder="选择上课时间"
+            style="width: 100%"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DD HH:mm"
+          />
+        </el-form-item>
+        <el-form-item label="课程类型">
+          <el-select v-model="form.courseTypeId" placeholder="请选择课程类型" style="width: 100%">
             <el-option
-              v-for="course in courses"
+              v-for="courseType in courseTypes"
+              :key="courseType._id"
+              :label="courseType.name"
+              :value="courseType._id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关联课程">
+          <el-select v-model="form.courseId" placeholder="请选择课程（可选）" style="width: 100%" clearable>
+            <el-option
+              v-for="course in filteredCourses"
               :key="course._id"
-              :label="`${course.studentId?.name || '未分配'} - ${course.courseTypeId?.name || '未分配'}`"
+              :label="formatDateTime(course.startTime)"
               :value="course._id"
             />
           </el-select>
@@ -135,20 +156,34 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '@/utils/request'
+import { useCourseStore } from '@/store/course'
+
+const courseStore = useCourseStore()
 
 const lessons = ref([])
 const pendingCourses = ref([])
 const students = ref([])
 const courses = ref([])
+const courseTypes = ref([])
 const activeTab = ref('records')
 const dialogVisible = ref(false)
 const dialogTitle = ref('添加消课')
 
 const isMobile = computed(() => window.innerWidth < 768)
 
+const filteredCourses = computed(() => {
+  if (!form.value.studentId) return []
+  return courses.value.filter(course => {
+    const courseStudentId = course.studentId?._id || course.studentId
+    return courseStudentId === form.value.studentId
+  })
+})
+
 const form = ref({
   studentId: '',
+  courseTypeId: '',
   courseId: '',
+  courseStartTime: '',
   lessonsConsumed: 1,
   lessonContent: '',
   isDeducted: false,
@@ -201,11 +236,22 @@ const fetchCourses = async () => {
   }
 }
 
+const fetchCourseTypes = async () => {
+  try {
+    const response = await request.get('/course-types')
+    courseTypes.value = response.data
+  } catch (error) {
+    console.error('获取课程类型列表失败', error)
+  }
+}
+
 const handleAdd = () => {
   dialogTitle.value = '添加消课'
   form.value = {
     studentId: '',
+    courseTypeId: '',
     courseId: '',
+    courseStartTime: '',
     lessonsConsumed: 1,
     lessonContent: '',
     isDeducted: false,
@@ -217,6 +263,19 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   dialogTitle.value = '编辑消课'
   form.value = { ...row }
+  if (form.value.studentId && typeof form.value.studentId === 'object') {
+    form.value.studentId = form.value.studentId._id
+  }
+  if (form.value.courseTypeId && typeof form.value.courseTypeId === 'object') {
+    form.value.courseTypeId = form.value.courseTypeId._id
+  }
+  if (form.value.courseId && typeof form.value.courseId === 'object') {
+    form.value.courseId = form.value.courseId._id
+  }
+  if (form.value.courseStartTime) {
+    const date = new Date(form.value.courseStartTime)
+    form.value.courseStartTime = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  }
   dialogVisible.value = true
 }
 
@@ -262,6 +321,8 @@ const handleSave = async () => {
     }
     dialogVisible.value = false
     await fetchLessons()
+    await fetchPendingCourses()
+    await courseStore.fetchCourses()
   } catch (error) {
     console.error('保存消课记录失败', error)
   }
@@ -285,6 +346,7 @@ onMounted(() => {
   fetchPendingCourses()
   fetchStudents()
   fetchCourses()
+  fetchCourseTypes()
 })
 </script>
 

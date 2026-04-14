@@ -1,7 +1,8 @@
 const mongoose = require('mongoose')
 
 const lessonRecordSchema = new mongoose.Schema({
-  courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+  courseTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseType' },
+  courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   lessonsConsumed: { type: Number, required: true },
   lessonContent: String,

@@ -2,6 +2,7 @@ const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
 const Student = require('../models/Student')
 const Course = require('../models/Course')
+const CourseType = require('../models/CourseType')
 const Payment = require('../models/Payment')
 const FeeStandard = require('../models/FeeStandard')
 const User = require('../models/User')
@@ -41,6 +42,7 @@ const getLessonRecords = async (req, res) => {
       .sort({ recordDate: -1 })
       .populate('studentId', 'name phone')
       .populate('courseId', 'startTime endTime')
+      .populate('courseTypeId', 'name duration')
     
     res.json({
       message: '获取成功',
@@ -61,6 +63,7 @@ const getLessonRecordById = async (req, res) => {
     const record = await LessonRecord.findById(id)
       .populate('studentId', 'name phone')
       .populate('courseId', 'startTime endTime')
+      .populate('courseTypeId', 'name duration')
     
     if (!record) {
       return res.status(404).json({ message: '消课记录不存在' })
@@ -109,13 +112,7 @@ const createLessonRecord = async (req, res) => {
       isGiftLesson = paymentInfo.isGiftLesson
       console.log('预付费学生 - 单价:', unitPrice, '是否赠课:', isGiftLesson)
     } else if (student.paymentType === 'payPerLesson') {
-      let courseTypeId = null
-      if (req.body.courseId) {
-        const course = await Course.findById(req.body.courseId)
-        if (course) {
-          courseTypeId = course.courseTypeId
-        }
-      }
+      let courseTypeId = req.body.courseTypeId
       
       if (courseTypeId) {
         const feeStandard = await FeeStandard.findOne({
@@ -144,8 +141,12 @@ const createLessonRecord = async (req, res) => {
     console.log('isDeducted:', lessonRecord.isDeducted, 'lessonsConsumed:', lessonRecord.lessonsConsumed)
     
     if (req.body.courseId) {
-      await Course.findByIdAndUpdate(req.body.courseId, { isGiftLesson })
-      console.log('更新课程赠课标记:', req.body.courseId, isGiftLesson)
+      const courseUpdate = { isGiftLesson }
+      if (lessonRecordData.isDeducted) {
+        courseUpdate.status = 'completed'
+      }
+      await Course.findByIdAndUpdate(req.body.courseId, courseUpdate)
+      console.log('更新课程状态:', req.body.courseId, courseUpdate)
     }
     
     if (student.paymentType === 'prepaid') {
@@ -278,6 +279,18 @@ const updateLessonRecord = async (req, res) => {
     }
     
     const lessonRecord = await LessonRecord.findByIdAndUpdate(id, req.body, { new: true })
+    
+    if (req.body.courseId || oldRecord.courseId) {
+      const courseId = req.body.courseId || oldRecord.courseId
+      const courseUpdate = { isGiftLesson: lessonRecord.isGiftLesson }
+      if (lessonRecord.isDeducted) {
+        courseUpdate.status = 'completed'
+      } else {
+        courseUpdate.status = 'normal'
+      }
+      await Course.findByIdAndUpdate(courseId, courseUpdate)
+      console.log('更新消课记录时同步课程状态:', courseId, courseUpdate)
+    }
     
     const student = await Student.findById(oldRecord.studentId._id)
     

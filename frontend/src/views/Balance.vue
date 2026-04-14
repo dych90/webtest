@@ -316,10 +316,20 @@ const handleGenerateReport = async () => {
     
     console.log('课程明细数量:', lessonDetails.length)
     
+    const attendedLessons = uniqueRecords
+      .filter(r => r.isDeducted)
+      .reduce((sum, r) => sum + (r.lessonsConsumed || 0), 0)
+    
+    const missedLessons = uniqueRecords
+      .filter(r => !r.isDeducted)
+      .reduce((sum, r) => sum + (r.lessonsConsumed || 0), 0)
+    
+    const totalLessons = attendedLessons + missedLessons
+    
     reportData.value = {
-      totalLessons: uniqueRecords.length,
-      attendedLessons: uniqueRecords.filter(r => r.isDeducted).length,
-      missedLessons: uniqueRecords.filter(r => !r.isDeducted).length,
+      totalLessons: totalLessons,
+      attendedLessons: attendedLessons,
+      missedLessons: missedLessons,
       lessonDetails: lessonDetails,
       remainingLessons: reportForm.value.remainingLessons,
       paymentType: reportForm.value.paymentType
