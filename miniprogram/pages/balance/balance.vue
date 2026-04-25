@@ -70,9 +70,10 @@
           <view class="form-item">
             <text class="form-label">新余额</text>
             <view class="number-input">
-              <button class="minus-btn" @click="form.remainingLessons--">-</button>
-              <input class="number-field" v-model="form.remainingLessons" type="number" />
-              <button class="plus-btn" @click="form.remainingLessons++">+</button>
+              <button class="sign-btn" @click="toggleSign">{{ form.remainingLessons < 0 ? '+' : '-' }}</button>
+              <button class="minus-btn" @click="adjustBalance(-0.5)">-0.5</button>
+              <input class="number-field" v-model="form.remainingLessons" type="digit" />
+              <button class="plus-btn" @click="adjustBalance(0.5)">+0.5</button>
             </view>
           </view>
         </view>
@@ -263,6 +264,15 @@ const handleUpdate = (item) => {
   form.currentRemainingLessons = item.remainingLessons || 0
   form.remainingLessons = item.remainingLessons || 0
   dialogVisible.value = true
+}
+
+const toggleSign = () => {
+  form.remainingLessons = -form.remainingLessons
+}
+
+const adjustBalance = (amount) => {
+  const current = parseFloat(form.remainingLessons) || 0
+  form.remainingLessons = (current + amount).toFixed(1)
 }
 
 const handleSave = async () => {
@@ -796,15 +806,29 @@ onShow(() => {
 }
 
 .minus-btn, .plus-btn {
-  width: 80rpx;
+  width: 100rpx;
   height: 80rpx;
-  font-size: 36rpx;
+  font-size: 28rpx;
   background-color: #f5f7fa;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.sign-btn {
+  width: 80rpx;
+  height: 80rpx;
+  font-size: 36rpx;
+  font-weight: bold;
+  background-color: #e6f7ff;
+  border: 2rpx solid #91d5ff;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1890ff;
 }
 
 .number-field {

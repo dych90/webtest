@@ -14,6 +14,7 @@ const courseSchema = new mongoose.Schema({
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   reminderSent: { type: Boolean, default: false },
   fromLessonRecord: { type: Boolean, default: false },
+  notes: String,
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 })
