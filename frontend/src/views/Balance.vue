@@ -118,7 +118,7 @@
             <div v-for="(lesson, index) in reportData.lessonDetails" :key="index" class="lesson-item">
               <div class="lesson-info">
                 <div class="lesson-date-time">
-                  <span class="lesson-date-text">{{ formatDate(lesson.date) }}</span>
+                  <span class="lesson-date-text">{{ formatDate(lesson.date) }} {{ getWeekDay(lesson.date) }}</span>
                   <span class="lesson-time">{{ formatTime(lesson.startTime) }}</span>
                 </div>
               </div>
@@ -452,6 +452,13 @@ const formatTime = (date) => {
     minute: '2-digit',
     hour12: false
   })
+}
+
+const getWeekDay = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return days[d.getDay()]
 }
 
 const formatStudentName = (name) => {

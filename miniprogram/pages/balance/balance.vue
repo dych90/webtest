@@ -155,7 +155,7 @@
                     <text>{{ index + 1 }}</text>
                   </view>
                   <view class="lesson-info">
-                    <text class="lesson-date">{{ formatDate(lesson.date) }}</text>
+                    <text class="lesson-date">{{ formatDate(lesson.date) }} {{ getWeekDay(lesson.date) }}</text>
                     <text class="lesson-time">{{ formatTime(lesson.startTime) }}</text>
                   </view>
                   <view class="lesson-status">
@@ -256,6 +256,13 @@ const formatTime = (date) => {
   if (!date) return ''
   const d = new Date(date)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+const getWeekDay = (date) => {
+  if (!date) return ''
+  const d = new Date(date)
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return days[d.getDay()]
 }
 
 const handleUpdate = (item) => {

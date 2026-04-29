@@ -20,23 +20,31 @@
       </view>
     </view>
     
-    <view class="section-title">本月数据</view>
+    <view class="section-header">
+      <text class="section-title">月度数据</text>
+      <picker mode="date" :value="selectedMonth" fields="month" @change="onMonthChange">
+        <view class="month-picker">
+          <text>{{ monthDisplayText }}</text>
+          <text class="picker-arrow">▼</text>
+        </view>
+      </picker>
+    </view>
     <view class="stats-grid">
       <view class="stat-card">
         <text class="stat-value warning">¥{{ statistics.monthlyPrepaidRevenue }}</text>
-        <text class="stat-label">本月预收入</text>
+        <text class="stat-label">{{ monthLabel }}预收入</text>
       </view>
       <view class="stat-card">
         <text class="stat-value success">¥{{ statistics.monthlyActualRevenue }}</text>
-        <text class="stat-label">本月实际收入</text>
+        <text class="stat-label">{{ monthLabel }}实际收入</text>
       </view>
       <view class="stat-card">
         <text class="stat-value">{{ statistics.monthlyLessonsConsumed }}</text>
-        <text class="stat-label">本月消课</text>
+        <text class="stat-label">{{ monthLabel }}消课</text>
       </view>
       <view class="stat-card">
         <text class="stat-value">{{ statistics.monthlyLessonsAttended }}</text>
-        <text class="stat-label">本月上课数</text>
+        <text class="stat-label">{{ monthLabel }}上课数</text>
       </view>
     </view>
     
@@ -116,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
 
@@ -138,6 +146,7 @@ const statistics = ref({
 const chartType = ref('month')
 const currentYear = ref(new Date().getFullYear().toString())
 const yearOptions = ref(['2022年', '2023年', '2024年', '2025年', '2026年'])
+const selectedMonth = ref('')
 const chartData = ref({
   labels: [],
   prepaidRevenue: [],
@@ -148,14 +157,72 @@ const chartData = ref({
 
 const fetchStatistics = async () => {
   try {
-    const res = await get('/statistics')
-    statistics.value = {
-      ...statistics.value,
-      ...res.data
+    const params = {}
+    if (selectedMonth.value) {
+      params.month = selectedMonth.value
     }
+    console.log('获取统计数据，参数:', params)
+    
+    uni.showLoading({ title: '加载中...' })
+    
+    const res = await get('/statistics', params)
+    console.log('统计数据响应:', res)
+    
+    const data = res.data || res
+    console.log('统计数据详情:', data)
+    console.log('月度预收入:', data.monthlyPrepaidRevenue)
+    console.log('月度实际收入:', data.monthlyActualRevenue)
+    console.log('月度消课:', data.monthlyLessonsConsumed)
+    console.log('月度上课数:', data.monthlyLessonsAttended)
+    
+    statistics.value.studentCount = data.studentCount || 0
+    statistics.value.totalRevenue = data.totalRevenue || 0
+    statistics.value.totalCourses = data.totalCourses || 0
+    statistics.value.totalLessonsSold = data.totalLessonsSold || 0
+    statistics.value.totalLessonsConsumed = data.totalLessonsConsumed || 0
+    statistics.value.totalLessonsAttended = data.totalLessonsAttended || 0
+    statistics.value.totalRemainingLessons = data.totalRemainingLessons || 0
+    statistics.value.prepaidLessonsConsumed = data.prepaidLessonsConsumed || 0
+    statistics.value.monthlyPrepaidRevenue = data.monthlyPrepaidRevenue || 0
+    statistics.value.monthlyActualRevenue = data.monthlyActualRevenue || 0
+    statistics.value.monthlyLessonsConsumed = data.monthlyLessonsConsumed || 0
+    statistics.value.monthlyLessonsAttended = data.monthlyLessonsAttended || 0
+    
+    console.log('更新后的统计数据:', JSON.stringify(statistics.value))
+    
+    uni.hideLoading()
   } catch (error) {
     console.error('获取统计数据失败', error)
+    uni.hideLoading()
+    uni.showToast({ title: '获取数据失败', icon: 'none' })
   }
+}
+
+const monthDisplayText = computed(() => {
+  if (!selectedMonth.value) {
+    const now = new Date()
+    return `${now.getFullYear()}年${now.getMonth() + 1}月`
+  }
+  const [year, month] = selectedMonth.value.split('-')
+  return `${year}年${parseInt(month)}月`
+})
+
+const monthLabel = computed(() => {
+  if (!selectedMonth.value) return '本月'
+  const now = new Date()
+  const [year, month] = selectedMonth.value.split('-')
+  if (parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1) {
+    return '本月'
+  }
+  return `${parseInt(month)}月`
+})
+
+const onMonthChange = (e) => {
+  console.log('月份选择变化事件:', e)
+  console.log('选择的月份值:', e.detail.value)
+  selectedMonth.value = e.detail.value
+  console.log('selectedMonth 已更新为:', selectedMonth.value)
+  fetchStatistics()
 }
 
 const fetchChartStatistics = async () => {
@@ -411,6 +478,24 @@ onShow(() => {
   margin-bottom: 20rpx;
   padding-left: 10rpx;
   border-left: 6rpx solid #409EFF;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.month-picker {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 10rpx 20rpx;
+  background-color: #f5f7fa;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #409EFF;
 }
 
 .stats-grid {

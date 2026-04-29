@@ -85,10 +85,24 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px">
+      <el-col :span="24" style="margin-bottom: 10px">
+        <div class="month-selector">
+          <span class="selector-label">月度统计</span>
+          <el-date-picker
+            v-model="selectedMonth"
+            type="month"
+            placeholder="选择月份"
+            format="YYYY年MM月"
+            value-format="YYYY-MM"
+            @change="fetchStatistics"
+          />
+        </div>
+      </el-col>
+      
       <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
-            <span>本月预收入</span>
+            <span>{{ selectedMonthLabel }}预收入</span>
           </template>
           <div class="stat-value revenue">¥{{ statistics.monthlyPrepaidRevenue }}</div>
         </el-card>
@@ -96,7 +110,7 @@
       <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
-            <span>本月实际收入</span>
+            <span>{{ selectedMonthLabel }}实际收入</span>
           </template>
           <div class="stat-value actual-revenue">¥{{ statistics.monthlyActualRevenue }}</div>
         </el-card>
@@ -104,7 +118,7 @@
       <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
-            <span>本月消课</span>
+            <span>{{ selectedMonthLabel }}消课</span>
           </template>
           <div class="stat-value">{{ statistics.monthlyLessonsConsumed }} 课时</div>
         </el-card>
@@ -112,7 +126,7 @@
       <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
-            <span>本月上课数</span>
+            <span>{{ selectedMonthLabel }}上课数</span>
           </template>
           <div class="stat-value">{{ statistics.monthlyLessonsAttended }} 节</div>
         </el-card>
@@ -161,7 +175,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
@@ -193,6 +207,16 @@ let lessonChartInstance = null
 
 const chartType = ref('month')
 const selectedYear = ref(new Date().getFullYear().toString())
+const selectedMonth = ref('')
+const selectedMonthLabel = computed(() => {
+  if (!selectedMonth.value) return '本月'
+  const now = new Date()
+  const [year, month] = selectedMonth.value.split('-')
+  if (parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1) {
+    return '本月'
+  }
+  return `${parseInt(month)}月`
+})
 const chartData = ref({
   labels: [],
   prepaidRevenue: [],
@@ -207,8 +231,34 @@ const fetchStatistics = async () => {
     if (userStore.isAdmin() && selectedTeacherId.value) {
       params.teacherId = selectedTeacherId.value
     }
+    if (selectedMonth.value) {
+      params.month = selectedMonth.value
+    }
+    console.log('获取统计数据，参数:', params)
     const response = await request.get('/statistics', { params })
-    statistics.value = response.data
+    console.log('统计数据响应:', response)
+    
+    const data = response.data || response
+    console.log('统计数据详情:', data)
+    
+    Object.assign(statistics.value, {
+      studentCount: data.studentCount || 0,
+      totalRevenue: data.totalRevenue || 0,
+      totalCourses: data.totalCourses || 0,
+      totalLessonsSold: data.totalLessonsSold || 0,
+      totalLessonsConsumed: data.totalLessonsConsumed || 0,
+      totalLessonsAttended: data.totalLessonsAttended || 0,
+      totalRemainingLessons: data.totalRemainingLessons || 0,
+      prepaidLessonsConsumed: data.prepaidLessonsConsumed || 0,
+      monthlyPrepaidRevenue: data.monthlyPrepaidRevenue || 0,
+      monthlyActualRevenue: data.monthlyActualRevenue || 0,
+      monthlyLessonsConsumed: data.monthlyLessonsConsumed || 0,
+      monthlyLessonsAttended: data.monthlyLessonsAttended || 0,
+      paymentCount: data.paymentCount || 0,
+      lessonRecordCount: data.lessonRecordCount || 0
+    })
+    
+    console.log('更新后的统计数据:', statistics.value)
     
     await fetchChartStatistics()
   } catch (error) {

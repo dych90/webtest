@@ -196,7 +196,8 @@ const greeting = computed(() => {
 
 const currentDate = computed(() => {
   const now = new Date()
-  return `${now.getMonth() + 1}月${now.getDate()}日 周${dayNames[now.getDay()]}`
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return `${now.getMonth() + 1}月${now.getDate()}日 ${weekDays[now.getDay()]}`
 })
 
 const isToday = computed(() => {
@@ -211,7 +212,8 @@ const courseDateText = computed(() => {
   if (isToday.value) {
     return '今日课程'
   }
-  return `${d.getMonth() + 1}月${d.getDate()}日 周${dayNames[d.getDay()]}`
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return `${d.getMonth() + 1}月${d.getDate()}日 ${weekDays[d.getDay()]}`
 })
 
 const formatTime = (dateStr) => {
