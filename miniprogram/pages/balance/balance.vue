@@ -462,7 +462,7 @@ const saveReportImage = () => {
     
     ctx.setFillStyle('#333')
     ctx.setFontSize(12)
-    ctx.fillText(`${formatDate(lesson.date)} ${formatTime(lesson.startTime)}`, 50, y + 22)
+    ctx.fillText(`${formatDate(lesson.date)} ${getWeekDay(lesson.date)} ${formatTime(lesson.startTime)}`, 50, y + 22)
     
     const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
     const statusColor = lesson.isGiftLesson ? '#9b59b6' : (lesson.status === 'attended' ? '#67C23A' : '#F56C6C')
@@ -535,7 +535,7 @@ const copyReportText = () => {
   
   reportData.lessonDetails.forEach((lesson, index) => {
     const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
-    text += `${index + 1}. ${formatDate(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}\n`
+    text += `${index + 1}. ${formatDate(lesson.date)} ${getWeekDay(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}\n`
   })
   
   uni.setClipboardData({

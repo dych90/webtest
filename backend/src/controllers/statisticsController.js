@@ -127,6 +127,14 @@ const getStatistics = async (req, res) => {
     const monthlyLessonsConsumed = monthlyLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
     const monthlyLessonsAttended = monthlyLessonRecords.length
     
+    const monthlyCourses = courses.filter(c => {
+      if (!c.startTime) return false
+      const courseDate = new Date(c.startTime)
+      if (isNaN(courseDate.getTime())) return false
+      return courseDate >= startOfMonth && courseDate < endOfMonth
+    })
+    const monthlyScheduledLessons = monthlyCourses.length
+    
     console.log('========== 月度统计数据 ==========')
     console.log('月度实际收入:', monthlyActualRevenue)
     console.log('月度消课数:', monthlyLessonsConsumed)
@@ -155,7 +163,7 @@ const getStatistics = async (req, res) => {
       totalRemainingLessons,
       monthlyPrepaidRevenue,
       monthlyActualRevenue,
-      monthlyLessonsConsumed,
+      monthlyLessonsConsumed: monthlyScheduledLessons,
       monthlyLessonsAttended,
       prepaidLessonsConsumed,
       monthlyPrepaidLessonsConsumed,
@@ -166,7 +174,7 @@ const getStatistics = async (req, res) => {
     console.log('========== 最终返回数据 ==========')
     console.log('月度预收入:', responseData.monthlyPrepaidRevenue)
     console.log('月度实际收入:', responseData.monthlyActualRevenue)
-    console.log('月度消课数:', responseData.monthlyLessonsConsumed)
+    console.log('月度应上课时:', responseData.monthlyLessonsConsumed)
     console.log('月度上课数:', responseData.monthlyLessonsAttended)
     console.log('================================')
     

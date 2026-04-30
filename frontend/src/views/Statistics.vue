@@ -88,14 +88,15 @@
       <el-col :span="24" style="margin-bottom: 10px">
         <div class="month-selector">
           <span class="selector-label">月度统计</span>
-          <el-date-picker
-            v-model="selectedMonth"
-            type="month"
-            placeholder="选择月份"
-            format="YYYY年MM月"
-            value-format="YYYY-MM"
-            @change="fetchStatistics"
-          />
+          <div class="month-nav">
+            <el-button circle size="small" @click="prevMonth">
+              <el-icon><ArrowLeft /></el-icon>
+            </el-button>
+            <span class="month-text">{{ monthDisplayText }}</span>
+            <el-button circle size="small" @click="nextMonth" :disabled="isCurrentMonth">
+              <el-icon><ArrowRight /></el-icon>
+            </el-button>
+          </div>
         </div>
       </el-col>
       
@@ -118,7 +119,7 @@
       <el-col :xs="12" :sm="12" :md="6" :lg="6" :xl="6">
         <el-card>
           <template #header>
-            <span>{{ selectedMonthLabel }}消课</span>
+            <span>{{ selectedMonthLabel }}应上课时</span>
           </template>
           <div class="stat-value">{{ statistics.monthlyLessonsConsumed }} 课时</div>
         </el-card>
@@ -179,6 +180,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
 import { useUserStore } from '@/stores/user'
+import { ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const teachers = ref([])
@@ -206,17 +208,48 @@ let incomeChartInstance = null
 let lessonChartInstance = null
 
 const chartType = ref('month')
-const selectedYear = ref(new Date().getFullYear().toString())
-const selectedMonth = ref('')
-const selectedMonthLabel = computed(() => {
-  if (!selectedMonth.value) return '本月'
-  const now = new Date()
-  const [year, month] = selectedMonth.value.split('-')
-  if (parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1) {
-    return '本月'
-  }
-  return `${parseInt(month)}月`
+const chartYear = ref(new Date().getFullYear().toString())
+
+const now = new Date()
+const selectedYear = ref(now.getFullYear())
+const selectedMonthIndex = ref(now.getMonth())
+
+const monthDisplayText = computed(() => {
+  return `${selectedYear.value}年${selectedMonthIndex.value + 1}月`
 })
+
+const isCurrentMonth = computed(() => {
+  const current = new Date()
+  return selectedYear.value === current.getFullYear() && selectedMonthIndex.value === current.getMonth()
+})
+
+const selectedMonthLabel = computed(() => {
+  if (isCurrentMonth.value) return '本月'
+  return `${selectedMonthIndex.value + 1}月`
+})
+
+const prevMonth = () => {
+  if (selectedMonthIndex.value === 0) {
+    selectedYear.value--
+    selectedMonthIndex.value = 11
+  } else {
+    selectedMonthIndex.value--
+  }
+  fetchStatistics()
+}
+
+const nextMonth = () => {
+  if (isCurrentMonth.value) return
+  
+  if (selectedMonthIndex.value === 11) {
+    selectedYear.value++
+    selectedMonthIndex.value = 0
+  } else {
+    selectedMonthIndex.value++
+  }
+  fetchStatistics()
+}
+
 const chartData = ref({
   labels: [],
   prepaidRevenue: [],
@@ -227,12 +260,10 @@ const chartData = ref({
 
 const fetchStatistics = async () => {
   try {
-    const params = {}
+    const monthStr = `${selectedYear.value}-${String(selectedMonthIndex.value + 1).padStart(2, '0')}`
+    const params = { month: monthStr }
     if (userStore.isAdmin() && selectedTeacherId.value) {
       params.teacherId = selectedTeacherId.value
-    }
-    if (selectedMonth.value) {
-      params.month = selectedMonth.value
     }
     console.log('获取统计数据，参数:', params)
     const response = await request.get('/statistics', { params })
@@ -341,6 +372,13 @@ const updateIncomeChart = () => {
       data: data.prepaidRevenue,
       itemStyle: {
         color: '#409eff'
+      },
+      label: {
+        show: true,
+        position: 'top',
+        color: '#333',
+        fontSize: 11,
+        formatter: (params) => params.value > 0 ? params.value : ''
       }
     }, {
       name: '实际收入',
@@ -348,6 +386,23 @@ const updateIncomeChart = () => {
       data: data.actualRevenue,
       itemStyle: {
         color: '#67c23a'
+      },
+      label: {
+        show: true,
+        position: function(params) {
+          const prepaidVal = data.prepaidRevenue[params.dataIndex]
+          const actualVal = params.value
+          if (prepaidVal > 0 && actualVal > 0 && Math.abs(prepaidVal - actualVal) < prepaidVal * 0.3) {
+            return actualVal > prepaidVal ? 'top' : 'insideBottom'
+          }
+          return 'top'
+        },
+        color: function(params) {
+          const prepaidVal = data.prepaidRevenue[params.dataIndex]
+          return (params.value > 0 && prepaidVal > 0 && Math.abs(prepaidVal - params.value) < prepaidVal * 0.3 && params.value <= prepaidVal) ? '#fff' : '#333'
+        },
+        fontSize: 11,
+        formatter: (params) => params.value > 0 ? params.value : ''
       }
     }]
   })
@@ -390,6 +445,13 @@ const updateLessonChart = () => {
       data: data.lessonsConsumed,
       itemStyle: {
         color: '#e6a23c'
+      },
+      label: {
+        show: true,
+        position: 'top',
+        color: '#333',
+        fontSize: 11,
+        formatter: (params) => params.value > 0 ? params.value : ''
       }
     }, {
       name: '上课数',
@@ -398,6 +460,13 @@ const updateLessonChart = () => {
       data: data.lessonsAttended,
       itemStyle: {
         color: '#67c23a'
+      },
+      label: {
+        show: true,
+        position: 'bottom',
+        color: '#67c23a',
+        fontSize: 11,
+        formatter: (params) => params.value > 0 ? params.value : ''
       }
     }]
   })
@@ -523,5 +592,34 @@ const handleResize = () => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.month-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background-color: #fff;
+  border-radius: 8px;
+}
+
+.selector-label {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.month-text {
+  font-size: 16px;
+  font-weight: bold;
+  color: #409eff;
+  min-width: 100px;
+  text-align: center;
 }
 </style>

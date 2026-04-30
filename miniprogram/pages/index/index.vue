@@ -41,7 +41,10 @@
             <text>›</text>
           </view>
         </view>
-        <text class="section-more" @click="goToSchedule">查看全部</text>
+        <view class="header-right-btns">
+          <text v-if="!isToday" class="back-today-btn" @click="goToday">回到今天</text>
+          <text class="section-more" @click="goToSchedule">查看全部</text>
+        </view>
       </view>
       
       <view v-if="todayCourses.length === 0" class="empty-tip">
@@ -247,6 +250,11 @@ const nextDay = () => {
   const newDate = new Date(selectedDate.value)
   newDate.setDate(newDate.getDate() + 1)
   selectedDate.value = newDate
+  fetchDayCourses()
+}
+
+const goToday = () => {
+  selectedDate.value = new Date()
   fetchDayCourses()
 }
 
@@ -536,6 +544,21 @@ onShow(() => {
 .section-more {
   font-size: 24rpx;
   color: #409EFF;
+}
+
+.header-right-btns {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.back-today-btn {
+  font-size: 24rpx;
+  color: #67C23A;
+  font-weight: bold;
+  padding: 8rpx 16rpx;
+  background-color: #f0f9eb;
+  border-radius: 8rpx;
 }
 
 .empty-tip {

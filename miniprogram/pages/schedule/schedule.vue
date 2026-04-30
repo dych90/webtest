@@ -900,7 +900,7 @@ onShow(() => {
 
 .time-slot-row {
   display: flex;
-  min-height: 120rpx;
+  min-height: 40rpx;
   border-bottom: 1rpx solid #f0f0f0;
 }
 

@@ -22,12 +22,15 @@
     
     <view class="section-header">
       <text class="section-title">月度数据</text>
-      <picker mode="date" :value="selectedMonth" fields="month" @change="onMonthChange">
-        <view class="month-picker">
-          <text>{{ monthDisplayText }}</text>
-          <text class="picker-arrow">▼</text>
+      <view class="month-nav">
+        <view class="nav-btn" @click="prevMonth">
+          <text>‹</text>
         </view>
-      </picker>
+        <text class="month-text">{{ monthDisplayText }}</text>
+        <view class="nav-btn" @click="nextMonth" :class="{ 'nav-disabled': isCurrentMonth }">
+          <text>›</text>
+        </view>
+      </view>
     </view>
     <view class="stats-grid">
       <view class="stat-card">
@@ -40,7 +43,7 @@
       </view>
       <view class="stat-card">
         <text class="stat-value">{{ statistics.monthlyLessonsConsumed }}</text>
-        <text class="stat-label">{{ monthLabel }}消课</text>
+        <text class="stat-label">{{ monthLabel }}应上课时</text>
       </view>
       <view class="stat-card">
         <text class="stat-value">{{ statistics.monthlyLessonsAttended }}</text>
@@ -146,7 +149,11 @@ const statistics = ref({
 const chartType = ref('month')
 const currentYear = ref(new Date().getFullYear().toString())
 const yearOptions = ref(['2022年', '2023年', '2024年', '2025年', '2026年'])
-const selectedMonth = ref('')
+
+const now = new Date()
+const selectedYear = ref(now.getFullYear())
+const selectedMonthIndex = ref(now.getMonth())
+
 const chartData = ref({
   labels: [],
   prepaidRevenue: [],
@@ -157,10 +164,8 @@ const chartData = ref({
 
 const fetchStatistics = async () => {
   try {
-    const params = {}
-    if (selectedMonth.value) {
-      params.month = selectedMonth.value
-    }
+    const monthStr = `${selectedYear.value}-${String(selectedMonthIndex.value + 1).padStart(2, '0')}`
+    const params = { month: monthStr }
     console.log('获取统计数据，参数:', params)
     
     uni.showLoading({ title: '加载中...' })
@@ -199,29 +204,38 @@ const fetchStatistics = async () => {
 }
 
 const monthDisplayText = computed(() => {
-  if (!selectedMonth.value) {
-    const now = new Date()
-    return `${now.getFullYear()}年${now.getMonth() + 1}月`
-  }
-  const [year, month] = selectedMonth.value.split('-')
-  return `${year}年${parseInt(month)}月`
+  return `${selectedYear.value}年${selectedMonthIndex.value + 1}月`
+})
+
+const isCurrentMonth = computed(() => {
+  const now = new Date()
+  return selectedYear.value === now.getFullYear() && selectedMonthIndex.value === now.getMonth()
 })
 
 const monthLabel = computed(() => {
-  if (!selectedMonth.value) return '本月'
-  const now = new Date()
-  const [year, month] = selectedMonth.value.split('-')
-  if (parseInt(year) === now.getFullYear() && parseInt(month) === now.getMonth() + 1) {
-    return '本月'
-  }
-  return `${parseInt(month)}月`
+  if (isCurrentMonth.value) return '本月'
+  return `${selectedMonthIndex.value + 1}月`
 })
 
-const onMonthChange = (e) => {
-  console.log('月份选择变化事件:', e)
-  console.log('选择的月份值:', e.detail.value)
-  selectedMonth.value = e.detail.value
-  console.log('selectedMonth 已更新为:', selectedMonth.value)
+const prevMonth = () => {
+  if (selectedMonthIndex.value === 0) {
+    selectedYear.value--
+    selectedMonthIndex.value = 11
+  } else {
+    selectedMonthIndex.value--
+  }
+  fetchStatistics()
+}
+
+const nextMonth = () => {
+  if (isCurrentMonth.value) return
+  
+  if (selectedMonthIndex.value === 11) {
+    selectedYear.value++
+    selectedMonthIndex.value = 0
+  } else {
+    selectedMonthIndex.value++
+  }
   fetchStatistics()
 }
 
@@ -306,6 +320,7 @@ const drawIncomeChart = () => {
       const maxPrepaid = Math.max(...data.prepaidRevenue, 1)
       const maxActual = Math.max(...data.actualRevenue, 1)
       const maxValue = Math.max(maxPrepaid, maxActual)
+      const minValueForLabel = maxValue * 0.08
       const barCount = data.labels.length
       const groupWidth = chartWidth / barCount
       const barWidth = groupWidth * 0.3
@@ -352,6 +367,40 @@ const drawIncomeChart = () => {
         ctx.beginPath()
         ctx.rect(actualX, actualY, barWidth, actualHeight)
         ctx.fill()
+        
+        ctx.font = '9px sans-serif'
+        ctx.textAlign = 'center'
+        
+        const prepaidVal = data.prepaidRevenue[i]
+        const actualVal = data.actualRevenue[i]
+        
+        if (prepaidVal > 0 && actualVal > 0) {
+          const maxVal = Math.max(prepaidVal, actualVal)
+          const minVal = Math.min(prepaidVal, actualVal)
+          
+          if (maxVal > minValueForLabel) {
+            ctx.fillStyle = '#333'
+            if (prepaidVal >= actualVal) {
+              ctx.fillText(prepaidVal, prepaidX + barWidth / 2, Math.max(prepaidY - 8, padding.top + 12))
+              if (actualHeight > 20 && minVal > minValueForLabel) {
+                ctx.fillStyle = '#fff'
+                ctx.fillText(actualVal, actualX + barWidth / 2, actualY + 14)
+              }
+            } else {
+              ctx.fillText(actualVal, actualX + barWidth / 2, Math.max(actualY - 8, padding.top + 12))
+              if (prepaidHeight > 20 && minVal > minValueForLabel) {
+                ctx.fillStyle = '#fff'
+                ctx.fillText(prepaidVal, prepaidX + barWidth / 2, prepaidY + 14)
+              }
+            }
+          }
+        } else if (prepaidVal > 0 && prepaidVal > minValueForLabel) {
+          ctx.fillStyle = '#333'
+          ctx.fillText(prepaidVal, prepaidX + barWidth / 2, Math.max(prepaidY - 5, padding.top + 12))
+        } else if (actualVal > 0 && actualVal > minValueForLabel) {
+          ctx.fillStyle = '#333'
+          ctx.fillText(actualVal, actualX + barWidth / 2, Math.max(actualY - 5, padding.top + 12))
+        }
       })
     })
 }
@@ -416,7 +465,7 @@ const drawLessonChart = () => {
         ctx.fillText(label, x, height - padding.bottom + 20)
       })
       
-      const drawLine = (dataArr, color) => {
+      const drawLine = (dataArr, color, isSecondLine) => {
         ctx.strokeStyle = color
         ctx.lineWidth = 2
         ctx.beginPath()
@@ -445,11 +494,22 @@ const drawLessonChart = () => {
           ctx.strokeStyle = color
           ctx.lineWidth = 2
           ctx.stroke()
+          
+          if (value > minValueForLabel) {
+            ctx.fillStyle = '#333'
+            ctx.font = '9px sans-serif'
+            ctx.textAlign = 'center'
+            if (isSecondLine) {
+              ctx.fillText(value, x, y + 14)
+            } else {
+              ctx.fillText(value, x, y - 10)
+            }
+          }
         })
       }
       
-      drawLine(data.lessonsConsumed, '#E6A23C')
-      drawLine(data.lessonsAttended, '#67C23A')
+      drawLine(data.lessonsConsumed, '#E6A23C', false)
+      drawLine(data.lessonsAttended, '#67C23A', true)
     })
 }
 
@@ -487,15 +547,42 @@ onShow(() => {
   margin-bottom: 20rpx;
 }
 
-.month-picker {
+.month-nav {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 10rpx 20rpx;
+  gap: 20rpx;
+}
+
+.nav-btn {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #f5f7fa;
-  border-radius: 8rpx;
-  font-size: 24rpx;
+  border-radius: 50%;
+}
+
+.nav-btn text {
+  font-size: 32rpx;
   color: #409EFF;
+  font-weight: bold;
+}
+
+.nav-disabled {
+  opacity: 0.3;
+}
+
+.nav-disabled text {
+  color: #c0c4cc;
+}
+
+.month-text {
+  font-size: 28rpx;
+  color: #409EFF;
+  font-weight: bold;
+  min-width: 160rpx;
+  text-align: center;
 }
 
 .stats-grid {
