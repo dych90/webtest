@@ -53,27 +53,24 @@ async function fixMissingPayments() {
 
     console.log('📊 开始查找需要补录的记录...\n')
 
-    const allStudents = await Student.find({ paymentType: 'payPerLesson' })
-    console.log(`👥 找到 ${allStudents.length} 个单次付费学生`)
-
-    const studentIds = allStudents.map(s => s._id)
-
     const lessonRecords = await LessonRecord.find({
-      studentId: { $in: studentIds },
       isDeducted: true,
       unitPrice: { $gt: 0 }
     }).sort({ createdAt: 1 })
 
-    console.log(`📝 找到 ${lessonRecords.length} 条已扣课记录\n`)
+    console.log(`📝 找到 ${lessonRecords.length} 条有单价的已扣课记录\n`)
 
     let fixedCount = 0
     let skippedCount = 0
     let totalAmount = 0
 
     for (const record of lessonRecords) {
+      const student = await Student.findById(record.studentId)
+      const studentName = student?.name || '未知'
+
       const existingPayment = await Payment.findOne({
         studentId: record.studentId,
-        notes: /单次付费/,
+        amount: record.unitPrice * record.lessonsConsumed,
         createdAt: {
           $gte: new Date(record.createdAt.getTime() - 60000),
           $lte: new Date(record.createdAt.getTime() + 60000)
@@ -81,7 +78,7 @@ async function fixMissingPayments() {
       })
 
       if (existingPayment) {
-        console.log(`⏭️ 跳过 - 已有缴费记录: 学生=${record.studentId}, 金额=¥${record.unitPrice * record.lessonsConsumed}`)
+        console.log(`⏭️ 跳过 [${studentName}] 已有缴费记录 ¥${record.unitPrice * record.lessonsConsumed} (${record.createdAt?.toISOString().slice(0,10)})`)
         skippedCount++
         continue
       }
@@ -99,20 +96,20 @@ async function fixMissingPayments() {
         createdAt: record.createdAt
       })
 
-      console.log(`✅ 补录成功: 学生=${record.studentId}, 金额=¥${amount}, 日期=${record.courseStartTime || record.createdAt}`)
+      console.log(`✅ 补录成功 [${studentName}] ¥${amount} (${record.createdAt?.toISOString().slice(0,10)}) ${record.notes?.slice(0,20) || ''}`)
       fixedCount++
       totalAmount += amount
 
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 50))
     }
 
-    console.log('\n' + '='.repeat(60))
+    console.log('\n' + '='.repeat(70))
     console.log('📈 补录完成统计:')
-    console.log('='.repeat(60))
+    console.log('='.repeat(70))
     console.log(`✅ 成功补录: ${fixedCount} 条`)
     console.log(`⏭️ 已存在跳过: ${skippedCount} 条`)
     console.log(`💰 补录总金额: ¥${totalAmount.toLocaleString()}`)
-    console.log('='.repeat(60) + '\n')
+    console.log('='.repeat(70) + '\n')
 
     if (fixedCount > 0) {
       console.log('💡 提示: 刷新数据统计页面即可看到更新后的收入数据\n')
