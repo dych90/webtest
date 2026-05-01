@@ -228,6 +228,24 @@ const selectedMonthLabel = computed(() => {
   return `${selectedMonthIndex.value + 1}月`
 })
 
+const revenueTableData = computed(() => {
+  if (!chartData.value.labels) return []
+  return chartData.value.labels.map((label, index) => ({
+    label,
+    prepaidRevenue: chartData.value.prepaidRevenue[index] || 0,
+    actualRevenue: chartData.value.actualRevenue[index] || 0
+  }))
+})
+
+const lessonTableData = computed(() => {
+  if (!chartData.value.labels) return []
+  return chartData.value.labels.map((label, index) => ({
+    label,
+    lessonsConsumed: chartData.value.lessonsConsumed[index] || 0,
+    lessonsAttended: chartData.value.lessonsAttended[index] || 0
+  }))
+})
+
 const prevMonth = () => {
   if (selectedMonthIndex.value === 0) {
     selectedYear.value--
@@ -338,10 +356,23 @@ const updateIncomeChart = () => {
     },
     tooltip: {
       trigger: 'axis',
+      backgroundColor: 'rgba(50, 50, 50, 0.95)',
+      borderColor: '#333',
+      borderWidth: 1,
+      textStyle: {
+        color: '#fff',
+        fontSize: 13
+      },
+      padding: [10, 14],
       formatter: (params) => {
-        let result = params[0].name + '<br/>'
+        let result = `<div style="font-weight:bold;margin-bottom:6px">${params[0].axisValue}</div>`
         params.forEach(item => {
-          result += `${item.marker}${item.seriesName}: ¥${item.value}<br/>`
+          const color = item.color
+          result += `<div style="margin:4px 0;display:flex;align-items:center;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px"></span>
+            <span>${item.seriesName}: </span>
+            <span style="font-weight:bold;margin-left:auto">¥${item.value.toLocaleString()}</span>
+          </div>`
         })
         return result
       }
@@ -353,7 +384,8 @@ const updateIncomeChart = () => {
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '12%',
+      top: '18%',
+      bottom: '15%',
       containLabel: true
     },
     xAxis: {
@@ -371,38 +403,50 @@ const updateIncomeChart = () => {
       type: 'bar',
       data: data.prepaidRevenue,
       itemStyle: {
-        color: '#409eff'
+        color: '#409eff',
+        borderRadius: [4, 4, 0, 0]
       },
       label: {
         show: true,
         position: 'top',
-        color: '#333',
+        color: '#fff',
+        backgroundColor: '#409eff',
+        padding: [4, 8],
+        borderRadius: 4,
         fontSize: 11,
-        formatter: (params) => params.value > 0 ? params.value : ''
+        fontWeight: 'bold',
+        formatter: (params) => {
+          if (params.value > 0) {
+            return params.value >= 10000 ? (params.value/10000).toFixed(2)+'w' :
+                   params.value >= 1000 ? (params.value/1000).toFixed(1)+'k' : params.value
+          }
+          return ''
+        }
       }
     }, {
       name: '实际收入',
       type: 'bar',
       data: data.actualRevenue,
       itemStyle: {
-        color: '#67c23a'
+        color: '#67c23a',
+        borderRadius: [4, 4, 0, 0]
       },
       label: {
         show: true,
-        position: function(params) {
-          const prepaidVal = data.prepaidRevenue[params.dataIndex]
-          const actualVal = params.value
-          if (prepaidVal > 0 && actualVal > 0 && Math.abs(prepaidVal - actualVal) < prepaidVal * 0.3) {
-            return actualVal > prepaidVal ? 'top' : 'insideBottom'
-          }
-          return 'top'
-        },
-        color: function(params) {
-          const prepaidVal = data.prepaidRevenue[params.dataIndex]
-          return (params.value > 0 && prepaidVal > 0 && Math.abs(prepaidVal - params.value) < prepaidVal * 0.3 && params.value <= prepaidVal) ? '#fff' : '#333'
-        },
+        position: 'top',
+        color: '#fff',
+        backgroundColor: '#67c23a',
+        padding: [4, 8],
+        borderRadius: 4,
         fontSize: 11,
-        formatter: (params) => params.value > 0 ? params.value : ''
+        fontWeight: 'bold',
+        formatter: (params) => {
+          if (params.value > 0) {
+            return params.value >= 10000 ? (params.value/10000).toFixed(2)+'w' :
+                   params.value >= 1000 ? (params.value/1000).toFixed(1)+'k' : params.value
+          }
+          return ''
+        }
       }
     }]
   })
@@ -419,7 +463,27 @@ const updateLessonChart = () => {
       left: 'center'
     },
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      backgroundColor: 'rgba(50, 50, 50, 0.95)',
+      borderColor: '#333',
+      borderWidth: 1,
+      textStyle: {
+        color: '#fff',
+        fontSize: 13
+      },
+      padding: [10, 14],
+      formatter: (params) => {
+        let result = `<div style="font-weight:bold;margin-bottom:6px">${params[0].axisValue}</div>`
+        params.forEach(item => {
+          const color = item.color
+          result += `<div style="margin:4px 0;display:flex;align-items:center;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px"></span>
+            <span>${item.seriesName}: </span>
+            <span style="font-weight:bold;margin-left:auto">${item.value} 节</span>
+          </div>`
+        })
+        return result
+      }
     },
     legend: {
       data: ['消课数', '上课数'],
@@ -428,7 +492,8 @@ const updateLessonChart = () => {
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '12%',
+      top: '18%',
+      bottom: '15%',
       containLabel: true
     },
     xAxis: {
@@ -446,11 +511,19 @@ const updateLessonChart = () => {
       itemStyle: {
         color: '#e6a23c'
       },
+      lineStyle: {
+        width: 3
+      },
+      symbolSize: 8,
       label: {
         show: true,
         position: 'top',
-        color: '#333',
+        color: '#fff',
+        backgroundColor: '#e6a23c',
+        padding: [3, 6],
+        borderRadius: 4,
         fontSize: 11,
+        fontWeight: 'bold',
         formatter: (params) => params.value > 0 ? params.value : ''
       }
     }, {
@@ -461,11 +534,19 @@ const updateLessonChart = () => {
       itemStyle: {
         color: '#67c23a'
       },
+      lineStyle: {
+        width: 3
+      },
+      symbolSize: 8,
       label: {
         show: true,
         position: 'bottom',
-        color: '#67c23a',
+        color: '#fff',
+        backgroundColor: '#67c23a',
+        padding: [3, 6],
+        borderRadius: 4,
         fontSize: 11,
+        fontWeight: 'bold',
         formatter: (params) => params.value > 0 ? params.value : ''
       }
     }]

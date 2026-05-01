@@ -799,9 +799,12 @@ const doAttend = async (lessonsConsumed = 1) => {
       return
     }
     
+    const courseTypeId = course.value.courseTypeId?._id || course.value.courseTypeId
+    
     await post('/lesson-records', {
       studentId: studentId,
       courseId: course.value._id,
+      courseTypeId: courseTypeId,
       courseStartTime: course.value.startTime,
       lessonsConsumed: lessonsConsumed,
       lessonContent: '',

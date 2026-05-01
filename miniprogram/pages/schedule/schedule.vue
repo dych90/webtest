@@ -900,7 +900,8 @@ onShow(() => {
 
 .time-slot-row {
   display: flex;
-  min-height: 40rpx;
+  min-height: 56rpx;
+  height: 56rpx;
   border-bottom: 1rpx solid #f0f0f0;
 }
 
@@ -921,7 +922,7 @@ onShow(() => {
 
 .slot-cell {
   flex: 1;
-  min-height: 120rpx;
+  min-height: 56rpx;
   border-right: 1rpx solid #f0f0f0;
   padding: 4rpx;
   position: relative;
@@ -933,8 +934,8 @@ onShow(() => {
 
 .course-block {
   background-color: #409EFF;
-  border-radius: 8rpx;
-  padding: 8rpx;
+  border-radius: 6rpx;
+  padding: 6rpx;
   margin-bottom: 4rpx;
   display: flex;
   flex-direction: column;
@@ -957,7 +958,7 @@ onShow(() => {
 }
 
 .course-block-name {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #fff;
   font-weight: bold;
   word-wrap: break-word;

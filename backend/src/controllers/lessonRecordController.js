@@ -7,6 +7,7 @@ const Payment = require('../models/Payment')
 const FeeStandard = require('../models/FeeStandard')
 const User = require('../models/User')
 const mongoose = require('mongoose')
+const ObjectId = mongoose.Types.ObjectId
 
 const getLessonRecords = async (req, res) => {
   try {
@@ -113,19 +114,41 @@ const createLessonRecord = async (req, res) => {
       console.log('预付费学生 - 单价:', unitPrice, '是否赠课:', isGiftLesson)
     } else if (student.paymentType === 'payPerLesson') {
       let courseTypeId = req.body.courseTypeId
-      
+      console.log('========== 单次付费学生处理 ==========')
+      console.log('学生ID:', req.body.studentId)
+      console.log('课程类型ID:', courseTypeId)
+      console.log('课程类型ID类型:', typeof courseTypeId)
+
       if (courseTypeId) {
-        const feeStandard = await FeeStandard.findOne({
+        console.log('正在查找收费标准...')
+        const query = {
           courseTypeId: courseTypeId,
           $or: [
             { studentId: student._id },
             { studentId: { $exists: false } }
           ]
-        }).sort({ studentId: -1, effectiveDate: -1 })
-        
+        }
+        console.log('查询条件:', JSON.stringify(query, (key, value) =>
+          value instanceof ObjectId ? value.toString() : value
+        ))
+
+        const feeStandard = await FeeStandard.findOne(query).sort({ studentId: -1, effectiveDate: -1 })
+
         if (feeStandard) {
           unitPrice = feeStandard.price
+          console.log('✅ 找到收费标准:', {
+            _id: feeStandard._id,
+            price: feeStandard.price,
+            courseTypeId: feeStandard.courseTypeId,
+            studentId: feeStandard.studentId,
+            effectiveDate: feeStandard.effectiveDate
+          })
+        } else {
+          console.log('❌ 未找到收费标准')
+          console.log('提示：请确认已在收费标准中配置该课程类型的单价')
         }
+      } else {
+        console.log('❌ 未提供课程类型ID (courseTypeId)')
       }
     }
     
@@ -178,10 +201,13 @@ const createLessonRecord = async (req, res) => {
         await updateLessonBalance(studentIdStr, lessonRecord.lessonsConsumed)
       }
     } else if (student.paymentType === 'payPerLesson' && lessonRecord.isDeducted) {
-      console.log('单次付费学生上课，创建缴费记录')
-      
+      console.log('========== 单次付费学生创建缴费记录 ==========')
+      console.log('unitPrice:', unitPrice)
+      console.log('lessonsConsumed:', lessonRecord.lessonsConsumed)
+      console.log('计算金额:', unitPrice * lessonRecord.lessonsConsumed)
+
       if (unitPrice > 0) {
-        await Payment.create({
+        const paymentData = {
           studentId: lessonRecord.studentId,
           paymentType: '微信',
           amount: unitPrice * lessonRecord.lessonsConsumed,
@@ -189,13 +215,27 @@ const createLessonRecord = async (req, res) => {
           bonusLessons: 0,
           paymentDate: new Date(),
           notes: `单次付费 - ${lessonRecord.lessonsConsumed}节课`
-        })
-        console.log('已创建缴费记录，金额:', unitPrice * lessonRecord.lessonsConsumed)
+        }
+        console.log('准备创建缴费记录:', paymentData)
+
+        const newPayment = await Payment.create(paymentData)
+        console.log('✅ 缴费记录创建成功！')
+        console.log('缴费记录ID:', newPayment._id)
+        console.log('缴费金额:', newPayment.amount)
+        console.log('缴费日期:', newPayment.paymentDate)
       } else {
-        console.log('未找到收费标准，无法创建缴费记录')
+        console.log('❌ unitPrice 为 0，无法创建缴费记录')
+        console.log('可能原因：')
+        console.log('1. 未找到对应的收费标准 (FeeStandard)')
+        console.log('2. courseTypeId 未正确传递')
+        console.log('3. 数据库中该课程类型没有配置价格')
       }
     } else {
-      console.log('学生为单次付费模式，不扣减课时')
+      if (lessonRecord.isDeducted) {
+        console.log('学生为单次付费模式但未扣课，不创建缴费记录')
+      } else {
+        console.log('学生为单次付费模式，未标记为已上课')
+      }
     }
     
     res.json({

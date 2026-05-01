@@ -227,10 +227,12 @@ const handleAttend = async (course) => {
       uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
       return
     }
-    
+
+    const courseTypeId = course.courseTypeId?._id || course.courseTypeId
     await post('/lesson-records', {
       studentId: studentId,
       courseId: course._id,
+      courseTypeId: courseTypeId,
       courseStartTime: course.startTime,
       lessonsConsumed: 1,
       lessonContent: '',

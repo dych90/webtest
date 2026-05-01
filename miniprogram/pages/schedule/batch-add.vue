@@ -332,6 +332,7 @@ const handleSubmit = async () => {
           return post('/lesson-records', {
             studentId: form.studentId,
             courseId: courseRes.data._id,
+            courseTypeId: form.courseTypeId,
             courseStartTime: startTime.toISOString(),
             lessonsConsumed: 1,
             lessonContent: '',

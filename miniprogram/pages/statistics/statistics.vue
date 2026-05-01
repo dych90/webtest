@@ -203,6 +203,31 @@ const fetchStatistics = async () => {
   }
 }
 
+const roundRect = (ctx, x, y, w, h, r, color) => {
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.arcTo(x + w, y, x + w, y + r, r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+  ctx.lineTo(x + r, y + h)
+  ctx.arcTo(x, y + h, x, y + h - r, r)
+  ctx.lineTo(x, y + r)
+  ctx.arcTo(x, y, x + r, y, r)
+  ctx.closePath()
+  ctx.fill()
+}
+
+const formatMoney = (num) => {
+  if (num >= 10000) {
+    return (num / 10000).toFixed(2) + 'w'
+  } else if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'k'
+  }
+  return num.toString()
+}
+
 const monthDisplayText = computed(() => {
   return `${selectedYear.value}年${selectedMonthIndex.value + 1}月`
 })
@@ -301,7 +326,7 @@ const drawIncomeChart = () => {
       canvas.height = height * dpr
       ctx.scale(dpr, dpr)
       
-      const padding = { top: 20, right: 20, bottom: 40, left: 50 }
+      const padding = { top: 55, right: 20, bottom: 45, left: 50 }
       const chartWidth = width - padding.left - padding.right
       const chartHeight = height - padding.top - padding.bottom
       
@@ -361,45 +386,45 @@ const drawIncomeChart = () => {
         
         const actualHeight = (data.actualRevenue[i] / maxValue) * chartHeight
         const actualX = x + gap / 2
-        const actualY = padding.top + chartHeight - actualHeight
+        const actualY2 = padding.top + chartHeight - actualHeight
         
         ctx.fillStyle = '#67C23A'
         ctx.beginPath()
-        ctx.rect(actualX, actualY, barWidth, actualHeight)
+        ctx.rect(actualX, actualY2, barWidth, actualHeight)
         ctx.fill()
-        
-        ctx.font = '9px sans-serif'
-        ctx.textAlign = 'center'
         
         const prepaidVal = data.prepaidRevenue[i]
         const actualVal = data.actualRevenue[i]
         
-        if (prepaidVal > 0 && actualVal > 0) {
-          const maxVal = Math.max(prepaidVal, actualVal)
-          const minVal = Math.min(prepaidVal, actualVal)
-          
-          if (maxVal > minValueForLabel) {
-            ctx.fillStyle = '#333'
-            if (prepaidVal >= actualVal) {
-              ctx.fillText(prepaidVal, prepaidX + barWidth / 2, Math.max(prepaidY - 8, padding.top + 12))
-              if (actualHeight > 20 && minVal > minValueForLabel) {
-                ctx.fillStyle = '#fff'
-                ctx.fillText(actualVal, actualX + barWidth / 2, actualY + 14)
-              }
-            } else {
-              ctx.fillText(actualVal, actualX + barWidth / 2, Math.max(actualY - 8, padding.top + 12))
-              if (prepaidHeight > 20 && minVal > minValueForLabel) {
-                ctx.fillStyle = '#fff'
-                ctx.fillText(prepaidVal, prepaidX + barWidth / 2, prepaidY + 14)
-              }
-            }
+        if (prepaidVal > 0 || actualVal > 0) {
+          ctx.font = 'bold 10px sans-serif'
+          ctx.textAlign = 'center'
+
+          if (prepaidVal >= actualVal && prepaidVal > 0) {
+            const text = formatMoney(prepaidVal)
+            const metrics = ctx.measureText(text)
+            const textWidth = metrics.width + 8
+            const textHeight = 16
+            const labelX = prepaidX + barWidth / 2
+            const labelY = Math.max(prepaidY - 10, padding.top + 20)
+
+            roundRect(ctx, labelX - textWidth/2, labelY - textHeight, textWidth, textHeight, 4, '#409EFF')
+            ctx.fillStyle = '#fff'
+            ctx.fillText(text, labelX, labelY - 3)
           }
-        } else if (prepaidVal > 0 && prepaidVal > minValueForLabel) {
-          ctx.fillStyle = '#333'
-          ctx.fillText(prepaidVal, prepaidX + barWidth / 2, Math.max(prepaidY - 5, padding.top + 12))
-        } else if (actualVal > 0 && actualVal > minValueForLabel) {
-          ctx.fillStyle = '#333'
-          ctx.fillText(actualVal, actualX + barWidth / 2, Math.max(actualY - 5, padding.top + 12))
+
+          if (actualVal > 0) {
+            const text = formatMoney(actualVal)
+            const metrics = ctx.measureText(text)
+            const textWidth = metrics.width + 8
+            const textHeight = 16
+            const labelX = actualX + barWidth / 2
+            const labelY = Math.max(actualY2 - 10, padding.top + 20)
+
+            roundRect(ctx, labelX - textWidth/2, labelY - textHeight, textWidth, textHeight, 4, '#67C23A')
+            ctx.fillStyle = '#fff'
+            ctx.fillText(text, labelX, labelY - 2)
+          }
         }
       })
     })
@@ -425,7 +450,7 @@ const drawLessonChart = () => {
       canvas.height = height * dpr
       ctx.scale(dpr, dpr)
       
-      const padding = { top: 20, right: 20, bottom: 40, left: 50 }
+      const padding = { top: 55, right: 20, bottom: 45, left: 50 }
       const chartWidth = width - padding.left - padding.right
       const chartHeight = height - padding.top - padding.bottom
       
@@ -437,6 +462,7 @@ const drawLessonChart = () => {
       const maxConsumed = Math.max(...data.lessonsConsumed, 1)
       const maxAttended = Math.max(...data.lessonsAttended, 1)
       const maxValue = Math.max(maxConsumed, maxAttended)
+      const minValueForLabel = maxValue * 0.08
       const pointCount = data.labels.length
       const stepX = chartWidth / (pointCount - 1 || 1)
       
@@ -467,7 +493,7 @@ const drawLessonChart = () => {
       
       const drawLine = (dataArr, color, isSecondLine) => {
         ctx.strokeStyle = color
-        ctx.lineWidth = 2
+        ctx.lineWidth = 3
         ctx.beginPath()
         
         dataArr.forEach((value, i) => {
@@ -488,22 +514,34 @@ const drawLessonChart = () => {
           
           ctx.fillStyle = '#fff'
           ctx.beginPath()
-          ctx.arc(x, y, 4, 0, Math.PI * 2)
+          ctx.arc(x, y, 5, 0, Math.PI * 2)
           ctx.fill()
           
           ctx.strokeStyle = color
           ctx.lineWidth = 2
           ctx.stroke()
           
-          if (value > minValueForLabel) {
-            ctx.fillStyle = '#333'
-            ctx.font = '9px sans-serif'
+          if (value > 0) {
+            ctx.font = 'bold 10px sans-serif'
             ctx.textAlign = 'center'
+
+            const text = value.toString()
+            const metrics = ctx.measureText(text)
+            const textWidth = metrics.width + 8
+            const textHeight = 16
+
+            let labelY
             if (isSecondLine) {
-              ctx.fillText(value, x, y + 14)
+              labelY = y + 18
             } else {
-              ctx.fillText(value, x, y - 10)
+              labelY = Math.max(y - 20, padding.top + 20)
             }
+
+            const labelX = x - textWidth / 2
+
+            roundRect(ctx, labelX, labelY, textWidth, textHeight, 4, color)
+            ctx.fillStyle = '#fff'
+            ctx.fillText(text, x, labelY + 12)
           }
         })
       }
@@ -735,5 +773,54 @@ onShow(() => {
 
 .legend-color.attended {
   background-color: #67C23A;
+}
+
+.data-table {
+  background-color: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 30rpx;
+  overflow: hidden;
+}
+
+.table-row {
+  display: flex;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-header {
+  background-color: #f5f7fa;
+}
+
+.table-cell {
+  flex: 1;
+  padding: 20rpx 16rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #333;
+}
+
+.table-header .table-cell {
+  font-weight: bold;
+  color: #666;
+  font-size: 22rpx;
+}
+
+.table-cell.blue {
+  color: #409EFF;
+  font-weight: bold;
+}
+
+.table-cell.green {
+  color: #67C23A;
+  font-weight: bold;
+}
+
+.table-cell.orange {
+  color: #E6A23C;
+  font-weight: bold;
 }
 </style>

@@ -113,7 +113,7 @@
         </view>
         <view class="stat-card">
           <text class="stat-value">{{ statistics.monthlyLessonsConsumed }}</text>
-          <text class="stat-label">本月消课</text>
+          <text class="stat-label">本月应上课时</text>
         </view>
         <view class="stat-card">
           <text class="stat-value">{{ statistics.monthlyLessonsAttended }}</text>
@@ -328,10 +328,12 @@ const doAttendCourse = async (course, lessonsConsumed = 1) => {
       uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
       return
     }
-    
+
+    const courseTypeId = course.courseTypeId?._id || course.courseTypeId
     await post('/lesson-records', {
       studentId: studentId,
       courseId: course._id,
+      courseTypeId: courseTypeId,
       courseStartTime: course.startTime,
       lessonsConsumed: lessonsConsumed,
       lessonContent: '',

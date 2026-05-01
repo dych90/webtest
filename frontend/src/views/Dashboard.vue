@@ -378,9 +378,11 @@ const handleAttendCourse = async (course) => {
 const doAttendCourse = async (course) => {
   try {
     await request.put(`/courses/${course._id}`, { status: 'completed' })
+    const courseTypeId = course.courseTypeId?._id || course.courseTypeId
     await request.post('/lesson-records', {
       studentId: course.studentId._id,
       courseId: course._id,
+      courseTypeId: courseTypeId,
       courseStartTime: course.startTime,
       lessonsConsumed: 1,
       lessonContent: '',
