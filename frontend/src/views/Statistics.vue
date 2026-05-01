@@ -135,11 +135,11 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
+      <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
         <el-card>
           <template #header>
             <div class="chart-header">
-              <span>收入统计</span>
+              <span>预收入统计</span>
               <div class="chart-controls">
                 <el-radio-group v-model="chartType" size="small" @change="fetchChartStatistics">
                   <el-radio-button label="month">按月</el-radio-button>
@@ -157,18 +157,29 @@
               </div>
             </div>
           </template>
-          <div ref="incomeChart" style="height: 400px"></div>
+          <div ref="prepaidChart" style="height: 320px"></div>
         </el-card>
       </el-col>
-      
-      <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
+
+      <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
+        <el-card>
+          <template #header>
+            <div class="chart-header">
+              <span>实际收入统计</span>
+            </div>
+          </template>
+          <div ref="actualChart" style="height: 320px"></div>
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
         <el-card>
           <template #header>
             <div class="chart-header">
               <span>消课统计</span>
             </div>
           </template>
-          <div ref="lessonChart" style="height: 400px"></div>
+          <div ref="lessonChart" style="height: 320px"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -204,8 +215,12 @@ const statistics = ref({
 
 const incomeChart = ref(null)
 const lessonChart = ref(null)
+const prepaidChart = ref(null)
+const actualChart = ref(null)
 let incomeChartInstance = null
 let lessonChartInstance = null
+let prepaidChartInstance = null
+let actualChartInstance = null
 
 const chartType = ref('month')
 const chartYear = ref(new Date().getFullYear().toString())
@@ -326,8 +341,9 @@ const fetchChartStatistics = async () => {
     }
     const response = await request.get('/statistics/chart', { params })
     chartData.value = response.data
-    
-    updateIncomeChart()
+
+    updatePrepaidChart()
+    updateActualChart()
     updateLessonChart()
   } catch (error) {
     console.error('获取图表数据失败', error)
@@ -344,48 +360,40 @@ const fetchTeachers = async () => {
   }
 }
 
-const updateIncomeChart = () => {
-  if (!incomeChartInstance) return
-  
+const updatePrepaidChart = () => {
+  if (!prepaidChartInstance) return
+
   const data = chartData.value
-  
-  incomeChartInstance.setOption({
-    title: { 
-      text: chartType.value === 'month' ? `${selectedYear.value}年收入统计` : '近5年收入统计',
+
+  prepaidChartInstance.setOption({
+    title: {
+      text: chartType.value === 'month' ? `${selectedYear.value}年预收入统计` : '近5年预收入统计',
       left: 'center'
     },
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(50, 50, 50, 0.95)',
-      borderColor: '#333',
+      backgroundColor: '#fff',
+      borderColor: '#e4e7ed',
       borderWidth: 1,
       textStyle: {
-        color: '#fff',
-        fontSize: 13
+        color: '#606266',
+        fontSize: 12
       },
-      padding: [10, 14],
+      padding: [8, 12],
       formatter: (params) => {
-        let result = `<div style="font-weight:bold;margin-bottom:6px">${params[0].axisValue}</div>`
-        params.forEach(item => {
-          const color = item.color
-          result += `<div style="margin:4px 0;display:flex;align-items:center;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:8px"></span>
-            <span>${item.seriesName}: </span>
-            <span style="font-weight:bold;margin-left:auto">¥${item.value.toLocaleString()}</span>
+        return `<div style="font-weight:bold;margin-bottom:4px;color:#333">${params[0].axisValue}</div>
+          <div style="margin:2px 0;display:flex;align-items:center;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${params[0].color};margin-right:6px"></span>
+            <span>预收入: </span>
+            <span style="font-weight:bold;margin-left:auto;color:#409eff">¥${params[0].value.toLocaleString()}</span>
           </div>`
-        })
-        return result
       }
-    },
-    legend: {
-      data: ['预收入', '实际收入'],
-      bottom: 0
     },
     grid: {
       left: '3%',
       right: '4%',
-      top: '18%',
-      bottom: '15%',
+      top: '15%',
+      bottom: '12%',
       containLabel: true
     },
     xAxis: {
@@ -403,18 +411,16 @@ const updateIncomeChart = () => {
       type: 'bar',
       data: data.prepaidRevenue,
       itemStyle: {
-        color: '#409eff',
-        borderRadius: [4, 4, 0, 0]
+        color: 'rgba(144, 205, 244, 0.6)',
+        borderRadius: [3, 3, 0, 0]
       },
       label: {
         show: true,
         position: 'top',
-        color: '#fff',
-        backgroundColor: '#409eff',
-        padding: [4, 8],
-        borderRadius: 4,
+        color: '#409eff',
         fontSize: 11,
-        fontWeight: 'bold',
+        fontWeight: 'normal',
+        hideOverlap: true,
         formatter: (params) => {
           if (params.value > 0) {
             return params.value >= 10000 ? (params.value/10000).toFixed(2)+'w' :
@@ -423,23 +429,71 @@ const updateIncomeChart = () => {
           return ''
         }
       }
-    }, {
+    }]
+  })
+}
+
+const updateActualChart = () => {
+  if (!actualChartInstance) return
+
+  const data = chartData.value
+
+  actualChartInstance.setOption({
+    title: {
+      text: chartType.value === 'month' ? `${selectedYear.value}年实际收入统计` : '近5年实际收入统计',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#fff',
+      borderColor: '#e4e7ed',
+      borderWidth: 1,
+      textStyle: {
+        color: '#606266',
+        fontSize: 12
+      },
+      padding: [8, 12],
+      formatter: (params) => {
+        return `<div style="font-weight:bold;margin-bottom:4px;color:#333">${params[0].axisValue}</div>
+          <div style="margin:2px 0;display:flex;align-items:center;">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${params[0].color};margin-right:6px"></span>
+            <span>实际收入: </span>
+            <span style="font-weight:bold;margin-left:auto;color:#67c23a">¥${params[0].value.toLocaleString()}</span>
+          </div>`
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      top: '15%',
+      bottom: '12%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: data.labels
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: (value) => `¥${value}`
+      }
+    },
+    series: [{
       name: '实际收入',
       type: 'bar',
       data: data.actualRevenue,
       itemStyle: {
-        color: '#67c23a',
-        borderRadius: [4, 4, 0, 0]
+        color: 'rgba(149, 222, 120, 0.6)',
+        borderRadius: [3, 3, 0, 0]
       },
       label: {
         show: true,
         position: 'top',
-        color: '#fff',
-        backgroundColor: '#67c23a',
-        padding: [4, 8],
-        borderRadius: 4,
+        color: '#67c23a',
         fontSize: 11,
-        fontWeight: 'bold',
+        fontWeight: 'normal',
+        hideOverlap: true,
         formatter: (params) => {
           if (params.value > 0) {
             return params.value >= 10000 ? (params.value/10000).toFixed(2)+'w' :
@@ -492,8 +546,8 @@ const updateLessonChart = () => {
     grid: {
       left: '3%',
       right: '4%',
-      top: '18%',
-      bottom: '15%',
+      top: '15%',
+      bottom: '12%',
       containLabel: true
     },
     xAxis: {
@@ -512,18 +566,16 @@ const updateLessonChart = () => {
         color: '#e6a23c'
       },
       lineStyle: {
-        width: 3
+        width: 1.5
       },
-      symbolSize: 8,
+      symbolSize: 4,
       label: {
         show: true,
         position: 'top',
-        color: '#fff',
-        backgroundColor: '#e6a23c',
-        padding: [3, 6],
-        borderRadius: 4,
+        color: '#e6a23c',
         fontSize: 11,
-        fontWeight: 'bold',
+        fontWeight: 'normal',
+        hideOverlap: true,
         formatter: (params) => params.value > 0 ? params.value : ''
       }
     }, {
@@ -535,18 +587,16 @@ const updateLessonChart = () => {
         color: '#67c23a'
       },
       lineStyle: {
-        width: 3
+        width: 1.5
       },
-      symbolSize: 8,
+      symbolSize: 4,
       label: {
         show: true,
         position: 'bottom',
-        color: '#fff',
-        backgroundColor: '#67c23a',
-        padding: [3, 6],
-        borderRadius: 4,
+        color: '#67c23a',
         fontSize: 11,
-        fontWeight: 'bold',
+        fontWeight: 'normal',
+        hideOverlap: true,
         formatter: (params) => params.value > 0 ? params.value : ''
       }
     }]
@@ -556,28 +606,38 @@ const updateLessonChart = () => {
 onMounted(() => {
   fetchStatistics()
   fetchTeachers()
-  
+
   setTimeout(() => {
-    if (incomeChart.value) {
-      incomeChartInstance = echarts.init(incomeChart.value)
-      updateIncomeChart()
+    if (prepaidChart.value) {
+      prepaidChartInstance = echarts.init(prepaidChart.value)
+      updatePrepaidChart()
     }
-    
+
+    if (actualChart.value) {
+      actualChartInstance = echarts.init(actualChart.value)
+      updateActualChart()
+    }
+
     if (lessonChart.value) {
       lessonChartInstance = echarts.init(lessonChart.value)
       updateLessonChart()
     }
   }, 100)
-  
+
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
-  if (incomeChartInstance) {
-    incomeChartInstance.dispose()
-    incomeChartInstance = null
+  if (prepaidChartInstance) {
+    prepaidChartInstance.dispose()
+    prepaidChartInstance = null
   }
-  
+
+  if (actualChartInstance) {
+    actualChartInstance.dispose()
+    actualChartInstance = null
+  }
+
   if (lessonChartInstance) {
     lessonChartInstance.dispose()
     lessonChartInstance = null
@@ -587,10 +647,14 @@ onBeforeUnmount(() => {
 })
 
 const handleResize = () => {
-  if (incomeChartInstance) {
-    incomeChartInstance.resize()
+  if (prepaidChartInstance) {
+    prepaidChartInstance.resize()
   }
-  
+
+  if (actualChartInstance) {
+    actualChartInstance.resize()
+  }
+
   if (lessonChartInstance) {
     lessonChartInstance.resize()
   }

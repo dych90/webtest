@@ -80,11 +80,11 @@
       </view>
       
       <view class="chart-card">
-        <view class="chart-title">收入统计</view>
+        <view class="chart-title">预收入统计</view>
         <view class="chart-canvas-wrapper">
-          <canvas 
-            canvas-id="incomeChart" 
-            id="incomeChart"
+          <canvas
+            canvas-id="prepaidChart"
+            id="prepaidChart"
             class="chart-canvas"
             type="2d"
           ></canvas>
@@ -94,13 +94,27 @@
             <view class="legend-color prepaid"></view>
             <text>预收入</text>
           </view>
+        </view>
+      </view>
+
+      <view class="chart-card">
+        <view class="chart-title">实际收入统计</view>
+        <view class="chart-canvas-wrapper">
+          <canvas
+            canvas-id="actualChart"
+            id="actualChart"
+            class="chart-canvas"
+            type="2d"
+          ></canvas>
+        </view>
+        <view class="chart-legend">
           <view class="legend-item">
             <view class="legend-color actual"></view>
             <text>实际收入</text>
           </view>
         </view>
       </view>
-      
+
       <view class="chart-card">
         <view class="chart-title">消课统计</view>
         <view class="chart-canvas-wrapper">
@@ -302,128 +316,181 @@ const getYearIndex = () => {
 }
 
 const drawCharts = () => {
-  drawIncomeChart()
+  drawPrepaidChart()
+  drawActualChart()
   drawLessonChart()
 }
 
-const drawIncomeChart = () => {
+const drawPrepaidChart = () => {
   const query = uni.createSelectorQuery()
-  query.select('#incomeChart')
+  query.select('#prepaidChart')
     .fields({ node: true, size: true })
     .exec((res) => {
       if (!res || !res[0]) {
-        console.log('incomeChart canvas not found')
+        console.log('prepaidChart canvas not found')
         return
       }
-      
+
       const canvas = res[0].node
       const ctx = canvas.getContext('2d')
       const dpr = uni.getSystemInfoSync().pixelRatio
       const width = res[0].width
       const height = res[0].height
-      
+
       canvas.width = width * dpr
       canvas.height = height * dpr
       ctx.scale(dpr, dpr)
-      
-      const padding = { top: 55, right: 20, bottom: 45, left: 50 }
+
+      const padding = { top: 60, right: 25, bottom: 35, left: 25 }
       const chartWidth = width - padding.left - padding.right
       const chartHeight = height - padding.top - padding.bottom
-      
+
       ctx.clearRect(0, 0, width, height)
-      
+
       const data = chartData.value
-      console.log('Income chart data:', data.labels, data.prepaidRevenue, data.actualRevenue)
+      console.log('Prepaid chart data:', data.labels, data.prepaidRevenue)
       if (!data.labels || data.labels.length === 0) {
         ctx.fillStyle = '#909399'
-        ctx.font = '14px sans-serif'
+        ctx.font = '12px sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('暂无数据', width / 2, height / 2)
         return
       }
-      
-      const maxPrepaid = Math.max(...data.prepaidRevenue, 1)
-      const maxActual = Math.max(...data.actualRevenue, 1)
-      const maxValue = Math.max(maxPrepaid, maxActual)
-      const minValueForLabel = maxValue * 0.08
+
+      const rawMaxValue = Math.max(...data.prepaidRevenue, 1)
+      const maxValue = Math.ceil(rawMaxValue * 1.2 / 1000) * 1000
       const barCount = data.labels.length
       const groupWidth = chartWidth / barCount
-      const barWidth = groupWidth * 0.3
-      const gap = groupWidth * 0.1
-      
-      ctx.strokeStyle = '#e4e7ed'
+      const barWidth = groupWidth * 0.4
+
+      ctx.strokeStyle = '#f0f0f0'
       ctx.lineWidth = 1
-      for (let i = 0; i <= 4; i++) {
-        const y = padding.top + (chartHeight / 4) * i
+      for (let i = 0; i <= 3; i++) {
+        const y = padding.top + (chartHeight / 3) * i
         ctx.beginPath()
         ctx.moveTo(padding.left, y)
         ctx.lineTo(width - padding.right, y)
         ctx.stroke()
-        
-        const value = Math.round(maxValue * (1 - i / 4))
-        ctx.fillStyle = '#909399'
-        ctx.font = '10px sans-serif'
-        ctx.textAlign = 'right'
-        ctx.fillText('¥' + value, padding.left - 5, y + 4)
       }
-      
+
       data.labels.forEach((label, i) => {
         const x = padding.left + groupWidth * i + groupWidth / 2
-        
-        ctx.fillStyle = '#909399'
+
+        ctx.fillStyle = '#999'
         ctx.font = '10px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(label, x, height - padding.bottom + 20)
-        
-        const prepaidHeight = (data.prepaidRevenue[i] / maxValue) * chartHeight
-        const prepaidX = x - barWidth - gap / 2
-        const prepaidY = padding.top + chartHeight - prepaidHeight
-        
-        ctx.fillStyle = '#409EFF'
-        ctx.beginPath()
-        ctx.rect(prepaidX, prepaidY, barWidth, prepaidHeight)
-        ctx.fill()
-        
-        const actualHeight = (data.actualRevenue[i] / maxValue) * chartHeight
-        const actualX = x + gap / 2
-        const actualY2 = padding.top + chartHeight - actualHeight
-        
-        ctx.fillStyle = '#67C23A'
-        ctx.beginPath()
-        ctx.rect(actualX, actualY2, barWidth, actualHeight)
-        ctx.fill()
-        
+        ctx.fillText(label, x, height - padding.bottom + 18)
+
         const prepaidVal = data.prepaidRevenue[i]
-        const actualVal = data.actualRevenue[i]
-        
-        if (prepaidVal > 0 || actualVal > 0) {
-          ctx.font = 'bold 10px sans-serif'
+        const barHeight = (prepaidVal / maxValue) * chartHeight
+        const barX = x - barWidth / 2
+        const barY = padding.top + chartHeight - barHeight
+
+        ctx.fillStyle = 'rgba(144, 205, 244, 0.6)'
+        ctx.beginPath()
+        ctx.rect(barX, barY, barWidth, barHeight)
+        ctx.fill()
+
+        if (prepaidVal > 0) {
+          ctx.font = '10px sans-serif'
           ctx.textAlign = 'center'
+          ctx.fillStyle = '#409EFF'
 
-          if (prepaidVal >= actualVal && prepaidVal > 0) {
-            const text = formatMoney(prepaidVal)
-            const metrics = ctx.measureText(text)
-            const textWidth = metrics.width + 8
-            const textHeight = 16
-            const labelX = prepaidX + barWidth / 2
-            const labelY = Math.max(prepaidY - 10, padding.top + 20)
+          const text = formatMoney(prepaidVal)
+          const labelY = barY - 16
 
-            roundRect(ctx, labelX - textWidth/2, labelY - textHeight, textWidth, textHeight, 4, '#409EFF')
-            ctx.fillStyle = '#fff'
-            ctx.fillText(text, labelX, labelY - 3)
+          if (labelY < padding.top + 12) {
+            ctx.fillText(text, x, padding.top + 12)
+          } else {
+            ctx.fillText(text, x, labelY)
           }
+        }
+      })
+    })
+}
 
-          if (actualVal > 0) {
-            const text = formatMoney(actualVal)
-            const metrics = ctx.measureText(text)
-            const textWidth = metrics.width + 8
-            const textHeight = 16
-            const labelX = actualX + barWidth / 2
-            const labelY = Math.max(actualY2 - 10, padding.top + 20)
+const drawActualChart = () => {
+  const query = uni.createSelectorQuery()
+  query.select('#actualChart')
+    .fields({ node: true, size: true })
+    .exec((res) => {
+      if (!res || !res[0]) {
+        console.log('actualChart canvas not found')
+        return
+      }
 
-            roundRect(ctx, labelX - textWidth/2, labelY - textHeight, textWidth, textHeight, 4, '#67C23A')
-            ctx.fillStyle = '#fff'
-            ctx.fillText(text, labelX, labelY - 2)
+      const canvas = res[0].node
+      const ctx = canvas.getContext('2d')
+      const dpr = uni.getSystemInfoSync().pixelRatio
+      const width = res[0].width
+      const height = res[0].height
+
+      canvas.width = width * dpr
+      canvas.height = height * dpr
+      ctx.scale(dpr, dpr)
+
+      const padding = { top: 60, right: 25, bottom: 35, left: 25 }
+      const chartWidth = width - padding.left - padding.right
+      const chartHeight = height - padding.top - padding.bottom
+
+      ctx.clearRect(0, 0, width, height)
+
+      const data = chartData.value
+      console.log('Actual chart data:', data.labels, data.actualRevenue)
+      if (!data.labels || data.labels.length === 0) {
+        ctx.fillStyle = '#909399'
+        ctx.font = '12px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText('暂无数据', width / 2, height / 2)
+        return
+      }
+
+      const rawMaxValue = Math.max(...data.actualRevenue, 1)
+      const maxValue = Math.ceil(rawMaxValue * 1.2 / 1000) * 1000
+      const barCount = data.labels.length
+      const groupWidth = chartWidth / barCount
+      const barWidth = groupWidth * 0.4
+
+      ctx.strokeStyle = '#f0f0f0'
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 3; i++) {
+        const y = padding.top + (chartHeight / 3) * i
+        ctx.beginPath()
+        ctx.moveTo(padding.left, y)
+        ctx.lineTo(width - padding.right, y)
+        ctx.stroke()
+      }
+
+      data.labels.forEach((label, i) => {
+        const x = padding.left + groupWidth * i + groupWidth / 2
+
+        ctx.fillStyle = '#999'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(label, x, height - padding.bottom + 18)
+
+        const actualVal = data.actualRevenue[i]
+        const barHeight = (actualVal / maxValue) * chartHeight
+        const barX = x - barWidth / 2
+        const barY = padding.top + chartHeight - barHeight
+
+        ctx.fillStyle = 'rgba(149, 222, 120, 0.6)'
+        ctx.beginPath()
+        ctx.rect(barX, barY, barWidth, barHeight)
+        ctx.fill()
+
+        if (actualVal > 0) {
+          ctx.font = '10px sans-serif'
+          ctx.textAlign = 'center'
+          ctx.fillStyle = '#67C23A'
+
+          const text = formatMoney(actualVal)
+          const labelY = barY - 16
+
+          if (labelY < padding.top + 12) {
+            ctx.fillText(text, x, padding.top + 12)
+          } else {
+            ctx.fillText(text, x, labelY)
           }
         }
       })
@@ -450,56 +517,50 @@ const drawLessonChart = () => {
       canvas.height = height * dpr
       ctx.scale(dpr, dpr)
       
-      const padding = { top: 55, right: 20, bottom: 45, left: 50 }
+      const padding = { top: 60, right: 25, bottom: 35, left: 25 }
       const chartWidth = width - padding.left - padding.right
       const chartHeight = height - padding.top - padding.bottom
-      
+
       ctx.clearRect(0, 0, width, height)
-      
+
       const data = chartData.value
       if (!data.labels || data.labels.length === 0) return
-      
+
       const maxConsumed = Math.max(...data.lessonsConsumed, 1)
       const maxAttended = Math.max(...data.lessonsAttended, 1)
-      const maxValue = Math.max(maxConsumed, maxAttended)
-      const minValueForLabel = maxValue * 0.08
+      const rawMaxValue = Math.max(maxConsumed, maxAttended)
+      const maxValue = Math.ceil(rawMaxValue * 1.2 / 10) * 10
       const pointCount = data.labels.length
       const stepX = chartWidth / (pointCount - 1 || 1)
-      
-      ctx.strokeStyle = '#e4e7ed'
+
+      ctx.strokeStyle = '#f0f0f0'
       ctx.lineWidth = 1
-      for (let i = 0; i <= 4; i++) {
-        const y = padding.top + (chartHeight / 4) * i
+      for (let i = 0; i <= 3; i++) {
+        const y = padding.top + (chartHeight / 3) * i
         ctx.beginPath()
         ctx.moveTo(padding.left, y)
         ctx.lineTo(width - padding.right, y)
         ctx.stroke()
-        
-        const value = Math.round(maxValue * (1 - i / 4))
-        ctx.fillStyle = '#909399'
-        ctx.font = '10px sans-serif'
-        ctx.textAlign = 'right'
-        ctx.fillText(value.toString(), padding.left - 5, y + 4)
       }
-      
+
       data.labels.forEach((label, i) => {
         const x = padding.left + stepX * i
-        
-        ctx.fillStyle = '#909399'
+
+        ctx.fillStyle = '#999'
         ctx.font = '10px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(label, x, height - padding.bottom + 20)
+        ctx.fillText(label, x, height - padding.bottom + 18)
       })
-      
+
       const drawLine = (dataArr, color, isSecondLine) => {
         ctx.strokeStyle = color
-        ctx.lineWidth = 3
+        ctx.lineWidth = 2
         ctx.beginPath()
-        
+
         dataArr.forEach((value, i) => {
           const x = padding.left + stepX * i
           const y = padding.top + chartHeight - (value / maxValue) * chartHeight
-          
+
           if (i === 0) {
             ctx.moveTo(x, y)
           } else {
@@ -507,41 +568,38 @@ const drawLessonChart = () => {
           }
         })
         ctx.stroke()
-        
+
         dataArr.forEach((value, i) => {
           const x = padding.left + stepX * i
           const y = padding.top + chartHeight - (value / maxValue) * chartHeight
-          
+
           ctx.fillStyle = '#fff'
           ctx.beginPath()
-          ctx.arc(x, y, 5, 0, Math.PI * 2)
+          ctx.arc(x, y, 3, 0, Math.PI * 2)
           ctx.fill()
-          
+
           ctx.strokeStyle = color
-          ctx.lineWidth = 2
+          ctx.lineWidth = 1.5
           ctx.stroke()
-          
+
           if (value > 0) {
-            ctx.font = 'bold 10px sans-serif'
+            ctx.font = '10px sans-serif'
             ctx.textAlign = 'center'
+            ctx.fillStyle = color
 
             const text = value.toString()
-            const metrics = ctx.measureText(text)
-            const textWidth = metrics.width + 8
-            const textHeight = 16
 
             let labelY
             if (isSecondLine) {
               labelY = y + 18
             } else {
-              labelY = Math.max(y - 20, padding.top + 20)
+              labelY = y - 14
+              if (labelY < padding.top + 12) {
+                labelY = padding.top + 12
+              }
             }
 
-            const labelX = x - textWidth / 2
-
-            roundRect(ctx, labelX, labelY, textWidth, textHeight, 4, color)
-            ctx.fillStyle = '#fff'
-            ctx.fillText(text, x, labelY + 12)
+            ctx.fillText(text, x, labelY)
           }
         })
       }
@@ -714,20 +772,20 @@ onShow(() => {
 .chart-card {
   background-color: #fff;
   border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
 }
 
 .chart-title {
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: bold;
   color: #333;
-  margin-bottom: 20rpx;
+  margin-bottom: 12rpx;
 }
 
 .chart-canvas-wrapper {
   width: 100%;
-  height: 400rpx;
+  height: 380rpx;
 }
 
 .chart-canvas {
@@ -738,33 +796,33 @@ onShow(() => {
 .chart-legend {
   display: flex;
   justify-content: center;
-  gap: 40rpx;
-  margin-top: 20rpx;
+  gap: 30rpx;
+  margin-top: 12rpx;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .legend-item text {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #606266;
 }
 
 .legend-color {
-  width: 24rpx;
-  height: 24rpx;
-  border-radius: 4rpx;
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 3rpx;
 }
 
 .legend-color.prepaid {
-  background-color: #409EFF;
+  background-color: rgba(144, 205, 244, 0.8);
 }
 
 .legend-color.actual {
-  background-color: #67C23A;
+  background-color: rgba(149, 222, 120, 0.8);
 }
 
 .legend-color.lessons {
