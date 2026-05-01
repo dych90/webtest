@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const { execSync, exec } = require('child_process')
+const { exec } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 const LessonRecord = require('./src/models/LessonRecord')
@@ -51,21 +51,55 @@ async function fixMissingPayments() {
     await mongoose.connect(MONGODB_URI)
     console.log('✅ 数据库连接成功\n')
 
-    console.log('📊 开始查找需要补录的记录...\n')
+    console.log('👥 查找单次付费学生...\n')
+
+    const payPerLessonStudents = await Student.find({ paymentType: 'payPerLesson' })
+
+    if (payPerLessonStudents.length === 0) {
+      console.log('⚠️ 未找到 payPerLesson 类型的学生！\n')
+      console.log('显示所有学生及其支付类型：\n')
+
+      const allStudents = await Student.find({})
+      
+      for (const s of allStudents) {
+        const records = await LessonRecord.countDocuments({
+          studentId: s._id,
+          isDeducted: true,
+          unitPrice: { $gt: 0 }
+        })
+        console.log(`   [${s.paymentType || '未设置'}] ${s.name} - ${records} 条扣课记录`)
+      }
+
+      console.log('\n💡 提示：如果没有 payPerLesson 学生，说明所有学生都是预付费类型')
+      console.log('预付费学生上课时不应该生成新的收入记录\n')
+      return
+    }
+
+    console.log(`✅ 找到 ${payPerLessonStudents.length} 个单次付费学生:\n`)
+    
+    payPerLessonStudents.forEach(s => {
+      console.log(`   • ${s.name}`)
+    })
+    console.log('\n')
+
+    const studentIds = payPerLessonStudents.map(s => s._id)
+
+    console.log(`📊 查找这些学生的已扣课记录...\n`)
 
     const lessonRecords = await LessonRecord.find({
+      studentId: { $in: studentIds },
       isDeducted: true,
       unitPrice: { $gt: 0 }
     }).sort({ createdAt: 1 })
 
-    console.log(`📝 找到 ${lessonRecords.length} 条有单价的已扣课记录\n`)
+    console.log(`📝 找到 ${lessonRecords.length} 条需要检查的记录\n`)
 
     let fixedCount = 0
     let skippedCount = 0
     let totalAmount = 0
 
     for (const record of lessonRecords) {
-      const student = await Student.findById(record.studentId)
+      const student = payPerLessonStudents.find(s => s._id.toString() === record.studentId.toString())
       const studentName = student?.name || '未知'
 
       const existingPayment = await Payment.findOne({
@@ -114,7 +148,7 @@ async function fixMissingPayments() {
     if (fixedCount > 0) {
       console.log('💡 提示: 刷新数据统计页面即可看到更新后的收入数据\n')
     } else {
-      console.log('ℹ️ 所有记录都正常，无需补录\n')
+      console.log('ℹ️ 所有单次付费学生的记录都正常，无需补录\n')
     }
 
   } catch (error) {
