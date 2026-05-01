@@ -3,7 +3,7 @@ const Student = require('./src/models/Student')
 const LessonRecord = require('./src/models/LessonRecord')
 const Payment = require('./src/models/Payment')
 
-const MONGODB_URI = 'mongodb://localhost:27017/lesson-management'
+const MONGODB_URI = 'mongodb://localhost:27017/piano_studio'
 
 async function diagnose() {
   try {

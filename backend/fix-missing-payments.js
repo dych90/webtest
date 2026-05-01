@@ -6,7 +6,7 @@ const LessonRecord = require('./src/models/LessonRecord')
 const Student = require('./src/models/Student')
 const Payment = require('./src/models/Payment')
 
-const MONGODB_URI = 'mongodb://localhost:27017/lesson-management'
+const MONGODB_URI = 'mongodb://localhost:27017/piano_studio'
 const BACKUP_DIR = path.join(__dirname, 'backups')
 
 function backupDatabase() {
@@ -26,7 +26,7 @@ function backupDatabase() {
     const mongodump = process.platform === 'win32' ? 'mongodump.exe' : 'mongodump'
 
     exec(
-      `${mongodump} --db lesson-management --out "${backupPath}"`,
+      `${mongodump} --db piano_studio --out "${backupPath}"`,
       (error, stdout, stderr) => {
         if (error) {
           console.error(`❌ 备份失败: ${error.message}`)
@@ -38,7 +38,7 @@ function backupDatabase() {
         console.log('✅ 数据库备份成功\n')
         console.log(`📂 备份位置: ${backupPath}`)
         console.log('💡 如需恢复，可使用命令:\n')
-        console.log(`   mongorestore --db lesson-management "${backupPath}/lesson-management"\n`)
+        console.log(`   mongorestore --db piano_studio "${backupPath}/piano_studio"\n`)
         resolve(backupPath)
       }
     )
