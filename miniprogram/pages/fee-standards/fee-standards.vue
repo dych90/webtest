@@ -222,7 +222,7 @@ const handleSave = async () => {
     uni.showToast({ title: '请选择课程类型', icon: 'none' })
     return
   }
-  if (!form.price || form.price <= 0) {
+  if (form.price === '' || Number(form.price) < 0) {
     uni.showToast({ title: '请输入有效的单价', icon: 'none' })
     return
   }

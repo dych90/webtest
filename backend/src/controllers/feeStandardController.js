@@ -158,8 +158,8 @@ const importFeeStandards = async (req, res) => {
         expireDate: expireDate
       }
       
-      if (!feeStandardData.price || feeStandardData.price <= 0) {
-        errors.push(`第 ${i + 2} 行：单价必须大于0`)
+      if (feeStandardData.price === '' || isNaN(feeStandardData.price) || feeStandardData.price < 0) {
+        errors.push(`第 ${i + 2} 行：单价不能为空或负数`)
         failCount++
         continue
       }
