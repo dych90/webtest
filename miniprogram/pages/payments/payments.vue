@@ -19,7 +19,7 @@
         <view class="payment-header">
           <text class="student-name">{{ payment.studentId?.name || '未知学生' }}</text>
           <view class="header-right">
-            <text class="remaining-lessons" :class="payment.studentId?.paymentType === 'payPerLesson' ? 'pay-per-lesson' : ''">
+            <text class="remaining-lessons clickable" :class="payment.studentId?.paymentType === 'payPerLesson' ? 'pay-per-lesson' : ''" @click.stop="goToBalance(payment.studentId?.name)">
               {{ payment.studentId?.paymentType === 'payPerLesson' ? '单次付费' : `剩余${payment.studentId?.remainingLessons ?? 0}课时` }}
             </text>
             <text class="payment-amount">¥{{ payment.amount }}</text>
@@ -95,6 +95,13 @@ const filterPayments = () => {
       return name.toLowerCase().includes(keyword)
     })
   }
+}
+
+const goToBalance = (studentName) => {
+  if (!studentName) return
+  uni.navigateTo({
+    url: `/pages/balance/balance?search=${encodeURIComponent(studentName)}`
+  })
 }
 
 const handleAdd = () => {
@@ -223,6 +230,14 @@ onShow(() => {
 .remaining-lessons.pay-per-lesson {
   color: #909399;
   background-color: #f4f4f5;
+}
+
+.remaining-lessons.clickable {
+  cursor: pointer;
+}
+
+.remaining-lessons.clickable:active {
+  opacity: 0.7;
 }
 
 .student-name {

@@ -182,7 +182,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onShow, onLoad } from '@dcloudio/uni-app'
 import { get, put } from '@/utils/request'
 
 const balances = ref([])
@@ -552,6 +552,16 @@ onMounted(() => {
 
 onShow(() => {
   fetchBalances()
+})
+
+onLoad((options) => {
+  if (options.search) {
+    searchKeyword.value = decodeURIComponent(options.search)
+    // 延迟执行搜索，确保数据已加载
+    setTimeout(() => {
+      filterBalances()
+    }, 300)
+  }
 })
 </script>
 

@@ -206,9 +206,12 @@ const getChartStatistics = async (req, res) => {
     
     const paymentQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
     const payments = await Payment.find(paymentQuery)
-    
+
     const lessonRecordQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
+
+    const courseQuery = (isTeacher || teacherId) ? { teacherId: teacherId || req.userId } : {}
+    const courses = await Course.find(courseQuery)
     
     const prepaidStudentsFiltered = students.filter(s => s.paymentType === 'prepaid')
     const prepaidStudentIds = prepaidStudentsFiltered.map(s => s._id.toString())
@@ -247,8 +250,16 @@ const getChartStatistics = async (req, res) => {
         }, 0)
         actualRevenueData.push(actualRevenue)
         
-        lessonsConsumedData.push(monthLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0))
-        lessonsAttendedData.push(monthLessonRecords.length)
+        // 应消课数: 当月排定的课程数量
+        const monthCourses = courses.filter(c => {
+          if (!c.startTime) return false
+          const courseDate = new Date(c.startTime)
+          return courseDate >= startOfMonth && courseDate < endOfMonth
+        })
+        lessonsConsumedData.push(monthCourses.length)
+        
+        // 实消课数: 实际完成的消课数量
+        lessonsAttendedData.push(monthLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0))
       }
     } else {
       for (let y = currentYear - 4; y <= currentYear; y++) {
@@ -274,8 +285,16 @@ const getChartStatistics = async (req, res) => {
         }, 0)
         actualRevenueData.push(actualRevenue)
         
-        lessonsConsumedData.push(yearLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0))
-        lessonsAttendedData.push(yearLessonRecords.length)
+        // 应消课数: 当年排定的课程数量
+        const yearCourses = courses.filter(c => {
+          if (!c.startTime) return false
+          const courseDate = new Date(c.startTime)
+          return courseDate >= startOfYear && courseDate < endOfYear
+        })
+        lessonsConsumedData.push(yearCourses.length)
+        
+        // 实消课数: 实际完成的消课数量
+        lessonsAttendedData.push(yearLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0))
       }
     }
     

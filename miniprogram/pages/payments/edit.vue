@@ -228,8 +228,8 @@ const handleSubmit = async () => {
     uni.showToast({ title: '请选择学生', icon: 'none' })
     return
   }
-  if (!form.amount || form.amount <= 0) {
-    uni.showToast({ title: '请输入有效的缴费金额', icon: 'none' })
+  if (form.amount === '' || form.amount === null || form.amount === undefined) {
+    uni.showToast({ title: '请输入缴费金额', icon: 'none' })
     return
   }
   

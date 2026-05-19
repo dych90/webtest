@@ -128,11 +128,11 @@
         <view class="chart-legend">
           <view class="legend-item">
             <view class="legend-color lessons"></view>
-            <text>消课数</text>
+            <text>应消课数</text>
           </view>
           <view class="legend-item">
             <view class="legend-color attended"></view>
-            <text>上课数</text>
+            <text>实消课数</text>
           </view>
         </view>
       </view>
