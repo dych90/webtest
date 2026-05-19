@@ -22,9 +22,25 @@ const getPayments = async (req, res) => {
     
     const payments = await Payment.find(filter).sort({ paymentDate: -1 }).populate('studentId', 'name phone paymentType')
     
+    // 获取学生剩余课时
+    const studentIds = [...new Set(payments.map(p => p.studentId?._id).filter(Boolean))]
+    const balances = await LessonBalance.find({ studentId: { $in: studentIds } })
+    const balanceMap = {}
+    balances.forEach(b => { balanceMap[b.studentId.toString()] = b.remainingLessons })
+    
+    // 将remainingLessons添加到返回数据中
+    const paymentsWithBalance = payments.map(p => {
+      const payment = p.toObject()
+      if (payment.studentId) {
+        const studentIdStr = payment.studentId._id.toString()
+        payment.studentId.remainingLessons = balanceMap[studentIdStr] || 0
+      }
+      return payment
+    })
+    
     res.json({
       message: '获取成功',
-      data: payments
+      data: paymentsWithBalance
     })
   } catch (error) {
     console.error('获取缴费列表错误:', error)

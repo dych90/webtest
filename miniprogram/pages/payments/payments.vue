@@ -18,7 +18,12 @@
       <view v-for="payment in filteredPayments" :key="payment._id" class="payment-item" @click="handleDetail(payment)">
         <view class="payment-header">
           <text class="student-name">{{ payment.studentId?.name || '未知学生' }}</text>
-          <text class="payment-amount">¥{{ payment.amount }}</text>
+          <view class="header-right">
+            <text class="remaining-lessons" :class="payment.studentId?.paymentType === 'payPerLesson' ? 'pay-per-lesson' : ''">
+              {{ payment.studentId?.paymentType === 'payPerLesson' ? '单次付费' : `剩余${payment.studentId?.remainingLessons ?? 0}课时` }}
+            </text>
+            <text class="payment-amount">¥{{ payment.amount }}</text>
+          </view>
         </view>
         <view class="payment-body">
           <view class="payment-info">
@@ -199,6 +204,25 @@ onShow(() => {
   margin-bottom: 16rpx;
   padding-bottom: 16rpx;
   border-bottom: 1rpx solid #f0f0f0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.remaining-lessons {
+  font-size: 24rpx;
+  color: #E6A23C;
+  background-color: #fdf6ec;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.remaining-lessons.pay-per-lesson {
+  color: #909399;
+  background-color: #f4f4f5;
 }
 
 .student-name {

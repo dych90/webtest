@@ -41,13 +41,29 @@ const getLessonRecords = async (req, res) => {
     
     const lessonRecords = await LessonRecord.find(filter)
       .sort({ recordDate: -1 })
-      .populate('studentId', 'name phone')
+      .populate('studentId', 'name phone paymentType')
       .populate('courseId', 'startTime endTime')
       .populate('courseTypeId', 'name duration')
     
+    // 获取学生剩余课时
+    const studentIds = [...new Set(lessonRecords.map(r => r.studentId?._id).filter(Boolean))]
+    const balances = await LessonBalance.find({ studentId: { $in: studentIds } })
+    const balanceMap = {}
+    balances.forEach(b => { balanceMap[b.studentId.toString()] = b.remainingLessons })
+    
+    // 将remainingLessons添加到返回数据中
+    const recordsWithBalance = lessonRecords.map(r => {
+      const record = r.toObject()
+      if (record.studentId) {
+        const studentIdStr = record.studentId._id.toString()
+        record.studentId.remainingLessons = balanceMap[studentIdStr] || 0
+      }
+      return record
+    })
+    
     res.json({
       message: '获取成功',
-      data: lessonRecords
+      data: recordsWithBalance
     })
   } catch (error) {
     console.error('获取消课记录错误:', error)

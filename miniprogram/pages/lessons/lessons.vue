@@ -46,7 +46,12 @@
         <view v-for="record in filteredRecords" :key="record._id" class="record-item">
           <view class="record-header">
             <text class="student-name">{{ record.studentId?.name || '未知学生' }}</text>
-            <text class="record-date">记录时间：{{ formatDateTime(record.recordDate) }}</text>
+            <view class="header-right">
+              <text class="remaining-lessons" :class="record.studentId?.paymentType === 'payPerLesson' ? 'pay-per-lesson' : ''">
+                {{ record.studentId?.paymentType === 'payPerLesson' ? '单次付费' : `剩余${record.studentId?.remainingLessons ?? 0}课时` }}
+              </text>
+              <text class="record-date">记录时间：{{ formatDateTime(record.recordDate) }}</text>
+            </view>
           </view>
           <view class="record-body">
             <view class="record-info highlight">
@@ -353,6 +358,25 @@ onShow(() => {
   margin-bottom: 16rpx;
   padding-bottom: 16rpx;
   border-bottom: 1rpx solid #f0f0f0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.remaining-lessons {
+  font-size: 22rpx;
+  color: #E6A23C;
+  background-color: #fdf6ec;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+}
+
+.remaining-lessons.pay-per-lesson {
+  color: #909399;
+  background-color: #f4f4f5;
 }
 
 .student-name {
