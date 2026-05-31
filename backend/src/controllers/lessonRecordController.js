@@ -412,35 +412,17 @@ const deleteLessonRecord = async (req, res) => {
       await updateLessonBalance(studentIdStr, record.lessonsConsumed)
     } else if (student && student.paymentType === 'payPerLesson' && record.isDeducted) {
       console.log('删除单次付费学生的消课记录，查找并删除对应的缴费记录')
-      console.log('消课记录ID:', record._id)
-      console.log('消课记录创建时间:', record.createdAt)
-      console.log('学生ID:', record.studentId._id)
       
       const payment = await Payment.findOne({
         studentId: record.studentId._id,
-        createdAt: {
-          $gte: new Date(record.createdAt.getTime() - 120000),
-          $lte: new Date(record.createdAt.getTime() + 120000)
-        }
+        notes: { $regex: `单次付费 - ${record.lessonsConsumed}节课`, $options: 'i' }
       })
       
       if (payment) {
-        console.log('✅ 找到对应的缴费记录，删除:', payment._id, '金额:', payment.amount)
+        console.log('找到对应的缴费记录，删除:', payment._id)
         await Payment.findByIdAndDelete(payment._id)
       } else {
-        console.log('⚠️ 未找到对应的缴费记录（尝试用notes匹配）')
-        
-        const fallbackPayment = await Payment.findOne({
-          studentId: record.studentId._id,
-          notes: { $regex: `单次付费.*${record.lessonsConsumed}节课`, $options: 'i' }
-        }).sort({ createdAt: -1 })
-        
-        if (fallbackPayment) {
-          console.log('✅ 通过notes匹配找到缴费记录，删除:', fallbackPayment._id, '金额:', fallbackPayment.amount)
-          await Payment.findByIdAndDelete(fallbackPayment._id)
-        } else {
-          console.log('❌ 完全未找到对应的缴费记录')
-        }
+        console.log('未找到对应的缴费记录')
       }
     }
     
