@@ -1,7 +1,8 @@
 const mongoose = require('mongoose')
+require('dotenv').config()
 const Payment = require('../src/models/Payment')
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/education_system'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/piano_studio'
 
 async function deleteOrphanPayments(orphanPaymentIds) {
   try {

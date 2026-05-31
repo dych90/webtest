@@ -1,9 +1,10 @@
 const mongoose = require('mongoose')
+require('dotenv').config()
 const LessonRecord = require('../src/models/LessonRecord')
 const Payment = require('../src/models/Payment')
 const Student = require('../src/models/Student')
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/education_system'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/piano_studio'
 
 async function fixPrepaidData() {
   try {

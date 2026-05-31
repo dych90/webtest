@@ -1,8 +1,9 @@
 const mongoose = require('mongoose')
+require('dotenv').config()
 const Student = require('../src/models/Student')
 const Payment = require('../src/models/Payment')
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/education_system'
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/piano_studio'
 
 async function diagnoseDatabase() {
   try {
@@ -119,7 +120,6 @@ async function diagnoseDatabase() {
     console.log('\n========== 连接信息 ==========\n')
     const db = mongoose.connection.db
     console.log(`📦 数据库名称: ${db.databaseName}`)
-    console.log(`🖥️ 主机: ${db.serverConfig.host}:${db.serverConfig.port}`)
 
     // 列出所有集合
     const collections = await db.listCollections().toArray()
