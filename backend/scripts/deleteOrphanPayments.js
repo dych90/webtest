@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-const Payment = require('../models/Payment')
+const Payment = require('../src/models/Payment')
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/education_system'
 

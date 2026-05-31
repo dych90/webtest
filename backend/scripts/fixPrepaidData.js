@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
-const LessonRecord = require('../models/LessonRecord')
-const Payment = require('../models/Payment')
-const Student = require('../models/Student')
+const LessonRecord = require('../src/models/LessonRecord')
+const Payment = require('../src/models/Payment')
+const Student = require('../src/models/Student')
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/education_system'
 
