@@ -4,7 +4,6 @@ const CourseType = require('../models/CourseType')
 const User = require('../models/User')
 const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
-const Payment = require('../models/Payment')
 
 const getCourses = async (req, res) => {
   try {
@@ -175,18 +174,6 @@ const deleteCourse = async (req, res) => {
         console.log('删除课程时返还课时:', lessonRecord.lessonsConsumed)
       }
       
-      const deletedPayment = await Payment.findOneAndDelete({
-        studentId: lessonRecord.studentId,
-        createdAt: {
-          $gte: new Date(lessonRecord.createdAt.getTime() - 120000),
-          $lte: new Date(lessonRecord.createdAt.getTime() + 120000)
-        }
-      })
-      
-      if (deletedPayment) {
-        console.log('删除课程时同步删除Payment记录:', deletedPayment._id, '金额:', deletedPayment.amount)
-      }
-      
       await LessonRecord.findByIdAndDelete(lessonRecord._id)
       console.log('删除课程时同步删除消课记录:', lessonRecord._id)
     }
@@ -269,18 +256,6 @@ const deleteCoursesByGroup = async (req, res) => {
             $set: { lastUpdated: new Date() }
           }
         )
-      }
-      
-      const deletedPayment = await Payment.findOneAndDelete({
-        studentId: record.studentId,
-        createdAt: {
-          $gte: new Date(record.createdAt.getTime() - 120000),
-          $lte: new Date(record.createdAt.getTime() + 120000)
-        }
-      })
-      
-      if (deletedPayment) {
-        console.log('批量删除课程时删除Payment记录:', deletedPayment._id, '金额:', deletedPayment.amount)
       }
     }
     
