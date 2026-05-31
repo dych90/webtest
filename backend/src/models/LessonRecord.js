@@ -9,6 +9,7 @@ const lessonRecordSchema = new mongoose.Schema({
   isDeducted: { type: Boolean, default: false },
   isGiftLesson: { type: Boolean, default: false },
   unitPrice: { type: Number, default: 0 },
+  paymentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
   notes: String,
   courseStartTime: { type: Date },
   recordDate: { type: Date, default: Date.now },

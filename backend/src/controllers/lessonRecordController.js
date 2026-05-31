@@ -239,6 +239,10 @@ const createLessonRecord = async (req, res) => {
         console.log('缴费记录ID:', newPayment._id)
         console.log('缴费金额:', newPayment.amount)
         console.log('缴费日期:', newPayment.paymentDate)
+
+        lessonRecord.paymentId = newPayment._id
+        await lessonRecord.save()
+        console.log('✅ 已将paymentId保存到消课记录:', lessonRecord._id)
       } else {
         console.log('❌ unitPrice 为 0，无法创建缴费记录')
         console.log('可能原因：')
@@ -412,17 +416,32 @@ const deleteLessonRecord = async (req, res) => {
       await updateLessonBalance(studentIdStr, record.lessonsConsumed)
     } else if (student && student.paymentType === 'payPerLesson' && record.isDeducted) {
       console.log('删除单次付费学生的消课记录，查找并删除对应的缴费记录')
-      
-      const payment = await Payment.findOne({
-        studentId: record.studentId._id,
-        notes: { $regex: `单次付费 - ${record.lessonsConsumed}节课`, $options: 'i' }
-      })
-      
-      if (payment) {
-        console.log('找到对应的缴费记录，删除:', payment._id)
-        await Payment.findByIdAndDelete(payment._id)
+
+      if (record.paymentId) {
+        console.log('✅ 找到关联的paymentId:', record.paymentId)
+        const deletedPayment = await Payment.findByIdAndDelete(record.paymentId)
+        if (deletedPayment) {
+          console.log('✅ 成功删除对应的缴费记录:', {
+            _id: deletedPayment._id,
+            amount: deletedPayment.amount,
+            notes: deletedPayment.notes
+          })
+        } else {
+          console.log('⚠️ paymentId存在但未找到对应的缴费记录，可能已被删除')
+        }
       } else {
-        console.log('未找到对应的缴费记录')
+        console.log('⚠️ 该消课记录没有关联的paymentId（可能是旧数据），尝试通过notes字段查找')
+        const payment = await Payment.findOne({
+          studentId: record.studentId._id,
+          notes: { $regex: `单次付费 - ${record.lessonsConsumed}节课`, $options: 'i' }
+        })
+
+        if (payment) {
+          console.log('找到对应的缴费记录（通过notes匹配）,删除:', payment._id)
+          await Payment.findByIdAndDelete(payment._id)
+        } else {
+          console.log('未找到对应的缴费记录')
+        }
       }
     }
     
