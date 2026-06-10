@@ -217,8 +217,8 @@ const startReminderService = () => {
     await resetDailyReminderFlags()
   }, { timezone: TIMEZONE })
 
-  cron.schedule('0 8 * * *', async () => {
-    console.log('定时任务触发: 早上提醒')
+  cron.schedule('30 9 * * *', async () => {
+    console.log('定时任务触发: 9点半今日课程提醒')
     await sendMorningDailyReminder()
   }, { timezone: TIMEZONE })
 
@@ -230,7 +230,7 @@ const startReminderService = () => {
   console.log('定时任务已注册:')
   console.log('  - 课程提醒: 每5分钟检查一次')
   console.log('  - 重置提醒标志: 每天0:00')
-  console.log('  - 早上提醒: 每天8:00')
+  console.log('  - 今日课程提醒: 每天9:30')
   console.log('  - 晚上提醒: 每天22:00')
 }
 
@@ -263,7 +263,7 @@ const sendMorningDailyReminder = async () => {
       teachersToRemind[teacher._id].courses.push(course)
     }
 
-    console.log(`早上8点：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
+    console.log(`今日课程提醒：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
 
     for (const teacherId in teachersToRemind) {
       const { teacher, courses } = teachersToRemind[teacherId]
@@ -288,15 +288,15 @@ const sendMorningDailyReminder = async () => {
 
         const results = await sendReminderToAllOpenIds(openIds, messageData, 'pages/lessons/lessons')
         const successCount = results.filter(r => r.success).length
-        console.log(`已向教师 ${teacher.name} 发送早上提醒(${successCount}/${openIds.length}个微信)，今日课程: ${courses.length}节`)
+        console.log(`已向教师 ${teacher.name} 发送今日课程提醒(${successCount}/${openIds.length}个微信)，今日课程: ${courses.length}节`)
       } catch (error) {
-        console.error(`发送早上提醒失败:`, error.message)
+        console.error(`发送今日课程提醒失败:`, error.message)
       }
     }
 
-    console.log('早上提醒检查完成')
+    console.log('今日课程提醒检查完成')
   } catch (error) {
-    console.error('检查早上提醒时出错:', error)
+    console.error('检查今日课程提醒时出错:', error)
   }
 }
 
