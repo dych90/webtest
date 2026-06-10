@@ -56,7 +56,7 @@
         >
           <view class="year-month-header">
             <text class="year-month-title">{{ month.month + 1 }}月</text>
-            <text class="year-month-count">{{ month.courseCount }}节课</text>
+            <text class="year-month-count">{{ month.courseCountLabel }} {{ month.courseCount }} 节</text>
           </view>
           <view class="year-month-grid">
             <view class="year-day-name" v-for="name in dayNames" :key="name">{{ name }}</view>
@@ -91,57 +91,70 @@
             'other-month': day.otherMonth,
             'is-today': day.isToday,
             'is-selected': day.date === selectedDate,
-            'has-courses': day.hasCourses
+            'has-courses': day.courseCount > 0
           }"
           @click="selectDate(day)"
         >
           <text class="day-number">{{ day.dayNumber }}</text>
-          <view v-if="day.courseCount > 0" class="course-dots">
-            <view class="dot" v-for="i in Math.min(day.courseCount, 3)" :key="i"></view>
-          </view>
+          <text v-if="day.courseCount > 0" class="course-count">{{ day.courseCount }}节</text>
         </view>
       </view>
     </view>
     
-    <view v-if="viewMode === 'week'" class="week-table-view">
-      <view class="week-table-header">
-        <view class="time-column-header">时间</view>
-        <view 
-          v-for="day in weekDays" 
-          :key="day.date" 
-          class="day-column-header"
-          :class="{ 'is-today': day.isToday }"
+    <view v-if="viewMode === 'week'" class="week-calendar-view">
+      <view class="week-calendar-header">
+        <view class="week-time-header"></view>
+        <view
+          v-for="day in weekDays"
+          :key="day.date"
+          class="week-day-header"
+          :class="{
+            'is-today': day.isToday,
+            'is-selected': day.date === selectedDate,
+            'has-courses': day.courseCount > 0
+          }"
+          @click="selectWeekDate(day.date)"
         >
-          <text class="header-day-name">{{ day.dayName }}</text>
-          <text class="header-day-number">{{ day.dayNumber }}</text>
+          <text class="week-header-name">{{ day.dayName }}</text>
+          <text class="week-header-date">{{ day.dayNumber }}</text>
+          <text v-if="day.courseCount > 0" class="week-header-count">{{ day.courseCount }}</text>
         </view>
       </view>
-      
-      <scroll-view scroll-y class="week-table-body">
-        <view class="time-slots">
-          <view v-for="hour in hours" :key="hour" class="time-slot-row">
-            <view class="time-label">{{ hour }}:00</view>
-            <view class="slot-cells">
-              <view 
-                v-for="day in weekDays" 
-                :key="day.date" 
-                class="slot-cell"
-                @click="handleSlotClick(day.date, hour)"
+
+      <scroll-view scroll-y class="week-calendar-scroll">
+        <view v-if="weekTimeRows.length === 0" class="empty-tip">
+          本周暂无课程安排
+        </view>
+
+        <view v-else class="week-calendar-grid">
+          <view
+            v-for="row in weekTimeRows"
+            :key="row.hour"
+            class="week-time-row"
+          >
+            <view class="week-time-label">{{ row.label }}</view>
+            <view
+              v-for="cell in row.cells"
+              :key="cell.date"
+              class="week-time-cell"
+              :class="{
+                'is-today': cell.isToday,
+                'has-courses': cell.courses.length > 0
+              }"
+              @click="handleWeekCellClick(cell.date, row.hour)"
+            >
+              <view
+                v-for="course in cell.courses"
+                :key="course._id"
+                class="week-calendar-course"
+                :class="{
+                  'completed': course.status === 'completed',
+                  'cancelled': course.status === 'cancelled'
+                }"
+                @click.stop="goToDetail(course)"
               >
-                <view 
-                  v-for="course in getCoursesForSlot(day.date, hour)" 
-                  :key="course._id"
-                  class="course-block"
-                  :class="{
-                    'completed': course.status === 'completed',
-                    'cancelled': course.status === 'cancelled'
-                  }"
-                  :style="getCourseStyle(course)"
-                  @click.stop="goToDetail(course)"
-                >
-                  <text class="course-block-time">{{ formatTime(course.startTime) }}</text>
-                  <text class="course-block-name">{{ formatStudentName(course.studentId?.name) }}</text>
-                </view>
+                <text class="week-calendar-time">{{ formatTime(course.startTime) }}</text>
+                <text class="week-calendar-name">{{ formatStudentName(course.studentId?.name) }}</text>
               </view>
             </view>
           </view>
@@ -236,12 +249,11 @@ const currentWeekStart = ref(new Date())
 const selectedDate = ref(formatDateString(new Date()))
 const courses = ref([])
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
-const hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
 
 const yearMonths = computed(() => {
   const months = []
   const today = formatDateString(new Date())
-  
+
   for (let m = 0; m < 12; m++) {
     const days = []
     const year = currentYear.value
@@ -255,48 +267,33 @@ const yearMonths = computed(() => {
     
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const day = prevMonthDays - i
-      const date = formatDateString(new Date(year, m - 1, day))
-      days.push({
-        date,
-        dayNumber: day,
-        otherMonth: true,
-        isToday: false,
-        courseCount: getCourseCount(date)
-      })
+      const date = new Date(year, m - 1, day)
+      days.push(buildCalendarDay(date, day, true, today))
     }
     
     for (let i = 1; i <= daysInMonth; i++) {
-      const date = formatDateString(new Date(year, m, i))
-      days.push({
-        date,
-        dayNumber: i,
-        otherMonth: false,
-        isToday: date === today,
-        courseCount: getCourseCount(date)
-      })
+      const date = new Date(year, m, i)
+      days.push(buildCalendarDay(date, i, false, today))
     }
     
     const remainingDays = 42 - days.length
     for (let i = 1; i <= remainingDays; i++) {
-      const date = formatDateString(new Date(year, m + 1, i))
-      days.push({
-        date,
-        dayNumber: i,
-        otherMonth: true,
-        isToday: false,
-        courseCount: getCourseCount(date)
-      })
+      const date = new Date(year, m + 1, i)
+      days.push(buildCalendarDay(date, i, true, today))
     }
     
-    const courseCount = days.reduce((sum, d) => sum + d.courseCount, 0)
+    const courseCount = days
+      .filter(d => !d.otherMonth)
+      .reduce((sum, d) => sum + d.courseCount, 0)
     
     months.push({
       month: m,
       days,
-      courseCount
+      courseCount,
+      courseCountLabel: getMonthCourseCountLabel(year, m)
     })
   }
-  
+
   return months
 })
 
@@ -307,46 +304,28 @@ const monthDays = computed(() => {
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
   const today = formatDateString(new Date())
-  
+
   const startDayOfWeek = firstDay.getDay()
   const daysInMonth = lastDay.getDate()
-  
+
   const prevMonth = new Date(year, month, 0)
   const prevMonthDays = prevMonth.getDate()
   
   for (let i = startDayOfWeek - 1; i >= 0; i--) {
     const day = prevMonthDays - i
-    const date = formatDateString(new Date(year, month - 1, day))
-    days.push({
-      date,
-      dayNumber: day,
-      otherMonth: true,
-      isToday: false,
-      courseCount: getCourseCount(date)
-    })
+    const date = new Date(year, month - 1, day)
+    days.push(buildCalendarDay(date, day, true, today))
   }
   
   for (let i = 1; i <= daysInMonth; i++) {
-    const date = formatDateString(new Date(year, month, i))
-    days.push({
-      date,
-      dayNumber: i,
-      otherMonth: false,
-      isToday: date === today,
-      courseCount: getCourseCount(date)
-    })
+    const date = new Date(year, month, i)
+    days.push(buildCalendarDay(date, i, false, today))
   }
   
   const remainingDays = 42 - days.length
   for (let i = 1; i <= remainingDays; i++) {
-    const date = formatDateString(new Date(year, month + 1, i))
-    days.push({
-      date,
-      dayNumber: i,
-      otherMonth: true,
-      isToday: false,
-      courseCount: getCourseCount(date)
-    })
+    const date = new Date(year, month + 1, i)
+    days.push(buildCalendarDay(date, i, true, today))
   }
   
   return days
@@ -366,11 +345,36 @@ const weekDays = computed(() => {
       dayName: dayNames[date.getDay()],
       dayNumber: date.getDate(),
       isToday: dateStr === today,
-      courseCount: getCourseCount(dateStr)
+      courseCount: getCoursesByDate(dateStr).length
     })
   }
   
   return days
+})
+
+const weekTimeRows = computed(() => {
+  const weekDateSet = new Set(weekDays.value.map(day => day.date))
+  const hours = new Set()
+
+  courses.value.forEach(course => {
+    const startTime = new Date(course.startTime)
+    const dateStr = formatDateString(startTime)
+
+    if (weekDateSet.has(dateStr)) {
+      hours.add(startTime.getHours())
+    }
+  })
+
+  return Array.from(hours)
+    .sort((a, b) => a - b)
+    .map(hour => ({
+      hour,
+      label: `${String(hour).padStart(2, '0')}:00`,
+      cells: weekDays.value.map(day => ({
+        ...day,
+        courses: getCoursesForWeekSlot(day.date, hour)
+      }))
+    }))
 })
 
 const periodText = computed(() => {
@@ -412,24 +416,56 @@ const dayCourses = computed(() => {
     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
 })
 
-function getCourseCount(dateStr) {
-  return courses.value.filter(c => formatDateString(new Date(c.startTime)) === dateStr).length
+function buildCalendarDay(dateObj, dayNumber, otherMonth, today) {
+  const date = formatDateString(dateObj)
+  const countMode = getMonthCourseCountMode(dateObj.getFullYear(), dateObj.getMonth())
+
+  return {
+    date,
+    dayNumber,
+    otherMonth,
+    isToday: !otherMonth && date === today,
+    courseCount: getCourseCount(date, countMode)
+  }
 }
 
-function getCoursesForSlot(dateStr, hour) {
-  return courses.value.filter(c => {
-    const courseDate = formatDateString(new Date(c.startTime))
-    const courseHour = new Date(c.startTime).getHours()
-    return courseDate === dateStr && courseHour === hour
-  })
+function getMonthCourseCountMode(year, month) {
+  const now = new Date()
+  const currentYearValue = now.getFullYear()
+  const currentMonthValue = now.getMonth()
+
+  if (year < currentYearValue) return 'actual'
+  if (year > currentYearValue) return 'scheduled'
+  return month < currentMonthValue ? 'actual' : 'scheduled'
 }
 
-function getCourseStyle(course) {
-  const start = new Date(course.startTime)
-  const end = new Date(course.endTime)
-  const duration = (end - start) / 60000
-  const height = Math.max(duration * 2, 60)
-  return { height: `${height}rpx` }
+function getMonthCourseCountLabel(year, month) {
+  return getMonthCourseCountMode(year, month) === 'actual' ? '已上' : '应消'
+}
+
+function getCourseCount(dateStr, mode = 'scheduled') {
+  const courseList = courses.value.filter(c => formatDateString(new Date(c.startTime)) === dateStr)
+
+  if (mode === 'actual') {
+    return courseList.filter(c => c.status === 'completed').length
+  }
+
+  return courseList.filter(c => c.status !== 'cancelled' && c.status !== 'rescheduled').length
+}
+
+function getCoursesByDate(dateStr) {
+  return courses.value
+    .filter(c => formatDateString(new Date(c.startTime)) === dateStr)
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+}
+
+function getCoursesForWeekSlot(dateStr, hour) {
+  return courses.value
+    .filter(c => {
+      const startTime = new Date(c.startTime)
+      return formatDateString(startTime) === dateStr && startTime.getHours() === hour
+    })
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
 }
 
 function formatTime(dateStr) {
@@ -514,7 +550,12 @@ const selectDate = (day) => {
   selectedDate.value = day.date
 }
 
-const handleSlotClick = (date, hour) => {
+const selectWeekDate = (date) => {
+  selectedDate.value = date
+}
+
+const handleWeekCellClick = (date, hour) => {
+  selectedDate.value = date
   const hourStr = String(hour).padStart(2, '0')
   uni.navigateTo({
     url: `/pages/schedule/add?date=${date}&time=${hourStr}:00`
@@ -723,21 +764,30 @@ onShow(() => {
   color: #333;
 }
 
-.course-dots {
-  display: flex;
-  gap: 4rpx;
+.course-count {
   margin-top: 4rpx;
+  min-width: 38rpx;
+  max-width: 90%;
+  height: 24rpx;
+  line-height: 24rpx;
+  padding: 0 6rpx;
+  border-radius: 4rpx;
+  box-sizing: border-box;
+  background-color: #ecf5ff;
+  color: #409EFF;
+  font-size: 18rpx;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.dot {
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-  background-color: #409EFF;
+.month-day.other-month .course-count {
+  background-color: #f4f4f5;
+  color: #a8abb2;
 }
 
-.month-day.is-selected .dot {
-  background-color: #fff;
+.month-day.is-selected .course-count {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
 }
 
 .year-view {
@@ -833,137 +883,168 @@ onShow(() => {
   background-color: #fff;
 }
 
-.week-table-view {
+.week-calendar-view {
   background-color: #fff;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 200rpx);
 }
 
-.week-table-header {
-  display: flex;
-  border-bottom: 2rpx solid #ebeef5;
+.week-calendar-header {
+  display: grid;
+  grid-template-columns: 64rpx repeat(7, minmax(0, 1fr));
+  min-height: 88rpx;
+  border-bottom: 1rpx solid #ebeef5;
   background-color: #f5f7fa;
 }
 
-.time-column-header {
-  width: 80rpx;
-  padding: 16rpx 8rpx;
-  text-align: center;
-  font-size: 22rpx;
-  color: #909399;
+.week-time-header {
   border-right: 1rpx solid #ebeef5;
 }
 
-.day-column-header {
-  flex: 1;
+.week-day-header {
+  min-width: 0;
+  height: 88rpx;
+  border-right: 1rpx solid #ebeef5;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12rpx 4rpx;
-  border-right: 1rpx solid #ebeef5;
+  justify-content: center;
+  gap: 2rpx;
+  box-sizing: border-box;
 }
 
-.day-column-header:last-child {
+.week-day-header:last-child {
   border-right: none;
 }
 
-.day-column-header.is-today {
+.week-day-header.is-today {
   background-color: #ecf5ff;
 }
 
-.header-day-name {
-  font-size: 22rpx;
+.week-day-header.is-selected {
+  background-color: #409EFF;
+}
+
+.week-header-name {
+  font-size: 20rpx;
+  line-height: 22rpx;
   color: #909399;
 }
 
-.header-day-number {
-  font-size: 28rpx;
+.week-header-date {
+  font-size: 26rpx;
+  line-height: 30rpx;
   font-weight: bold;
   color: #333;
-  margin-top: 4rpx;
 }
 
-.day-column-header.is-today .header-day-number {
+.week-header-count {
+  min-width: 28rpx;
+  height: 22rpx;
+  line-height: 22rpx;
+  padding: 0 5rpx;
+  border-radius: 11rpx;
+  box-sizing: border-box;
+  background-color: #ecf5ff;
   color: #409EFF;
+  font-size: 18rpx;
+  text-align: center;
 }
 
-.week-table-body {
+.week-day-header.is-selected .week-header-name,
+.week-day-header.is-selected .week-header-date {
+  color: #fff;
+}
+
+.week-day-header.is-selected .week-header-count {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.week-calendar-scroll {
   flex: 1;
-  overflow-y: auto;
+  height: 0;
 }
 
-.time-slots {
-  display: flex;
-  flex-direction: column;
+.week-calendar-grid {
+  background-color: #fff;
 }
 
-.time-slot-row {
-  display: flex;
-  min-height: 56rpx;
-  height: 56rpx;
+.week-time-row {
+  display: grid;
+  grid-template-columns: 64rpx repeat(7, minmax(0, 1fr));
+  min-height: 96rpx;
   border-bottom: 1rpx solid #f0f0f0;
 }
 
-.time-label {
-  width: 80rpx;
-  padding: 8rpx;
-  text-align: center;
-  font-size: 20rpx;
-  color: #909399;
+.week-time-label {
+  min-width: 0;
+  padding-top: 12rpx;
+  box-sizing: border-box;
   border-right: 1rpx solid #ebeef5;
   background-color: #fafafa;
+  color: #909399;
+  font-size: 18rpx;
+  line-height: 22rpx;
+  text-align: center;
 }
 
-.slot-cells {
-  flex: 1;
-  display: flex;
-}
-
-.slot-cell {
-  flex: 1;
-  min-height: 56rpx;
-  border-right: 1rpx solid #f0f0f0;
+.week-time-cell {
+  min-width: 0;
+  min-height: 96rpx;
   padding: 4rpx;
-  position: relative;
+  box-sizing: border-box;
+  border-right: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
 }
 
-.slot-cell:last-child {
+.week-time-cell:last-child {
   border-right: none;
 }
 
-.course-block {
-  background-color: #409EFF;
+.week-time-cell.is-today {
+  background-color: #fbfdff;
+}
+
+.week-calendar-course {
+  min-width: 0;
+  min-height: 58rpx;
+  padding: 5rpx 4rpx;
   border-radius: 6rpx;
-  padding: 6rpx;
-  margin-bottom: 4rpx;
+  box-sizing: border-box;
+  background-color: #409EFF;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  word-wrap: break-word;
-  word-break: break-all;
 }
 
-.course-block.completed {
+.week-calendar-course.completed {
   background-color: #67C23A;
 }
 
-.course-block.cancelled {
+.week-calendar-course.cancelled {
   background-color: #909399;
 }
 
-.course-block-time {
-  font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.8);
+.week-calendar-time {
+  font-size: 16rpx;
+  line-height: 20rpx;
+  color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
 }
 
-.course-block-name {
+.week-calendar-name {
+  min-width: 0;
   font-size: 20rpx;
+  line-height: 24rpx;
   color: #fff;
   font-weight: bold;
-  word-wrap: break-word;
-  word-break: break-all;
-  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .day-header {
