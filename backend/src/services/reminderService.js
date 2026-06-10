@@ -202,20 +202,7 @@ const resetDailyReminderFlags = async () => {
 const startReminderService = () => {
   console.log('启动课程提醒定时任务服务...')
 
-  resetDailyReminderFlags()
-  checkAndSendReminders()
-
   const cron = require('node-cron')
-
-  cron.schedule('*/5 * * * *', async () => {
-    console.log('定时任务触发: 检查课程提醒')
-    await checkAndSendReminders()
-  }, { timezone: TIMEZONE })
-
-  cron.schedule('0 0 * * *', async () => {
-    console.log('定时任务触发: 重置今日提醒标志')
-    await resetDailyReminderFlags()
-  }, { timezone: TIMEZONE })
 
   cron.schedule('30 9 * * *', async () => {
     console.log('定时任务触发: 9点半今日课程提醒')
@@ -228,8 +215,6 @@ const startReminderService = () => {
   }, { timezone: TIMEZONE })
   
   console.log('定时任务已注册:')
-  console.log('  - 课程提醒: 每5分钟检查一次')
-  console.log('  - 重置提醒标志: 每天0:00')
   console.log('  - 今日课程提醒: 每天9:30')
   console.log('  - 晚上提醒: 每天22:00')
 }
