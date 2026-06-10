@@ -3,10 +3,22 @@ const https = require('https')
 const APPID = 'wxc0fad9ed6db1b4a7'
 const APPSECRET = 'a31612ae78c3e971ba69fe41c3e2f1a5'
 const TEMPLATE_ID = 'FPymYYMiWppMeQyUl6RwZbFfJvgCuknjdyphRkDs1Y0'
+const DEFAULT_MINIPROGRAM_STATE = 'trial'
+const VALID_MINIPROGRAM_STATES = ['developer', 'trial', 'formal']
 
 let accessTokenCache = {
   token: '',
   expiresAt: 0
+}
+
+const getMiniprogramState = () => {
+  const state = process.env.WECHAT_MINIPROGRAM_STATE || DEFAULT_MINIPROGRAM_STATE
+  if (VALID_MINIPROGRAM_STATES.includes(state)) {
+    return state
+  }
+  
+  console.warn(`无效的 WECHAT_MINIPROGRAM_STATE: ${state}, 使用 ${DEFAULT_MINIPROGRAM_STATE}`)
+  return DEFAULT_MINIPROGRAM_STATE
 }
 
 const getAccessToken = async () => {
@@ -53,11 +65,14 @@ const sendSubscribeMessage = async (openId, data, page = 'pages/schedule/schedul
     
     const accessToken = await getAccessToken()
     console.log('获取到 access_token:', accessToken ? '成功' : '失败')
+    const miniprogramState = getMiniprogramState()
+    console.log('miniprogram_state:', miniprogramState)
     
     const postData = JSON.stringify({
       touser: openId,
       template_id: TEMPLATE_ID,
       page: page,
+      miniprogram_state: miniprogramState,
       data: data
     })
     
