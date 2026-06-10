@@ -100,6 +100,7 @@ const loading = ref(false)
 const showPassword = ref(false)
 const rememberPassword = ref(false)
 const agreedToTerms = ref(false)
+const SUBSCRIBE_TEMPLATE_ID = 'FPymYYMiWppMeQyUl6RwZbFfJvgCuknjdyphRkDs1Y0'
 
 onMounted(() => {
   const savedUsername = uni.getStorageSync('savedUsername')
@@ -163,6 +164,10 @@ const handleLogin = async () => {
       
       userStore.login(res.data.token, res.data.user)
       
+      if (res.data.user?.role === 'teacher') {
+        await requestReminderSubscription()
+      }
+      
       uni.showToast({
         title: '登录成功',
         icon: 'success'
@@ -187,6 +192,35 @@ const handleLogin = async () => {
     })
   } finally {
     loading.value = false
+  }
+}
+
+const requestReminderSubscription = async () => {
+  try {
+    const subscribeResult = await new Promise((resolve, reject) => {
+      uni.requestSubscribeMessage({
+        tmplIds: [SUBSCRIBE_TEMPLATE_ID],
+        success: resolve,
+        fail: reject
+      })
+    })
+
+    if (subscribeResult[SUBSCRIBE_TEMPLATE_ID] !== 'accept') {
+      return
+    }
+    
+    const codeRes = await new Promise((resolve, reject) => {
+      uni.login({
+        provider: 'weixin',
+        success: resolve,
+        fail: reject
+      })
+    })
+
+    const openIdRes = await post('/openid', { code: codeRes.code })
+    await post('/bind-openid', { openId: openIdRes.data.openId })
+  } catch (error) {
+    console.warn('登录后订阅提醒失败:', error?.message || error)
   }
 }
 
