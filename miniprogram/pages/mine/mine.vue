@@ -53,11 +53,6 @@
           <text class="menu-text" :class="{ 'subscribed-text': subscribedCount > 0 }">{{ subscriptionText }}</text>
           <text class="menu-arrow" :class="{ 'subscribed-arrow': subscribedCount > 0 }">{{ subscribedCount > 0 ? subscribedCount + '个' : '›' }}</text>
         </view>
-        <view class="menu-item" @click="handleSendTestMessage">
-          <view class="menu-icon">📤</view>
-          <text class="menu-text">发送测试提醒</text>
-          <text class="menu-arrow">›</text>
-        </view>
       </view>
       
       <view class="menu-group">
@@ -214,34 +209,6 @@ const handleSubscribeMessage = async () => {
     console.error('订阅消息错误:', error)
     uni.showToast({
       title: '订阅失败',
-      icon: 'none'
-    })
-  }
-}
-
-const handleSendTestMessage = async () => {
-  if (subscribedCount.value === 0) {
-    uni.showToast({
-      title: '请先订阅提醒',
-      icon: 'none'
-    })
-    return
-  }
-  
-  uni.showLoading({ title: '发送中...' })
-  
-  try {
-    const res = await post('/send-test-message')
-    uni.hideLoading()
-    uni.showModal({
-      title: '测试结果',
-      content: res.message || '测试提醒已发送',
-      showCancel: false
-    })
-  } catch (error) {
-    uni.hideLoading()
-    uni.showToast({
-      title: error.message || '发送失败',
       icon: 'none'
     })
   }
