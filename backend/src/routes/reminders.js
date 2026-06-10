@@ -6,6 +6,22 @@ const { checkAndSendReminders, sendMorningDailyReminder, sendEveningDailyReminde
 const User = require('../models/User')
 const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 
+const getUserOpenIds = (user) => {
+  if (!user) return []
+  
+  const openIds = []
+  
+  if (user.openIds && user.openIds.length > 0) {
+    openIds.push(...user.openIds)
+  }
+  
+  if (user.openId && !openIds.includes(user.openId)) {
+    openIds.push(user.openId)
+  }
+  
+  return openIds
+}
+
 router.get('/reminders', authenticateToken, reminderController.getAllReminders)
 router.post('/reminders', authenticateToken, reminderController.createReminder)
 router.put('/reminders/:id', authenticateToken, reminderController.updateReminder)
@@ -34,11 +50,13 @@ router.post('/send-test-message', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: '用户不存在' })
     }
     
-    if (!user.openId) {
+    const openIds = getUserOpenIds(user)
+    
+    if (openIds.length === 0) {
       return res.status(400).json({ message: '请先在小程序中订阅消息' })
     }
     
-    console.log('发送测试消息给用户:', user.name, 'openId:', user.openId)
+    console.log('发送测试消息给用户:', user.name, 'openIds:', openIds)
     
     const now = new Date()
     const messageData = {
@@ -58,10 +76,26 @@ router.post('/send-test-message', authenticateToken, async (req, res) => {
     
     console.log('发送的数据:', JSON.stringify(messageData, null, 2))
     
-    await sendSubscribeMessage(user.openId, messageData, 'pages/schedule/schedule')
+    const results = []
+    for (const openId of openIds) {
+      try {
+        await sendSubscribeMessage(openId, messageData, 'pages/schedule/schedule')
+        results.push({ openId, success: true })
+      } catch (error) {
+        console.error(`发送测试消息到 ${openId} 失败:`, error.message)
+        results.push({ openId, success: false, error: error.message })
+      }
+    }
+    
+    const successCount = results.filter(r => r.success).length
     
     res.json({ 
-      message: '测试消息已发送，请查看手机通知',
+      message: `测试消息已发送：${successCount}/${openIds.length} 个微信成功`,
+      data: {
+        total: openIds.length,
+        successCount,
+        results
+      },
       time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
     })
   } catch (error) {

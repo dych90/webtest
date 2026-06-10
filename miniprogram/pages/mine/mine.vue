@@ -50,8 +50,13 @@
       <view class="menu-group" v-if="userStore.isTeacher()">
         <view class="menu-item" @click="handleSubscribeMessage">
           <view class="menu-icon">🔔</view>
-          <text class="menu-text" :class="{ 'subscribed-text': isSubscribed }">{{ isSubscribed ? '已订阅上课提醒' : '订阅上课提醒' }}</text>
-          <text class="menu-arrow" :class="{ 'subscribed-arrow': isSubscribed }">{{ isSubscribed ? '✓' : '›' }}</text>
+          <text class="menu-text" :class="{ 'subscribed-text': subscribedCount > 0 }">{{ subscriptionText }}</text>
+          <text class="menu-arrow" :class="{ 'subscribed-arrow': subscribedCount > 0 }">{{ subscribedCount > 0 ? subscribedCount + '个' : '›' }}</text>
+        </view>
+        <view class="menu-item" @click="handleSendTestMessage">
+          <view class="menu-icon">📤</view>
+          <text class="menu-text">发送测试提醒</text>
+          <text class="menu-arrow">›</text>
         </view>
       </view>
       
@@ -78,11 +83,19 @@ import { get, post } from '@/utils/request'
 
 const userStore = useUserStore()
 const isSubscribed = ref(false)
+const subscribedCount = ref(0)
 
 const roleText = computed(() => {
   if (userStore.isAdmin()) return '管理员'
   if (userStore.isTeacher()) return '教师'
   return '未知角色'
+})
+
+const subscriptionText = computed(() => {
+  if (subscribedCount.value > 0) {
+    return '订阅/续订上课提醒'
+  }
+  return '订阅上课提醒'
 })
 
 const checkSubscriptionStatus = async () => {
@@ -97,8 +110,12 @@ const checkSubscriptionStatus = async () => {
     console.log('获取用户信息成功:', res.data)
     console.log('openId值:', res.data?.openId)
     console.log('openId类型:', typeof res.data?.openId)
+    console.log('openIds数量:', res.data?.openIds?.length || 0)
     
-    isSubscribed.value = !!(res.data?.openId)
+    const openIds = res.data?.openIds || []
+    const legacyOpenId = res.data?.openId
+    subscribedCount.value = legacyOpenId && !openIds.includes(legacyOpenId) ? openIds.length + 1 : openIds.length
+    isSubscribed.value = subscribedCount.value > 0
     
     console.log('最终订阅状态:', isSubscribed.value)
     console.log('isSubscribed.value类型:', typeof isSubscribed.value)
@@ -168,14 +185,13 @@ const handleSubscribeMessage = async () => {
         await post('/bind-openid', { openId: openIdRes.data.openId })
         
         isSubscribed.value = true
+        await checkSubscriptionStatus()
         
         uni.hideLoading()
         uni.showToast({
           title: '订阅成功',
           icon: 'success'
         })
-        
-        await checkSubscriptionStatus()
       } catch (error) {
         uni.hideLoading()
         uni.showToast({
@@ -198,6 +214,34 @@ const handleSubscribeMessage = async () => {
     console.error('订阅消息错误:', error)
     uni.showToast({
       title: '订阅失败',
+      icon: 'none'
+    })
+  }
+}
+
+const handleSendTestMessage = async () => {
+  if (subscribedCount.value === 0) {
+    uni.showToast({
+      title: '请先订阅提醒',
+      icon: 'none'
+    })
+    return
+  }
+  
+  uni.showLoading({ title: '发送中...' })
+  
+  try {
+    const res = await post('/send-test-message')
+    uni.hideLoading()
+    uni.showModal({
+      title: '测试结果',
+      content: res.message || '测试提醒已发送',
+      showCancel: false
+    })
+  } catch (error) {
+    uni.hideLoading()
+    uni.showToast({
+      title: error.message || '发送失败',
       icon: 'none'
     })
   }

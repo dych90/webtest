@@ -5,6 +5,43 @@ const CourseType = require('../models/CourseType')
 const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 
 let lastDailyReminderDate = null
+const TIMEZONE = 'Asia/Shanghai'
+const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000
+
+const getShanghaiDayRange = (dayOffset = 0, baseDate = new Date()) => {
+  const shanghaiDate = new Date(baseDate.getTime() + SHANGHAI_OFFSET_MS)
+  shanghaiDate.setUTCDate(shanghaiDate.getUTCDate() + dayOffset)
+  
+  const year = shanghaiDate.getUTCFullYear()
+  const month = shanghaiDate.getUTCMonth()
+  const day = shanghaiDate.getUTCDate()
+  
+  const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0) - SHANGHAI_OFFSET_MS)
+  const end = new Date(Date.UTC(year, month, day + 1, 0, 0, 0, 0) - SHANGHAI_OFFSET_MS)
+  
+  return { start, end }
+}
+
+const addCoursesToTeacherMap = (teacherMap, courses, fieldName) => {
+  for (const course of courses) {
+    const teacher = course.teacherId
+    if (!teacher) continue
+    
+    const openIds = getTeacherOpenIds(teacher)
+    if (openIds.length === 0) continue
+    
+    const teacherId = teacher._id.toString()
+    if (!teacherMap[teacherId]) {
+      teacherMap[teacherId] = {
+        teacher,
+        todayCompletedCourses: [],
+        tomorrowCourses: []
+      }
+    }
+    
+    teacherMap[teacherId][fieldName].push(course)
+  }
+}
 
 const getTeacherOpenIds = (teacher) => {
   if (!teacher) return []
@@ -124,9 +161,12 @@ const checkAndSendReminders = async () => {
         const successCount = results.filter(r => r.success).length
         console.log(`  发送结果: ${successCount}/${openIds.length} 成功`)
         
-        await Course.findByIdAndUpdate(course._id, { reminderSent: true })
-        
-        console.log(`✅ 已向教师 ${teacher.name} 发送课程提醒: ${student?.name} - ${courseType?.name}`)
+        if (successCount > 0) {
+          await Course.findByIdAndUpdate(course._id, { reminderSent: true })
+          console.log(`✅ 已向教师 ${teacher.name} 发送课程提醒: ${student?.name} - ${courseType?.name}`)
+        } else {
+          console.warn(`⚠️ 课程提醒全部发送失败，保留未发送状态以便重试: ${course._id}`)
+        }
       } catch (error) {
         console.error(`❌ 发送课程提醒失败 (课程ID: ${course._id}):`, error.message)
       }
@@ -140,15 +180,13 @@ const checkAndSendReminders = async () => {
 
 const resetDailyReminderFlags = async () => {
   try {
-    const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    const { start: todayStart, end: todayEnd } = getShanghaiDayRange()
     
     const result = await Course.updateMany(
       {
         startTime: {
           $gte: todayStart,
-          $lte: todayEnd
+          $lt: todayEnd
         },
         reminderSent: true
       },
@@ -172,22 +210,22 @@ const startReminderService = () => {
   cron.schedule('*/5 * * * *', async () => {
     console.log('定时任务触发: 检查课程提醒')
     await checkAndSendReminders()
-  })
+  }, { timezone: TIMEZONE })
 
   cron.schedule('0 0 * * *', async () => {
     console.log('定时任务触发: 重置今日提醒标志')
     await resetDailyReminderFlags()
-  })
+  }, { timezone: TIMEZONE })
 
   cron.schedule('0 8 * * *', async () => {
     console.log('定时任务触发: 早上提醒')
     await sendMorningDailyReminder()
-  })
+  }, { timezone: TIMEZONE })
 
   cron.schedule('0 22 * * *', async () => {
     console.log('定时任务触发: 晚上提醒')
     await sendEveningDailyReminder()
-  })
+  }, { timezone: TIMEZONE })
   
   console.log('定时任务已注册:')
   console.log('  - 课程提醒: 每5分钟检查一次')
@@ -199,13 +237,12 @@ const startReminderService = () => {
 const sendMorningDailyReminder = async () => {
   try {
     const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    const { start: todayStart, end: todayEnd } = getShanghaiDayRange(0, now)
 
     const courses = await Course.find({
       startTime: {
         $gte: todayStart,
-        $lte: todayEnd
+        $lt: todayEnd
       },
       status: 'normal'
     }).populate('teacherId')
@@ -266,46 +303,48 @@ const sendMorningDailyReminder = async () => {
 const sendEveningDailyReminder = async () => {
   try {
     const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    const { start: todayStart, end: todayEnd } = getShanghaiDayRange(0, now)
+    const { start: tomorrowStart, end: tomorrowEnd } = getShanghaiDayRange(1, now)
 
     console.log(`晚上提醒查询时间范围: ${todayStart.toISOString()} 到 ${todayEnd.toISOString()}`)
     console.log(`晚上提醒查询时间范围(北京时间): ${todayStart.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 到 ${todayEnd.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`)
+    console.log(`明日课程查询时间范围(北京时间): ${tomorrowStart.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })} 到 ${tomorrowEnd.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`)
 
-    const courses = await Course.find({
+    const todayCompletedCourses = await Course.find({
       startTime: {
         $gte: todayStart,
-        $lte: todayEnd
+        $lt: todayEnd
+      },
+      status: 'completed'
+    }).populate('teacherId').populate('studentId').populate('courseTypeId')
+
+    const tomorrowCourses = await Course.find({
+      startTime: {
+        $gte: tomorrowStart,
+        $lt: tomorrowEnd
       },
       status: 'normal'
-    }).populate('teacherId')
+    }).populate('teacherId').populate('studentId').populate('courseTypeId')
 
-    console.log(`晚上提醒：找到 ${courses.length} 节今日课程(status=normal)`)
+    console.log(`晚上提醒：找到 ${todayCompletedCourses.length} 节今日已上课程(status=completed)`)
+    console.log(`晚上提醒：找到 ${tomorrowCourses.length} 节明日安排课程(status=normal)`)
 
-    for (const course of courses) {
-      console.log(`  - 课程ID: ${course._id}, 开始时间: ${course.startTime}, 教师ID: ${course.teacherId?._id || '无'}, 教师openIds: ${JSON.stringify(course.teacherId?.openIds || [])}`)
+    for (const course of todayCompletedCourses) {
+      console.log(`  - 今日已上: ${course._id}, 开始时间: ${course.startTime}, 学生: ${course.studentId?.name || '未知'}, 教师ID: ${course.teacherId?._id || '无'}`)
+    }
+    
+    for (const course of tomorrowCourses) {
+      console.log(`  - 明日安排: ${course._id}, 开始时间: ${course.startTime}, 学生: ${course.studentId?.name || '未知'}, 教师ID: ${course.teacherId?._id || '无'}`)
     }
 
     const teachersToRemind = {}
+    addCoursesToTeacherMap(teachersToRemind, todayCompletedCourses, 'todayCompletedCourses')
+    addCoursesToTeacherMap(teachersToRemind, tomorrowCourses, 'tomorrowCourses')
     
-    for (const course of courses) {
-      const teacher = course.teacherId
-      const openIds = getTeacherOpenIds(teacher)
-      if (openIds.length === 0) continue
-      
-      if (!teachersToRemind[teacher._id]) {
-        teachersToRemind[teacher._id] = {
-          teacher,
-          courses: []
-        }
-      }
-      teachersToRemind[teacher._id].courses.push(course)
-    }
-
     console.log(`晚上10点：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
-
+    
     for (const teacherId in teachersToRemind) {
-      const { teacher, courses } = teachersToRemind[teacherId]
+      const { teacher, todayCompletedCourses, tomorrowCourses } = teachersToRemind[teacherId]
       
       try {
         const openIds = getTeacherOpenIds(teacher)
@@ -315,21 +354,21 @@ const sendEveningDailyReminder = async () => {
             value: formatTime(now)
           },
           thing11: {
-            value: `今日${courses.length}节课`
+            value: `今日已上${todayCompletedCourses.length}节`
           },
           thing12: {
-            value: '请检查记录'
+            value: `明日安排${tomorrowCourses.length}节`
           },
           phrase16: {
-            value: '核对消课'
+            value: '每日汇总'
           }
         }
 
-        const results = await sendReminderToAllOpenIds(openIds, messageData, 'pages/lessons/lessons')
+        const results = await sendReminderToAllOpenIds(openIds, messageData, 'pages/schedule/schedule')
         const successCount = results.filter(r => r.success).length
-        console.log(`已向教师 ${teacher.name} 发送晚上提醒(${successCount}/${openIds.length}个微信)，今日课程: ${courses.length}节`)
+        console.log(`已向教师 ${teacher.name} 发送晚上汇总(${successCount}/${openIds.length}个微信)，今日已上: ${todayCompletedCourses.length}节，明日安排: ${tomorrowCourses.length}节`)
       } catch (error) {
-        console.error(`发送晚上提醒失败:`, error.message)
+        console.error(`发送晚上汇总失败:`, error.message)
       }
     }
 
