@@ -182,8 +182,9 @@ const onCourseTypeChange = (e) => {
 }
 
 const onPaymentTypeChange = (e) => {
-  paymentTypeIndex.value = e.detail.value
-  form.paymentType = e.detail.value === 0 ? 'prepaid' : 'payPerLesson'
+  const index = Number(e.detail.value)
+  paymentTypeIndex.value = index
+  form.paymentType = index === 0 ? 'prepaid' : 'payPerLesson'
 }
 
 const onPianoStartDateChange = (e) => {
