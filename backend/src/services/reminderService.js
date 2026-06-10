@@ -2,6 +2,7 @@ const Course = require('../models/Course')
 const Student = require('../models/Student')
 const User = require('../models/User')
 const CourseType = require('../models/CourseType')
+const GuardianBinding = require('../models/GuardianBinding')
 const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 
 let lastDailyReminderDate = null
@@ -73,6 +74,61 @@ const sendReminderToAllOpenIds = async (openIds, messageData, page) => {
   }
   
   return results
+}
+
+const getCourseStudentId = (course) => {
+  return course.studentId?._id?.toString() || course.studentId?.toString()
+}
+
+const addCoursesToGuardianMap = async (guardianMap, courses, fieldName) => {
+  const studentIds = [...new Set(courses.map(getCourseStudentId).filter(Boolean))]
+  if (studentIds.length === 0) return
+
+  const bindings = await GuardianBinding.find({
+    studentId: { $in: studentIds },
+    status: 'active'
+  })
+
+  if (bindings.length === 0) return
+
+  const coursesByStudentId = {}
+  for (const course of courses) {
+    const studentId = getCourseStudentId(course)
+    if (!studentId) continue
+
+    if (!coursesByStudentId[studentId]) {
+      coursesByStudentId[studentId] = []
+    }
+    coursesByStudentId[studentId].push(course)
+  }
+
+  for (const binding of bindings) {
+    const studentId = binding.studentId.toString()
+    const bindingCourses = coursesByStudentId[studentId] || []
+    if (bindingCourses.length === 0) continue
+
+    if (!guardianMap[binding.openId]) {
+      guardianMap[binding.openId] = {
+        openId: binding.openId,
+        todayCourses: [],
+        todayCompletedCourses: [],
+        tomorrowCourses: []
+      }
+    }
+
+    guardianMap[binding.openId][fieldName].push(...bindingCourses)
+  }
+}
+
+const formatGuardianCourseSummary = (courses) => {
+  if (!courses || courses.length === 0) {
+    return '暂无课程'
+  }
+
+  const names = [...new Set(courses.map(course => course.studentId?.name).filter(Boolean))]
+  const nameText = names.length > 0 ? names.slice(0, 2).join('、') : '学生'
+  const suffix = names.length > 2 ? '等' : ''
+  return `${nameText}${suffix}${courses.length}节`
 }
 
 const checkAndSendReminders = async () => {
@@ -230,7 +286,7 @@ const sendMorningDailyReminder = async () => {
         $lt: todayEnd
       },
       status: 'normal'
-    }).populate('teacherId')
+    }).populate('teacherId').populate('studentId').populate('courseTypeId')
 
     const teachersToRemind = {}
     
@@ -276,6 +332,37 @@ const sendMorningDailyReminder = async () => {
         console.log(`已向教师 ${teacher.name} 发送今日课程提醒(${successCount}/${openIds.length}个微信)，今日课程: ${courses.length}节`)
       } catch (error) {
         console.error(`发送今日课程提醒失败:`, error.message)
+      }
+    }
+
+    const guardiansToRemind = {}
+    await addCoursesToGuardianMap(guardiansToRemind, courses, 'todayCourses')
+
+    console.log(`家长端今日课程提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
+
+    for (const openId in guardiansToRemind) {
+      const { todayCourses } = guardiansToRemind[openId]
+
+      try {
+        const messageData = {
+          time2: {
+            value: formatTime(now)
+          },
+          thing11: {
+            value: `今日${todayCourses.length}节课`
+          },
+          thing12: {
+            value: formatGuardianCourseSummary(todayCourses)
+          },
+          phrase16: {
+            value: '今日课程'
+          }
+        }
+
+        await sendSubscribeMessage(openId, messageData, 'pages/guardian/schedule')
+        console.log(`已向家长 openId=${openId} 发送今日课程提醒，课程数: ${todayCourses.length}`)
+      } catch (error) {
+        console.error(`发送家长端今日课程提醒失败 openId=${openId}:`, error.message)
       }
     }
 
@@ -354,6 +441,38 @@ const sendEveningDailyReminder = async () => {
         console.log(`已向教师 ${teacher.name} 发送晚上汇总(${successCount}/${openIds.length}个微信)，今日已上: ${todayCompletedCourses.length}节，明日安排: ${tomorrowCourses.length}节`)
       } catch (error) {
         console.error(`发送晚上汇总失败:`, error.message)
+      }
+    }
+
+    const guardiansToRemind = {}
+    await addCoursesToGuardianMap(guardiansToRemind, todayCompletedCourses, 'todayCompletedCourses')
+    await addCoursesToGuardianMap(guardiansToRemind, tomorrowCourses, 'tomorrowCourses')
+
+    console.log(`家长端晚上10点提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
+
+    for (const openId in guardiansToRemind) {
+      const { todayCompletedCourses, tomorrowCourses } = guardiansToRemind[openId]
+
+      try {
+        const messageData = {
+          time2: {
+            value: formatTime(now)
+          },
+          thing11: {
+            value: `今日已上${todayCompletedCourses.length}节`
+          },
+          thing12: {
+            value: `明日安排${tomorrowCourses.length}节`
+          },
+          phrase16: {
+            value: '每日汇总'
+          }
+        }
+
+        await sendSubscribeMessage(openId, messageData, 'pages/guardian/schedule')
+        console.log(`已向家长 openId=${openId} 发送晚上汇总，今日已上: ${todayCompletedCourses.length}节，明日安排: ${tomorrowCourses.length}节`)
+      } catch (error) {
+        console.error(`发送家长端晚上汇总失败 openId=${openId}:`, error.message)
       }
     }
 

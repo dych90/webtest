@@ -19,10 +19,14 @@ const request = (options) => {
         if (res.statusCode === 200) {
           resolve(res.data)
         } else if (res.statusCode === 401) {
+          const loginType = uni.getStorageSync('loginType')
           uni.removeStorageSync('token')
           uni.removeStorageSync('userInfo')
+          uni.removeStorageSync('guardianInfo')
+          uni.removeStorageSync('guardianStudents')
+          uni.removeStorageSync('selectedGuardianStudentId')
           uni.reLaunch({
-            url: '/pages/login/login'
+            url: loginType === 'guardian' ? '/pages/guardian/login' : '/pages/login/login'
           })
           reject(new Error('登录已过期，请重新登录'))
         } else {

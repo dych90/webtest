@@ -10,6 +10,10 @@ const authenticateToken = (req, res, next) => {
     }
     
     const decoded = verifyToken(token)
+    if (decoded.type && decoded.type !== 'user') {
+      return res.status(401).json({ message: '无效的认证令牌' })
+    }
+
     req.userId = decoded.userId
     next()
   } catch (error) {

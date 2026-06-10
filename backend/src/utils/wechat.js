@@ -151,8 +151,42 @@ const formatTime = (date) => {
   return `${year}年${month}月${day}日 ${hours}:${minutes}`
 }
 
+const getOpenIdByCode = async (code) => {
+  if (!code) {
+    throw new Error('缺少 code 参数')
+  }
+
+  return new Promise((resolve, reject) => {
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${APPID}&secret=${APPSECRET}&js_code=${code}&grant_type=authorization_code`
+
+    https.get(url, (res) => {
+      let data = ''
+
+      res.on('data', (chunk) => {
+        data += chunk
+      })
+
+      res.on('end', () => {
+        try {
+          const result = JSON.parse(data)
+          if (result.openid) {
+            resolve(result.openid)
+          } else {
+            reject(new Error(result.errmsg || '获取 openId 失败'))
+          }
+        } catch (error) {
+          reject(error)
+        }
+      })
+    }).on('error', (error) => {
+      reject(error)
+    })
+  })
+}
+
 module.exports = {
   getAccessToken,
+  getOpenIdByCode,
   sendSubscribeMessage,
   formatTime
 }

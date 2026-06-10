@@ -112,6 +112,7 @@
     </view>
     
     <view class="action-section">
+      <button class="btn-guardian" @click="handleCreateGuardianInvite">家长绑定码</button>
       <button class="btn-edit" @click="handleEdit">编辑学生</button>
       <button class="btn-delete" @click="handleDelete">删除学生</button>
     </view>
@@ -121,7 +122,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { get, del } from '@/utils/request'
+import { get, post, del } from '@/utils/request'
 
 const student = ref({})
 const studentId = ref('')
@@ -172,6 +173,26 @@ const handleEdit = () => {
   uni.navigateTo({
     url: `/pages/students/edit?id=${studentId.value}`
   })
+}
+
+const handleCreateGuardianInvite = async () => {
+  try {
+    const res = await post('/guardian/invites', { studentId: studentId.value })
+    const invite = res.data || {}
+
+    uni.setClipboardData({
+      data: invite.token,
+      success: () => {
+        uni.showModal({
+          title: '家长绑定码',
+          content: `绑定码已复制：${invite.token}\n家长端路径：${invite.path}`,
+          showCancel: false
+        })
+      }
+    })
+  } catch (error) {
+    uni.showToast({ title: error.message || '生成失败', icon: 'none' })
+  }
 }
 
 const handleDelete = () => {
@@ -392,8 +413,20 @@ const handleDelete = () => {
 
 .action-section {
   display: flex;
+  flex-wrap: wrap;
   gap: 20rpx;
   padding: 20rpx 0;
+}
+
+.btn-guardian {
+  width: 100%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #ecf5ff;
+  color: #409EFF;
+  border: 2rpx solid #409EFF;
+  border-radius: 8rpx;
+  font-size: 28rpx;
 }
 
 .btn-edit {

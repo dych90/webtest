@@ -69,6 +69,10 @@
         <button class="login-btn" :loading="loading" @tap="handleLogin">
           <text class="btn-text">登 录</text>
         </button>
+
+        <button class="guardian-entry-btn" @tap="goGuardianLogin">
+          家长端入口
+        </button>
       </view>
       
       <view class="login-footer">
@@ -163,6 +167,7 @@ const handleLogin = async () => {
       }
       
       userStore.login(res.data.token, res.data.user)
+      uni.setStorageSync('loginType', 'teacher')
       
       if (res.data.user?.role === 'teacher') {
         await requestReminderSubscription()
@@ -233,6 +238,12 @@ const goToUserAgreement = () => {
 const goToPrivacyPolicy = () => {
   uni.navigateTo({
     url: '/pages/agreement/privacy-policy'
+  })
+}
+
+const goGuardianLogin = () => {
+  uni.navigateTo({
+    url: '/pages/guardian/login'
   })
 }
 </script>
@@ -459,6 +470,18 @@ const goToPrivacyPolicy = () => {
 .login-btn:active {
   transform: scale(0.98);
   box-shadow: 0 5rpx 20rpx rgba(102, 126, 234, 0.4);
+}
+
+.guardian-entry-btn {
+  width: 100%;
+  height: 82rpx;
+  line-height: 82rpx;
+  margin-top: 18rpx;
+  border-radius: 12rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.7);
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 28rpx;
 }
 
 .btn-text {
