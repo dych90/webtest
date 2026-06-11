@@ -127,6 +127,60 @@ export const uploadFile = (url, filePath, formData = {}) => {
   })
 }
 
+const getFileNameFromPath = (filePath, fallback = 'file') => {
+  const cleanPath = (filePath || '').split('?')[0]
+  const name = cleanPath.split('/').pop()
+  return name || fallback
+}
+
+const getMimeType = (filePath, mediaType) => {
+  const ext = (filePath || '').split('?')[0].split('.').pop()?.toLowerCase()
+  const map = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    mp3: 'audio/mpeg',
+    aac: 'audio/aac',
+    wav: 'audio/wav'
+  }
+
+  return map[ext] || (mediaType === 'audio' ? 'audio/mpeg' : 'image/jpeg')
+}
+
+export const uploadFileData = (url, filePath, formData = {}) => {
+  return new Promise((resolve, reject) => {
+    const fileSystemManager = uni.getFileSystemManager?.()
+    if (!fileSystemManager) {
+      reject(new Error('当前环境不支持文件读取'))
+      return
+    }
+
+    fileSystemManager.readFile({
+      filePath,
+      encoding: 'base64',
+      success: async (res) => {
+        try {
+          const mediaType = formData.mediaType || 'image'
+          const result = await post(url, {
+            ...formData,
+            fileName: getFileNameFromPath(filePath, mediaType === 'audio' ? 'record.mp3' : 'image.jpg'),
+            mimeType: getMimeType(filePath, mediaType),
+            data: res.data
+          })
+          resolve(result)
+        } catch (error) {
+          reject(error)
+        }
+      },
+      fail: (err) => {
+        reject(new Error(err?.errMsg || '读取文件失败'))
+      }
+    })
+  })
+}
+
 export const downloadFile = (url) => {
   return new Promise((resolve, reject) => {
     const token = uni.getStorageSync('token')
@@ -154,6 +208,7 @@ export default {
   put,
   del,
   uploadFile,
+  uploadFileData,
   downloadFile,
   request
 }

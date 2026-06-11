@@ -204,7 +204,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
-import { get, post, put, del, uploadFile } from '@/utils/request'
+import { get, post, put, del, uploadFile, uploadFileData } from '@/utils/request'
 
 const userStore = useUserStore()
 
@@ -512,28 +512,42 @@ const uploadAttendMedia = async () => {
 
   for (const photo of photoFiles.value) {
     try {
-      const result = await uploadFile('/lesson-records/media', photo.tempFilePath, {
+      const formData = {
         mediaType: 'image'
-      })
+      }
+      let result
+      try {
+        result = await uploadFile('/lesson-records/media', photo.tempFilePath, formData)
+      } catch (uploadError) {
+        console.warn('照片uploadFile失败，尝试base64降级上传:', uploadError?.message || uploadError)
+        result = await uploadFileData('/lesson-records/media-data', photo.tempFilePath, formData)
+      }
       if (result.data) {
         mediaItems.push(result.data)
       }
     } catch (error) {
-      throw new Error(`照片上传失败：${error.message || '请检查上传域名配置'}`)
+      throw new Error(`照片上传失败：${error.message || '请检查网络'}`)
     }
   }
 
   if (voiceFile.value?.tempFilePath) {
     try {
-      const result = await uploadFile('/lesson-records/media', voiceFile.value.tempFilePath, {
+      const formData = {
         mediaType: 'audio',
         duration: voiceFile.value.duration || 0
-      })
+      }
+      let result
+      try {
+        result = await uploadFile('/lesson-records/media', voiceFile.value.tempFilePath, formData)
+      } catch (uploadError) {
+        console.warn('语音uploadFile失败，尝试base64降级上传:', uploadError?.message || uploadError)
+        result = await uploadFileData('/lesson-records/media-data', voiceFile.value.tempFilePath, formData)
+      }
       if (result.data) {
         mediaItems.push(result.data)
       }
     } catch (error) {
-      throw new Error(`语音上传失败：${error.message || '请检查上传域名配置'}`)
+      throw new Error(`语音上传失败：${error.message || '请检查网络'}`)
     }
   }
 

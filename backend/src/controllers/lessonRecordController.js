@@ -12,8 +12,47 @@ const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 const mongoose = require('mongoose')
 const path = require('path')
 const fs = require('fs')
+const crypto = require('crypto')
 const ObjectId = mongoose.Types.ObjectId
 const MEDIA_ROOT = path.resolve(__dirname, '../../uploads/lesson-record-media')
+const MAX_MEDIA_SIZE = 20 * 1024 * 1024
+
+const getMediaExtension = (mimeType, fileName = '') => {
+  const ext = path.extname(fileName || '').toLowerCase()
+  if (/^\.[a-z0-9]+$/.test(ext)) {
+    return ext
+  }
+
+  const map = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/gif': '.gif',
+    'image/webp': '.webp',
+    'audio/mpeg': '.mp3',
+    'audio/mp3': '.mp3',
+    'audio/aac': '.aac',
+    'audio/wav': '.wav',
+    'audio/x-wav': '.wav'
+  }
+
+  return map[mimeType] || ''
+}
+
+const buildMediaItem = ({ mediaType, fileKey, originalName, mimeType, size, duration }) => {
+  const mediaId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+
+  return {
+    id: mediaId,
+    type: mediaType,
+    fileKey,
+    url: `/lesson-records/media/${mediaId}`,
+    originalName: originalName || '',
+    mimeType: mimeType || '',
+    size: size || 0,
+    duration: Number(duration) || 0,
+    createdAt: new Date()
+  }
+}
 
 const safeText = (value, maxLength = 20) => {
   const text = (value || '').toString().replace(/\s+/g, ' ').trim()
@@ -240,19 +279,14 @@ const uploadLessonRecordMedia = async (req, res) => {
       return res.status(400).json({ message: '不支持的媒体类型' })
     }
 
-    const mediaId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
-    const fileKey = path.basename(req.file.filename)
-    const mediaItem = {
-      id: mediaId,
-      type: mediaType,
-      fileKey,
-      url: `/lesson-records/media/${mediaId}`,
+    const mediaItem = buildMediaItem({
+      mediaType,
+      fileKey: path.basename(req.file.filename),
       originalName: req.file.originalname || '',
       mimeType: req.file.mimetype || '',
       size: req.file.size || 0,
-      duration: Number(req.body.duration) || 0,
-      createdAt: new Date()
-    }
+      duration: req.body.duration
+    })
 
     res.json({
       message: '上传成功',
@@ -260,6 +294,53 @@ const uploadLessonRecordMedia = async (req, res) => {
     })
   } catch (error) {
     console.error('上传课后记录媒体失败:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const uploadLessonRecordMediaData = async (req, res) => {
+  try {
+    const { mediaType, fileName, mimeType, data, duration } = req.body
+
+    if (!['image', 'audio'].includes(mediaType)) {
+      return res.status(400).json({ message: '不支持的媒体类型' })
+    }
+
+    if (!data || typeof data !== 'string') {
+      return res.status(400).json({ message: '缺少文件内容' })
+    }
+
+    const base64Data = data.includes(',') ? data.split(',').pop() : data
+    const buffer = Buffer.from(base64Data, 'base64')
+    if (!buffer.length) {
+      return res.status(400).json({ message: '文件内容无效' })
+    }
+
+    if (buffer.length > MAX_MEDIA_SIZE) {
+      return res.status(400).json({ message: '文件不能超过20MB' })
+    }
+
+    fs.mkdirSync(MEDIA_ROOT, { recursive: true })
+    const ext = getMediaExtension(mimeType, fileName)
+    const fileKey = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`
+    const filePath = path.join(MEDIA_ROOT, fileKey)
+    fs.writeFileSync(filePath, buffer)
+
+    const mediaItem = buildMediaItem({
+      mediaType,
+      fileKey,
+      originalName: fileName || '',
+      mimeType: mimeType || '',
+      size: buffer.length,
+      duration
+    })
+
+    res.json({
+      message: '上传成功',
+      data: mediaItem
+    })
+  } catch (error) {
+    console.error('上传课后记录媒体数据失败:', error)
     res.status(500).json({ message: '服务器错误' })
   }
 }
@@ -727,6 +808,7 @@ module.exports = {
   getLessonRecords,
   getLessonRecordById,
   uploadLessonRecordMedia,
+  uploadLessonRecordMediaData,
   getLessonRecordMedia,
   createLessonRecord,
   updateLessonRecord,
