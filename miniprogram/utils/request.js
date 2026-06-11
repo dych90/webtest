@@ -87,9 +87,10 @@ export const del = (url, data) => {
 export const uploadFile = (url, filePath, formData = {}) => {
   return new Promise((resolve, reject) => {
     const token = uni.getStorageSync('token')
+    const uploadUrl = buildUrl(url)
 
     uni.uploadFile({
-      url: buildUrl(url),
+      url: uploadUrl,
       filePath,
       name: 'file',
       formData,
@@ -108,15 +109,19 @@ export const uploadFile = (url, filePath, formData = {}) => {
         if (res.statusCode === 200) {
           resolve(data)
         } else {
-          reject(new Error(data?.message || '上传失败'))
+          reject(new Error(data?.message || `上传失败(${res.statusCode})`))
         }
       },
       fail: (err) => {
+        const message = err?.errMsg || err?.message || '文件上传失败'
+        console.warn('文件上传失败:', uploadUrl, message)
         uni.showToast({
-          title: '文件上传失败',
+          title: message.includes('domain') || message.includes('url not in domain list')
+            ? '请配置上传合法域名'
+            : '文件上传失败',
           icon: 'none'
         })
-        reject(err)
+        reject(new Error(message))
       }
     })
   })

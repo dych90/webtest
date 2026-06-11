@@ -511,21 +511,29 @@ const uploadAttendMedia = async () => {
   const mediaItems = []
 
   for (const photo of photoFiles.value) {
-    const result = await uploadFile('/lesson-records/media', photo.tempFilePath, {
-      mediaType: 'image'
-    })
-    if (result.data) {
-      mediaItems.push(result.data)
+    try {
+      const result = await uploadFile('/lesson-records/media', photo.tempFilePath, {
+        mediaType: 'image'
+      })
+      if (result.data) {
+        mediaItems.push(result.data)
+      }
+    } catch (error) {
+      throw new Error(`照片上传失败：${error.message || '请检查上传域名配置'}`)
     }
   }
 
   if (voiceFile.value?.tempFilePath) {
-    const result = await uploadFile('/lesson-records/media', voiceFile.value.tempFilePath, {
-      mediaType: 'audio',
-      duration: voiceFile.value.duration || 0
-    })
-    if (result.data) {
-      mediaItems.push(result.data)
+    try {
+      const result = await uploadFile('/lesson-records/media', voiceFile.value.tempFilePath, {
+        mediaType: 'audio',
+        duration: voiceFile.value.duration || 0
+      })
+      if (result.data) {
+        mediaItems.push(result.data)
+      }
+    } catch (error) {
+      throw new Error(`语音上传失败：${error.message || '请检查上传域名配置'}`)
     }
   }
 
