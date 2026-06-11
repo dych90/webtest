@@ -520,7 +520,10 @@ const sendEveningDailyReminder = async () => {
           }
         }
 
-        await sendSubscribeMessage(openId, messageData, 'pages/guardian/schedule')
+        const page = todayCompletedCourses.length > 0
+          ? 'pages/guardian/records'
+          : 'pages/guardian/schedule'
+        await sendSubscribeMessage(openId, messageData, page)
         console.log(`已向学生端 openId=${openId} 发送晚上汇总，今日已上: ${todayCompletedCourses.length}节，明日安排: ${tomorrowCourses.length}节`)
       } catch (error) {
         console.error(`发送学生端晚上汇总失败 openId=${openId}:`, error.message)

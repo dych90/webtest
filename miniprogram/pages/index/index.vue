@@ -122,11 +122,11 @@
       </view>
     </view>
     
-    <view class="dialog-mask" v-if="attendDialogVisible" @click="attendDialogVisible = false">
+    <view class="dialog-mask" v-if="attendDialogVisible" @click="closeAttendDialog">
       <view class="dialog-content" @click.stop>
         <view class="dialog-header">
           <text class="dialog-title">确认上课</text>
-          <text class="dialog-close" @click="attendDialogVisible = false">×</text>
+          <text class="dialog-close" @click="closeAttendDialog">×</text>
         </view>
         <view class="dialog-body">
           <view class="attend-info">
@@ -143,10 +143,57 @@
               </view>
             </picker>
           </view>
+          <view class="form-item">
+            <text class="form-label">课后内容</text>
+            <textarea
+              class="content-input"
+              v-model="lessonContent"
+              maxlength="500"
+              placeholder="记录本节课内容、作业或注意事项"
+            />
+          </view>
+          <view class="form-item">
+            <view class="form-label-row">
+              <text class="form-label">课堂照片</text>
+              <text class="form-hint">{{ photoFiles.length }}/6</text>
+            </view>
+            <view class="photo-grid">
+              <view class="photo-item" v-for="(photo, photoIndex) in photoFiles" :key="photo.tempFilePath || photo.path">
+                <image class="photo-preview" :src="photo.tempFilePath || photo.path" mode="aspectFill" @click="previewPhoto(photoIndex)"></image>
+                <text class="photo-remove" @click.stop="removePhoto(photoIndex)">×</text>
+              </view>
+              <view v-if="photoFiles.length < 6" class="photo-add" @click="choosePhotos">
+                <text class="photo-add-icon">+</text>
+                <text class="photo-add-text">添加</text>
+              </view>
+            </view>
+          </view>
+          <view class="form-item">
+            <text class="form-label">语音记录</text>
+            <view class="voice-box">
+              <button v-if="!recording" class="voice-btn" @click="startRecord">
+                {{ voiceFile ? '重新录音' : '开始录音' }}
+              </button>
+              <button v-else class="voice-btn recording" @click="stopRecord">
+                停止录音 {{ formatDuration(recordDuration) }}
+              </button>
+              <view v-if="voiceFile" class="voice-result">
+                <text class="voice-info" @click="playVoice(voiceFile.tempFilePath)">播放 {{ formatDuration(voiceFile.duration || 0) }}</text>
+                <text class="voice-remove" @click="removeVoice">删除</text>
+              </view>
+            </view>
+          </view>
+          <view class="form-item notify-row">
+            <view>
+              <text class="form-label">立即通知学生端</text>
+              <text class="notify-tip">订阅消息只提醒查看，完整内容在学生端记录页</text>
+            </view>
+            <switch :checked="notifyGuardian" @change="notifyGuardian = $event.detail.value" color="#409EFF" />
+          </view>
         </view>
         <view class="dialog-footer">
-          <button class="btn-cancel" @click="attendDialogVisible = false">取消</button>
-          <button class="btn-confirm" @click="confirmAttend">确认上课</button>
+          <button class="btn-cancel" :disabled="savingAttend" @click="closeAttendDialog">取消</button>
+          <button class="btn-confirm" :loading="savingAttend" :disabled="savingAttend" @click="confirmAttend">确认上课</button>
         </view>
       </view>
     </view>
@@ -154,10 +201,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
-import { get, post, put, del } from '@/utils/request'
+import { get, post, put, del, uploadFile } from '@/utils/request'
 
 const userStore = useUserStore()
 
@@ -182,6 +229,15 @@ const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 const attendDialogVisible = ref(false)
 const currentCourse = ref(null)
 const lessonCountIndex = ref(1)
+const lessonContent = ref('')
+const photoFiles = ref([])
+const voiceFile = ref(null)
+const notifyGuardian = ref(false)
+const savingAttend = ref(false)
+const recording = ref(false)
+const recordDuration = ref(0)
+let recorderManager = null
+let recordTimer = null
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
@@ -239,6 +295,39 @@ const getStatusText = (status) => {
   return statusMap[status] || '待上课'
 }
 
+const resetAttendForm = () => {
+  lessonCountIndex.value = 1
+  lessonContent.value = ''
+  photoFiles.value = []
+  voiceFile.value = null
+  notifyGuardian.value = false
+  recording.value = false
+  recordDuration.value = 0
+  clearRecordTimer()
+}
+
+const closeAttendDialog = () => {
+  if (savingAttend.value) return
+  if (recording.value) {
+    stopRecord()
+  }
+  attendDialogVisible.value = false
+}
+
+const clearRecordTimer = () => {
+  if (recordTimer) {
+    clearInterval(recordTimer)
+    recordTimer = null
+  }
+}
+
+const formatDuration = (duration = 0) => {
+  const totalSeconds = Math.max(0, Math.round(duration / 1000))
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
 const prevDay = () => {
   const newDate = new Date(selectedDate.value)
   newDate.setDate(newDate.getDate() - 1)
@@ -288,6 +377,8 @@ const fetchStatistics = async () => {
 }
 
 const handleAttendCourse = async (course) => {
+  resetAttendForm()
+
   if (!course.courseTypeId?._id && !course.courseTypeId) {
     uni.showModal({
       title: '提示',
@@ -295,7 +386,6 @@ const handleAttendCourse = async (course) => {
       success: async (res) => {
         if (res.confirm) {
           currentCourse.value = course
-          lessonCountIndex.value = 1
           attendDialogVisible.value = true
         }
       }
@@ -304,7 +394,6 @@ const handleAttendCourse = async (course) => {
   }
   
   currentCourse.value = course
-  lessonCountIndex.value = 1
   attendDialogVisible.value = true
 }
 
@@ -312,39 +401,187 @@ const onLessonCountChange = (e) => {
   lessonCountIndex.value = e.detail.value
 }
 
+const choosePhotos = async () => {
+  const remainCount = 6 - photoFiles.value.length
+  if (remainCount <= 0) return
+
+  try {
+    const result = uni.chooseMedia ? await new Promise((resolve, reject) => {
+      uni.chooseMedia({
+        count: remainCount,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        success: resolve,
+        fail: reject
+      })
+    }) : await new Promise((resolve, reject) => {
+      uni.chooseImage({
+        count: remainCount,
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        success: resolve,
+        fail: reject
+      })
+    })
+
+    const sourceFiles = result.tempFiles || (result.tempFilePaths || []).map(path => ({ path }))
+    const files = sourceFiles.map(file => ({
+      tempFilePath: file.tempFilePath || file.path,
+      size: file.size || 0
+    })).filter(file => file.tempFilePath)
+
+    photoFiles.value = [...photoFiles.value, ...files].slice(0, 6)
+  } catch (error) {
+    if (error?.errMsg?.includes('cancel')) return
+    uni.showToast({ title: '选择照片失败', icon: 'none' })
+  }
+}
+
+const previewPhoto = (index) => {
+  const urls = photoFiles.value.map(photo => photo.tempFilePath || photo.path).filter(Boolean)
+  if (urls.length === 0) return
+
+  uni.previewImage({
+    urls,
+    current: urls[index]
+  })
+}
+
+const removePhoto = (index) => {
+  photoFiles.value.splice(index, 1)
+}
+
+const startRecord = () => {
+  if (!recorderManager) {
+    uni.showToast({ title: '当前环境不支持录音', icon: 'none' })
+    return
+  }
+
+  voiceFile.value = null
+  recordDuration.value = 0
+  recording.value = true
+  clearRecordTimer()
+  recordTimer = setInterval(() => {
+    recordDuration.value += 1000
+  }, 1000)
+
+  try {
+    recorderManager.start({
+      duration: 10 * 60 * 1000,
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+      format: 'mp3'
+    })
+  } catch (error) {
+    recording.value = false
+    clearRecordTimer()
+    uni.showToast({ title: '录音启动失败', icon: 'none' })
+  }
+}
+
+const stopRecord = () => {
+  if (!recorderManager || !recording.value) return
+
+  recorderManager.stop()
+  clearRecordTimer()
+}
+
+const playVoice = (src) => {
+  if (!src) return
+
+  const audioContext = uni.createInnerAudioContext()
+  audioContext.src = src
+  audioContext.play()
+  audioContext.onEnded(() => {
+    audioContext.destroy()
+  })
+  audioContext.onError(() => {
+    audioContext.destroy()
+    uni.showToast({ title: '播放失败', icon: 'none' })
+  })
+}
+
+const removeVoice = () => {
+  voiceFile.value = null
+}
+
+const uploadAttendMedia = async () => {
+  const mediaItems = []
+
+  for (const photo of photoFiles.value) {
+    const result = await uploadFile('/lesson-records/media', photo.tempFilePath, {
+      mediaType: 'image'
+    })
+    if (result.data) {
+      mediaItems.push(result.data)
+    }
+  }
+
+  if (voiceFile.value?.tempFilePath) {
+    const result = await uploadFile('/lesson-records/media', voiceFile.value.tempFilePath, {
+      mediaType: 'audio',
+      duration: voiceFile.value.duration || 0
+    })
+    if (result.data) {
+      mediaItems.push(result.data)
+    }
+  }
+
+  return mediaItems
+}
+
 const confirmAttend = async () => {
-  if (!currentCourse.value) return
+  if (!currentCourse.value || savingAttend.value) return
   
-  attendDialogVisible.value = false
-  await doAttendCourse(currentCourse.value, lessonCountValues[lessonCountIndex.value])
+  if (recording.value) {
+    uni.showToast({ title: '请先停止录音', icon: 'none' })
+    return
+  }
+
+  savingAttend.value = true
+  const success = await doAttendCourse(currentCourse.value, lessonCountValues[lessonCountIndex.value])
+  savingAttend.value = false
+
+  if (success) {
+    attendDialogVisible.value = false
+  }
 }
 
 const doAttendCourse = async (course, lessonsConsumed = 1) => {
   try {
-    await put(`/courses/${course._id}`, { status: 'completed' })
-    
     const studentId = course.studentId?._id || course.studentId
     if (!studentId) {
       uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
-      return
+      return false
     }
 
     const courseTypeId = course.courseTypeId?._id || course.courseTypeId
-    await post('/lesson-records', {
+    const mediaItems = await uploadAttendMedia()
+    const result = await post('/lesson-records', {
       studentId: studentId,
       courseId: course._id,
       courseTypeId: courseTypeId,
       courseStartTime: course.startTime,
       lessonsConsumed: lessonsConsumed,
-      lessonContent: '',
+      lessonContent: lessonContent.value.trim(),
+      mediaItems,
       isDeducted: true,
-      notes: '从首页直接上课'
+      notes: '从首页直接上课',
+      notifyGuardian: notifyGuardian.value
     })
-    uni.showToast({ title: '上课成功', icon: 'success' })
+    const notifyResult = result.notifyResult
+    const notifyText = notifyGuardian.value && notifyResult
+      ? `，通知${notifyResult.success || 0}/${notifyResult.total || 0}`
+      : ''
+    uni.showToast({ title: `上课成功${notifyText}`, icon: 'success' })
     await fetchDayCourses()
     await fetchStatistics()
+    return true
   } catch (error) {
     uni.showToast({ title: error.message || '上课失败', icon: 'none' })
+    return false
   }
 }
 
@@ -403,6 +640,24 @@ const goToPage = (url) => {
 }
 
 onMounted(() => {
+  if (uni.getRecorderManager) {
+    recorderManager = uni.getRecorderManager()
+    recorderManager.onStop((res) => {
+      recording.value = false
+      clearRecordTimer()
+      voiceFile.value = {
+        tempFilePath: res.tempFilePath,
+        duration: res.duration || recordDuration.value,
+        size: res.fileSize || 0
+      }
+    })
+    recorderManager.onError((error) => {
+      recording.value = false
+      clearRecordTimer()
+      uni.showToast({ title: error.errMsg || '录音失败', icon: 'none' })
+    })
+  }
+
   fetchDayCourses()
   fetchStatistics()
 })
@@ -410,6 +665,10 @@ onMounted(() => {
 onShow(() => {
   fetchDayCourses()
   fetchStatistics()
+})
+
+onUnmounted(() => {
+  clearRecordTimer()
 })
 </script>
 
@@ -754,6 +1013,7 @@ onShow(() => {
 .dialog-content {
   width: 85%;
   max-width: 600rpx;
+  max-height: 90vh;
   background-color: #fff;
   border-radius: 20rpx;
   overflow: hidden;
@@ -780,6 +1040,8 @@ onShow(() => {
 
 .dialog-body {
   padding: 30rpx;
+  max-height: 62vh;
+  overflow-y: auto;
 }
 
 .attend-info {
@@ -822,6 +1084,22 @@ onShow(() => {
   margin-bottom: 12rpx;
 }
 
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.form-label-row .form-label {
+  margin-bottom: 0;
+}
+
+.form-hint {
+  font-size: 22rpx;
+  color: #909399;
+}
+
 .form-picker {
   display: flex;
   justify-content: space-between;
@@ -835,6 +1113,128 @@ onShow(() => {
 
 .picker-arrow {
   font-size: 20rpx;
+  color: #909399;
+}
+
+.content-input {
+  width: 100%;
+  min-height: 160rpx;
+  padding: 18rpx;
+  box-sizing: border-box;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  line-height: 38rpx;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+}
+
+.photo-item,
+.photo-add {
+  position: relative;
+  height: 140rpx;
+  border-radius: 10rpx;
+  overflow: hidden;
+  background-color: #f5f7fa;
+}
+
+.photo-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.photo-remove {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  text-align: center;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 28rpx;
+}
+
+.photo-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx dashed #c0c4cc;
+}
+
+.photo-add-icon {
+  font-size: 42rpx;
+  line-height: 42rpx;
+  color: #909399;
+}
+
+.photo-add-text {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #909399;
+}
+
+.voice-box {
+  padding: 18rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+}
+
+.voice-btn {
+  height: 68rpx;
+  line-height: 68rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border-radius: 8rpx;
+  background-color: #ecf5ff;
+  color: #409EFF;
+  font-size: 26rpx;
+}
+
+.voice-btn.recording {
+  background-color: #fef0f0;
+  color: #F56C6C;
+}
+
+.voice-result {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voice-info {
+  font-size: 26rpx;
+  color: #409EFF;
+}
+
+.voice-remove {
+  font-size: 24rpx;
+  color: #F56C6C;
+}
+
+.notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.notify-row .form-label {
+  margin-bottom: 6rpx;
+}
+
+.notify-tip {
+  display: block;
+  font-size: 22rpx;
+  line-height: 32rpx;
   color: #909399;
 }
 

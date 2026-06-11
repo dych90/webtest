@@ -26,7 +26,7 @@
     <scroll-view scroll-y class="record-scroll">
       <view v-if="activeTab === 'lessons'">
         <view v-if="lessonRecords.length === 0" class="empty">暂无消课记录</view>
-        <view v-else class="record-card" v-for="record in lessonRecords" :key="record._id">
+        <view v-else class="record-card" :class="{ highlighted: record._id === targetRecordId }" v-for="record in lessonRecords" :key="record._id">
           <view class="record-main">
             <text class="record-title">{{ record.courseTypeId?.name || '消课记录' }}</text>
             <text class="record-date">{{ formatDate(record.recordDate) }}</text>
@@ -38,6 +38,27 @@
             </text>
           </view>
           <text v-if="record.lessonContent" class="record-content">{{ record.lessonContent }}</text>
+          <view v-if="getRecordImages(record).length > 0" class="record-images">
+            <image
+              v-for="(media, imageIndex) in getRecordImages(record)"
+              :key="media.id"
+              class="record-image"
+              :src="mediaCache[media.id]"
+              mode="aspectFill"
+              @click="previewRecordImage(record, imageIndex)"
+            ></image>
+          </view>
+          <view v-if="getRecordAudios(record).length > 0" class="record-audios">
+            <view
+              v-for="media in getRecordAudios(record)"
+              :key="media.id"
+              class="audio-row"
+              @click="playRecordAudio(media)"
+            >
+              <text class="audio-icon">▶</text>
+              <text class="audio-text">语音记录 {{ formatDuration(media.duration || 0) }}</text>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -70,8 +91,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
-import { get } from '@/utils/request'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { get, downloadFile } from '@/utils/request'
 import { getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
 
 const students = ref([])
@@ -80,6 +101,10 @@ const balance = ref({})
 const lessonRecords = ref([])
 const payments = ref([])
 const activeTab = ref('lessons')
+const targetStudentId = ref('')
+const targetRecordId = ref('')
+const mediaCache = ref({})
+let audioContext = null
 
 const studentIndex = computed(() => {
   return Math.max(0, students.value.findIndex(student => student._id === selectedStudentId.value))
@@ -97,6 +122,11 @@ const getBalanceText = () => {
   return balance.value.remainingLessons || 0
 }
 
+onLoad((query = {}) => {
+  targetStudentId.value = query.studentId || ''
+  targetRecordId.value = query.recordId || ''
+})
+
 onShow(() => {
   fetchStudents()
 })
@@ -110,7 +140,8 @@ const fetchStudents = async () => {
       guardian: JSON.parse(uni.getStorageSync('guardianInfo') || '{}'),
       students: students.value
     })
-    selectedStudentId.value = getSelectedGuardianStudentId(students.value)
+    const hasTargetStudent = students.value.some(student => student._id === targetStudentId.value)
+    selectedStudentId.value = hasTargetStudent ? targetStudentId.value : getSelectedGuardianStudentId(students.value)
 
     if (selectedStudentId.value) {
       fetchAll()
@@ -130,6 +161,7 @@ const fetchAll = async () => {
     balance.value = balanceRes.data || {}
     lessonRecords.value = lessonRes.data || []
     payments.value = paymentRes.data || []
+    loadRecordMedia()
   } catch (error) {
     uni.showToast({ title: error.message || '获取记录失败', icon: 'none' })
   }
@@ -140,6 +172,8 @@ const onStudentChange = (event) => {
   if (!student) return
 
   selectedStudentId.value = student._id
+  targetStudentId.value = ''
+  targetRecordId.value = ''
   uni.setStorageSync('selectedGuardianStudentId', student._id)
   fetchAll()
 }
@@ -148,6 +182,74 @@ const formatDate = (value) => {
   if (!value) return ''
   const date = new Date(value)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const formatDuration = (duration = 0) => {
+  const totalSeconds = Math.max(0, Math.round(duration / 1000))
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
+const getRecordImages = (record) => {
+  return (record.mediaItems || []).filter(item => item.type === 'image' && mediaCache.value[item.id])
+}
+
+const getRecordAudios = (record) => {
+  return (record.mediaItems || []).filter(item => item.type === 'audio' && mediaCache.value[item.id])
+}
+
+const loadRecordMedia = async () => {
+  const mediaItems = lessonRecords.value
+    .flatMap(record => record.mediaItems || [])
+    .filter(item => item.id && item.url && !mediaCache.value[item.id])
+
+  for (const media of mediaItems) {
+    try {
+      const tempFilePath = await downloadFile(media.url)
+      mediaCache.value = {
+        ...mediaCache.value,
+        [media.id]: tempFilePath
+      }
+    } catch (error) {
+      console.warn('课后记录媒体下载失败', media.id, error?.message || error)
+    }
+  }
+}
+
+const previewRecordImage = (record, imageIndex) => {
+  const urls = getRecordImages(record)
+    .map(media => mediaCache.value[media.id])
+    .filter(Boolean)
+
+  if (urls.length === 0) return
+
+  uni.previewImage({
+    urls,
+    current: urls[imageIndex]
+  })
+}
+
+const playRecordAudio = (media) => {
+  const src = mediaCache.value[media.id]
+  if (!src) return
+
+  if (audioContext) {
+    audioContext.destroy()
+  }
+
+  audioContext = uni.createInnerAudioContext()
+  audioContext.src = src
+  audioContext.play()
+  audioContext.onEnded(() => {
+    audioContext.destroy()
+    audioContext = null
+  })
+  audioContext.onError(() => {
+    audioContext.destroy()
+    audioContext = null
+    uni.showToast({ title: '语音播放失败', icon: 'none' })
+  })
 }
 
 const getPaymentTypeText = (type) => {
@@ -263,6 +365,10 @@ const goMine = () => {
   margin-bottom: 16rpx;
 }
 
+.record-card.highlighted {
+  border: 2rpx solid #409EFF;
+}
+
 .record-main {
   min-width: 0;
 }
@@ -314,6 +420,47 @@ const goMine = () => {
   font-size: 24rpx;
   line-height: 34rpx;
   color: #606266;
+}
+
+.record-images {
+  margin-top: 16rpx;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+}
+
+.record-image {
+  width: 100%;
+  height: 150rpx;
+  border-radius: 8rpx;
+  background-color: #f5f7fa;
+}
+
+.record-audios {
+  margin-top: 14rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.audio-row {
+  min-height: 64rpx;
+  padding: 0 18rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  border-radius: 32rpx;
+  background-color: #ecf5ff;
+}
+
+.audio-icon {
+  font-size: 24rpx;
+  color: #409EFF;
+}
+
+.audio-text {
+  font-size: 24rpx;
+  color: #409EFF;
 }
 
 .empty {

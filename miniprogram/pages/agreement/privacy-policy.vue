@@ -14,13 +14,15 @@
         <text class="section-text">1.3 联系信息：手机号码、联系人电话。</text>
         <text class="section-text">1.4 业务信息：学生信息、课程安排、缴费记录、消课记录等教学管理相关数据。</text>
         <text class="section-text">1.5 设备信息：包括设备型号、操作系统版本、设备标识符等信息。</text>
+        <text class="section-text">1.6 课后记录素材：教师为记录课程内容主动上传的课堂照片、文字说明和语音记录。</text>
       </view>
       
       <view class="section">
         <text class="section-title">二、我们如何收集信息</text>
         <text class="section-text">2.1 您主动提供的信息：当您注册账号、填写学生信息、录入课程数据时，我们会收集您主动提供的信息。</text>
         <text class="section-text">2.2 我们自动收集的信息：当您使用我们的服务时，我们会自动收集您的设备信息、日志信息等。</text>
-        <text class="section-text">2.3 第三方来源的信息：我们可能从第三方获取您的信息，但我们会确保该等信息来源合法合规。</text>
+        <text class="section-text">2.3 设备能力采集的信息：当教师使用课后记录功能时，可能会调用相机、相册和麦克风能力，以完成照片上传和语音记录。</text>
+        <text class="section-text">2.4 第三方来源的信息：我们可能从第三方获取您的信息，但我们会确保该等信息来源合法合规。</text>
       </view>
       
       <view class="section">
@@ -31,7 +33,8 @@
         <text class="section-text">3.3 向您发送服务相关的通知和提醒。</text>
         <text class="section-text">3.4 进行数据分析以改善用户体验。</text>
         <text class="section-text">3.5 保护服务安全，预防欺诈行为。</text>
-        <text class="section-text">3.6 遵守法律法规的要求。</text>
+        <text class="section-text">3.6 向已绑定学生端展示课后记录，便于学生或监护人回看课程内容。</text>
+        <text class="section-text">3.7 遵守法律法规的要求。</text>
       </view>
       
       <view class="section">
@@ -87,7 +90,7 @@
       </view>
       
       <view class="update-time">
-        <text>更新日期：2025年1月1日</text>
+        <text>更新日期：2026年6月11日</text>
       </view>
     </view>
   </view>

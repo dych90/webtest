@@ -1,13 +1,21 @@
 // 环境配置
 // 统一使用线上服务器地址
-const BASE_URL = 'https://piano.xingyue.fun/api'
+export const BASE_URL = 'https://piano.xingyue.fun/api'
+
+const buildUrl = (url) => {
+  if (/^https?:\/\//.test(url)) {
+    return url
+  }
+
+  return BASE_URL + url
+}
 
 const request = (options) => {
   return new Promise((resolve, reject) => {
     const token = uni.getStorageSync('token')
     
     uni.request({
-      url: BASE_URL + options.url,
+      url: buildUrl(options.url),
       method: options.method || 'GET',
       data: options.data,
       header: {
@@ -76,10 +84,71 @@ export const del = (url, data) => {
   })
 }
 
+export const uploadFile = (url, filePath, formData = {}) => {
+  return new Promise((resolve, reject) => {
+    const token = uni.getStorageSync('token')
+
+    uni.uploadFile({
+      url: buildUrl(url),
+      filePath,
+      name: 'file',
+      formData,
+      header: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      success: (res) => {
+        let data = res.data
+        try {
+          data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+        } catch (error) {
+          reject(new Error('上传响应解析失败'))
+          return
+        }
+
+        if (res.statusCode === 200) {
+          resolve(data)
+        } else {
+          reject(new Error(data?.message || '上传失败'))
+        }
+      },
+      fail: (err) => {
+        uni.showToast({
+          title: '文件上传失败',
+          icon: 'none'
+        })
+        reject(err)
+      }
+    })
+  })
+}
+
+export const downloadFile = (url) => {
+  return new Promise((resolve, reject) => {
+    const token = uni.getStorageSync('token')
+
+    uni.downloadFile({
+      url: buildUrl(url),
+      header: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      success: (res) => {
+        if (res.statusCode === 200) {
+          resolve(res.tempFilePath)
+        } else {
+          reject(new Error('文件下载失败'))
+        }
+      },
+      fail: reject
+    })
+  })
+}
+
 export default {
   get,
   post,
   put,
   del,
+  uploadFile,
+  downloadFile,
   request
 }

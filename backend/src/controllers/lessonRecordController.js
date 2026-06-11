@@ -6,8 +6,133 @@ const CourseType = require('../models/CourseType')
 const Payment = require('../models/Payment')
 const FeeStandard = require('../models/FeeStandard')
 const User = require('../models/User')
+const GuardianBinding = require('../models/GuardianBinding')
+const { verifyToken } = require('../utils/jwt')
+const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 const mongoose = require('mongoose')
+const path = require('path')
+const fs = require('fs')
 const ObjectId = mongoose.Types.ObjectId
+const MEDIA_ROOT = path.resolve(__dirname, '../../uploads/lesson-record-media')
+
+const safeText = (value, maxLength = 20) => {
+  const text = (value || '').toString().replace(/\s+/g, ' ').trim()
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text
+}
+
+const sanitizeMediaItems = (mediaItems) => {
+  if (!Array.isArray(mediaItems)) return []
+
+  return mediaItems
+    .slice(0, 12)
+    .map((item) => {
+      if (!item || !item.id || !item.fileKey || !['image', 'audio'].includes(item.type)) {
+        return null
+      }
+
+      const fileKey = path.basename(item.fileKey.toString())
+      if (fileKey !== item.fileKey) {
+        return null
+      }
+
+      return {
+        id: item.id.toString(),
+        type: item.type,
+        fileKey,
+        url: `/lesson-records/media/${item.id}`,
+        originalName: item.originalName || '',
+        mimeType: item.mimeType || '',
+        size: Number(item.size) || 0,
+        duration: Number(item.duration) || 0,
+        createdAt: item.createdAt || new Date()
+      }
+    })
+    .filter(Boolean)
+}
+
+const buildLessonRecordNotifyData = (lessonRecord, student, courseType) => {
+  const mediaCount = Array.isArray(lessonRecord.mediaItems) ? lessonRecord.mediaItems.length : 0
+  const summaryParts = []
+  const courseTypeName = courseType?.name || '课程'
+
+  summaryParts.push(courseTypeName)
+  if (lessonRecord.lessonContent) {
+    summaryParts.push('有文字')
+  }
+  if (mediaCount > 0) {
+    summaryParts.push(`${mediaCount}个素材`)
+  }
+
+  return {
+    time2: {
+      value: formatTime(lessonRecord.recordDate || new Date())
+    },
+    thing11: {
+      value: safeText(student?.name || '学生')
+    },
+    thing12: {
+      value: safeText(summaryParts.join(' ') || '课后记录')
+    },
+    phrase16: {
+      value: '课后记录'
+    }
+  }
+}
+
+const sendLessonRecordNotification = async (lessonRecord, student, courseType) => {
+  const bindings = await GuardianBinding.find({
+    studentId: student._id,
+    status: 'active'
+  })
+
+  const openIds = [...new Set(bindings.map(binding => binding.openId).filter(Boolean))]
+  const result = {
+    total: openIds.length,
+    success: 0,
+    failed: 0
+  }
+
+  if (openIds.length === 0) {
+    return result
+  }
+
+  const messageData = buildLessonRecordNotifyData(lessonRecord, student, courseType)
+  const page = `pages/guardian/records?studentId=${student._id}&recordId=${lessonRecord._id}`
+
+  for (const openId of openIds) {
+    try {
+      await sendSubscribeMessage(openId, messageData, page)
+      result.success += 1
+    } catch (error) {
+      result.failed += 1
+      console.error(`发送课后记录订阅消息失败 openId=${openId}:`, error.message)
+    }
+  }
+
+  return result
+}
+
+const canUserAccessRecord = async (decoded, record) => {
+  if (decoded.type === 'guardian') {
+    const binding = await GuardianBinding.findOne({
+      openId: decoded.openId,
+      studentId: record.studentId?._id || record.studentId,
+      status: 'active'
+    })
+    return Boolean(binding)
+  }
+
+  if (decoded.type && decoded.type !== 'user') {
+    return false
+  }
+
+  const user = await User.findById(decoded.userId)
+  if (!user) return false
+  if (user.role === 'admin') return true
+
+  const student = record.studentId?._id ? record.studentId : await Student.findById(record.studentId)
+  return student?.teacherId?.toString() === decoded.userId?.toString()
+}
 
 const getLessonRecords = async (req, res) => {
   try {
@@ -103,6 +228,96 @@ const getLessonRecordById = async (req, res) => {
   }
 }
 
+const uploadLessonRecordMedia = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: '未上传文件' })
+    }
+
+    const mediaType = req.body.mediaType
+    if (!['image', 'audio'].includes(mediaType)) {
+      fs.unlink(req.file.path, () => {})
+      return res.status(400).json({ message: '不支持的媒体类型' })
+    }
+
+    const mediaId = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    const fileKey = path.basename(req.file.filename)
+    const mediaItem = {
+      id: mediaId,
+      type: mediaType,
+      fileKey,
+      url: `/lesson-records/media/${mediaId}`,
+      originalName: req.file.originalname || '',
+      mimeType: req.file.mimetype || '',
+      size: req.file.size || 0,
+      duration: Number(req.body.duration) || 0,
+      createdAt: new Date()
+    }
+
+    res.json({
+      message: '上传成功',
+      data: mediaItem
+    })
+  } catch (error) {
+    console.error('上传课后记录媒体失败:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
+const getLessonRecordMedia = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '')
+    if (!token) {
+      return res.status(401).json({ message: '未提供认证令牌' })
+    }
+
+    let decoded
+    try {
+      decoded = verifyToken(token)
+    } catch (error) {
+      return res.status(401).json({ message: '无效的认证令牌' })
+    }
+    const { mediaId } = req.params
+    const record = await LessonRecord.findOne({ 'mediaItems.id': mediaId })
+      .populate('studentId', 'name teacherId')
+
+    if (!record) {
+      return res.status(404).json({ message: '媒体不存在' })
+    }
+
+    const hasAccess = await canUserAccessRecord(decoded, record)
+    if (!hasAccess) {
+      return res.status(403).json({ message: '无权限查看此媒体' })
+    }
+
+    const mediaItem = record.mediaItems.find(item => item.id === mediaId)
+    if (!mediaItem) {
+      return res.status(404).json({ message: '媒体不存在' })
+    }
+
+    if (!mediaItem.fileKey) {
+      return res.status(404).json({ message: '媒体不存在' })
+    }
+
+    const fileKey = path.basename(mediaItem.fileKey)
+    if (fileKey !== mediaItem.fileKey) {
+      return res.status(404).json({ message: '媒体不存在' })
+    }
+
+    const filePath = path.resolve(MEDIA_ROOT, fileKey)
+    const relativePath = path.relative(MEDIA_ROOT, filePath)
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath) || !fs.existsSync(filePath)) {
+      return res.status(404).json({ message: '媒体文件不存在' })
+    }
+
+    res.setHeader('Content-Type', mediaItem.mimeType || 'application/octet-stream')
+    res.sendFile(filePath)
+  } catch (error) {
+    console.error('读取课后记录媒体失败:', error)
+    res.status(500).json({ message: '服务器错误' })
+  }
+}
+
 const createLessonRecord = async (req, res) => {
   try {
     console.log('创建消课记录，请求体:', req.body)
@@ -172,6 +387,7 @@ const createLessonRecord = async (req, res) => {
     
     const lessonRecordData = {
       ...req.body,
+      mediaItems: sanitizeMediaItems(req.body.mediaItems),
       unitPrice,
       isGiftLesson,
       isDeducted: req.body.isDeducted === true || req.body.isDeducted === 'true'
@@ -260,9 +476,22 @@ const createLessonRecord = async (req, res) => {
       }
     }
     
+    let notifyResult = null
+    if (req.body.notifyGuardian === true || req.body.notifyGuardian === 'true') {
+      try {
+        const courseType = req.body.courseTypeId ? await CourseType.findById(req.body.courseTypeId) : null
+        notifyResult = await sendLessonRecordNotification(lessonRecord, student, courseType)
+        console.log('课后记录订阅消息发送结果:', notifyResult)
+      } catch (notifyError) {
+        notifyResult = { total: 0, success: 0, failed: 1, error: notifyError.message }
+        console.error('课后记录订阅消息发送异常:', notifyError.message)
+      }
+    }
+
     res.json({
       message: '创建成功',
-      data: lessonRecord
+      data: lessonRecord,
+      notifyResult
     })
   } catch (error) {
     console.error('创建消课记录错误:', error)
@@ -497,6 +726,8 @@ const updateLessonBalance = async (studentId, lessonsChange) => {
 module.exports = {
   getLessonRecords,
   getLessonRecordById,
+  uploadLessonRecordMedia,
+  getLessonRecordMedia,
   createLessonRecord,
   updateLessonRecord,
   deleteLessonRecord
