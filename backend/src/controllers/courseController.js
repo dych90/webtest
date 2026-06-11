@@ -5,6 +5,40 @@ const User = require('../models/User')
 const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
 
+const toPlainObject = (doc) => {
+  return doc?.toObject ? doc.toObject() : doc
+}
+
+const attachLessonRecordsToCourses = async (courses = []) => {
+  if (!courses.length) return []
+
+  const courseIds = courses.map(course => course?._id).filter(Boolean)
+  if (!courseIds.length) return courses.map(toPlainObject)
+
+  const lessonRecords = await LessonRecord.find({ courseId: { $in: courseIds } })
+    .sort({ recordDate: -1, createdAt: -1 })
+    .select('courseTypeId courseId lessonsConsumed lessonContent mediaItems isDeducted isGiftLesson recordDate courseStartTime createdAt')
+    .populate('courseTypeId', 'name duration')
+
+  const recordMap = {}
+  lessonRecords.forEach(record => {
+    const plainRecord = toPlainObject(record)
+    const courseId = plainRecord.courseId?.toString()
+    if (courseId && !recordMap[courseId]) {
+      recordMap[courseId] = plainRecord
+    }
+  })
+
+  return courses.map(course => {
+    const plainCourse = toPlainObject(course)
+    const courseId = plainCourse._id?.toString()
+    return {
+      ...plainCourse,
+      lessonRecord: courseId ? recordMap[courseId] || null : null
+    }
+  })
+}
+
 const getCourses = async (req, res) => {
   try {
     const { studentId, startTime, endTime, teacherId } = req.query
@@ -41,10 +75,11 @@ const getCourses = async (req, res) => {
       .populate('teacherId', 'name username')
     
     console.log('查询到的课程数量:', courses.length)
+    const coursesWithRecords = await attachLessonRecordsToCourses(courses)
     
     res.json({
       message: '获取成功',
-      data: courses
+      data: coursesWithRecords
     })
   } catch (error) {
     console.error('获取课程列表错误:', error)

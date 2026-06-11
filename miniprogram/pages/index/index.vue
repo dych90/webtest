@@ -68,6 +68,10 @@
           <view class="course-info">
             <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
             <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
+            <view v-if="course.lessonRecord" class="lesson-record-preview">
+              <text v-if="course.lessonRecord.lessonContent" class="lesson-record-text">{{ course.lessonRecord.lessonContent }}</text>
+              <text v-if="getMediaSummary(course.lessonRecord)" class="lesson-record-media">{{ getMediaSummary(course.lessonRecord) }}</text>
+            </view>
           </view>
           <view class="course-actions">
             <text 
@@ -93,6 +97,13 @@
               @click.stop="handleCancelAttendCourse(course)"
             >
               取消
+            </button>
+            <button
+              v-if="course.lessonRecord"
+              class="btn-edit-record"
+              @click.stop="goEditLessonRecord(course.lessonRecord)"
+            >
+              编辑记录
             </button>
             <text class="arrow-icon">›</text>
           </view>
@@ -169,17 +180,20 @@
             </view>
           </view>
           <view class="form-item">
-            <text class="form-label">语音记录</text>
+            <view class="form-label-row">
+              <text class="form-label">语音记录</text>
+              <text class="form-hint">{{ voiceFiles.length }}/6</text>
+            </view>
             <view class="voice-box">
               <button v-if="!recording" class="voice-btn" @click="startRecord">
-                {{ voiceFile ? '重新录音' : '开始录音' }}
+                {{ voiceFiles.length ? '继续录音' : '开始录音' }}
               </button>
               <button v-else class="voice-btn recording" @click="stopRecord">
                 停止录音 {{ formatDuration(recordDuration) }}
               </button>
-              <view v-if="voiceFile" class="voice-result">
-                <text class="voice-info" @click="playVoice(voiceFile.tempFilePath)">播放 {{ formatDuration(voiceFile.duration || 0) }}</text>
-                <text class="voice-remove" @click="removeVoice">删除</text>
+              <view v-for="(voice, voiceIndex) in voiceFiles" :key="voice.tempFilePath" class="voice-result">
+                <text class="voice-info" @click="playVoice(voice.tempFilePath)">播放语音{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
+                <text class="voice-remove" @click="removeVoice(voiceIndex)">删除</text>
               </view>
             </view>
           </view>
@@ -231,7 +245,7 @@ const currentCourse = ref(null)
 const lessonCountIndex = ref(1)
 const lessonContent = ref('')
 const photoFiles = ref([])
-const voiceFile = ref(null)
+const voiceFiles = ref([])
 const notifyGuardian = ref(false)
 const savingAttend = ref(false)
 const recording = ref(false)
@@ -295,11 +309,27 @@ const getStatusText = (status) => {
   return statusMap[status] || '待上课'
 }
 
+const getMediaSummary = (record) => {
+  const mediaItems = record?.mediaItems || []
+  const imageCount = mediaItems.filter(item => item.type === 'image').length
+  const audioCount = mediaItems.filter(item => item.type === 'audio').length
+  const parts = []
+
+  if (imageCount > 0) {
+    parts.push(`${imageCount}张照片`)
+  }
+  if (audioCount > 0) {
+    parts.push(`${audioCount}段语音`)
+  }
+
+  return parts.join('，')
+}
+
 const resetAttendForm = () => {
   lessonCountIndex.value = 1
   lessonContent.value = ''
   photoFiles.value = []
-  voiceFile.value = null
+  voiceFiles.value = []
   notifyGuardian.value = false
   recording.value = false
   recordDuration.value = 0
@@ -457,8 +487,11 @@ const startRecord = () => {
     uni.showToast({ title: '当前环境不支持录音', icon: 'none' })
     return
   }
+  if (voiceFiles.value.length >= 6) {
+    uni.showToast({ title: '最多录制6段语音', icon: 'none' })
+    return
+  }
 
-  voiceFile.value = null
   recordDuration.value = 0
   recording.value = true
   clearRecordTimer()
@@ -503,8 +536,8 @@ const playVoice = (src) => {
   })
 }
 
-const removeVoice = () => {
-  voiceFile.value = null
+const removeVoice = (index) => {
+  voiceFiles.value.splice(index, 1)
 }
 
 const uploadAttendMedia = async () => {
@@ -530,18 +563,20 @@ const uploadAttendMedia = async () => {
     }
   }
 
-  if (voiceFile.value?.tempFilePath) {
+  for (const voiceFile of voiceFiles.value) {
+    if (!voiceFile?.tempFilePath) continue
+
     try {
       const formData = {
         mediaType: 'audio',
-        duration: voiceFile.value.duration || 0
+        duration: voiceFile.duration || 0
       }
       let result
       try {
-        result = await uploadFile('/lesson-records/media', voiceFile.value.tempFilePath, formData)
+        result = await uploadFile('/lesson-records/media', voiceFile.tempFilePath, formData)
       } catch (uploadError) {
         console.warn('语音uploadFile失败，尝试base64降级上传:', uploadError?.message || uploadError)
-        result = await uploadFileData('/lesson-records/media-data', voiceFile.value.tempFilePath, formData)
+        result = await uploadFileData('/lesson-records/media-data', voiceFile.tempFilePath, formData)
       }
       if (result.data) {
         mediaItems.push(result.data)
@@ -653,6 +688,14 @@ const goToCourseDetail = (course) => {
   })
 }
 
+const goEditLessonRecord = (record) => {
+  if (!record?._id) return
+
+  uni.navigateTo({
+    url: `/pages/lessons/edit?id=${record._id}`
+  })
+}
+
 const goToPage = (url) => {
   if (url.includes('students') || url.includes('schedule')) {
     uni.switchTab({ url })
@@ -667,11 +710,12 @@ onMounted(() => {
     recorderManager.onStop((res) => {
       recording.value = false
       clearRecordTimer()
-      voiceFile.value = {
+      if (voiceFiles.value.length >= 6) return
+      voiceFiles.value = [...voiceFiles.value, {
         tempFilePath: res.tempFilePath,
         duration: res.duration || recordDuration.value,
         size: res.fileSize || 0
-      }
+      }]
     })
     recorderManager.onError((error) => {
       recording.value = false
@@ -919,6 +963,32 @@ onUnmounted(() => {
   color: #909399;
 }
 
+.lesson-record-preview {
+  margin-top: 8rpx;
+  padding: 10rpx 12rpx;
+  border-radius: 8rpx;
+  background-color: #eef6ff;
+}
+
+.lesson-record-text,
+.lesson-record-media {
+  display: block;
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.lesson-record-text {
+  color: #303133;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-record-media {
+  margin-top: 2rpx;
+  color: #409EFF;
+}
+
 .course-actions {
   display: flex;
   flex-direction: column;
@@ -964,6 +1034,16 @@ onUnmounted(() => {
   color: #F56C6C;
   font-size: 22rpx;
   border: 2rpx solid #F56C6C;
+  border-radius: 6rpx;
+  line-height: 1.2;
+}
+
+.btn-edit-record {
+  padding: 10rpx 20rpx;
+  background-color: #ecf5ff;
+  color: #409EFF;
+  font-size: 22rpx;
+  border: 2rpx solid #409EFF;
   border-radius: 6rpx;
   line-height: 1.2;
 }

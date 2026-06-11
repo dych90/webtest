@@ -96,7 +96,10 @@
       </view>
 
       <view class="form-item">
-        <text class="form-label">语音记录</text>
+        <view class="form-label-row">
+          <text class="form-label">语音记录</text>
+          <text class="form-hint">{{ totalVoiceCount }}/6</text>
+        </view>
         <view class="voice-box">
           <view
             v-for="media in savedAudios"
@@ -107,14 +110,14 @@
             <text class="voice-remove" @click="removeSavedMedia(media.id)">删除</text>
           </view>
           <button v-if="!recording" class="voice-btn" @click="startRecord">
-            {{ newVoiceFile ? '重新录音' : '开始录音' }}
+            {{ newVoiceFiles.length ? '继续录音' : '开始录音' }}
           </button>
           <button v-else class="voice-btn recording" @click="stopRecord">
             停止录音 {{ formatDuration(recordDuration) }}
           </button>
-          <view v-if="newVoiceFile" class="voice-result">
-            <text class="voice-info" @click="playVoice(newVoiceFile.tempFilePath)">播放新录音 {{ formatDuration(newVoiceFile.duration || 0) }}</text>
-            <text class="voice-remove" @click="removeNewVoice">删除</text>
+          <view v-for="(voice, voiceIndex) in newVoiceFiles" :key="voice.tempFilePath" class="voice-result">
+            <text class="voice-info" @click="playVoice(voice.tempFilePath)">播放新录音{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
+            <text class="voice-remove" @click="removeNewVoice(voiceIndex)">删除</text>
           </view>
         </view>
       </view>
@@ -157,7 +160,7 @@ const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 const savedMediaItems = ref([])
 const mediaCache = ref({})
 const newPhotoFiles = ref([])
-const newVoiceFile = ref(null)
+const newVoiceFiles = ref([])
 const recording = ref(false)
 const recordDuration = ref(0)
 let recorderManager = null
@@ -191,6 +194,10 @@ const totalPhotoCount = computed(() => {
   return savedImages.value.length + newPhotoFiles.value.length
 })
 
+const totalVoiceCount = computed(() => {
+  return savedAudios.value.length + newVoiceFiles.value.length
+})
+
 const courseOptions = computed(() => {
   const filtered = courses.value.filter(c => {
     const courseStudentId = c.studentId?._id || c.studentId
@@ -221,11 +228,12 @@ onMounted(async () => {
     recorderManager.onStop((res) => {
       recording.value = false
       clearRecordTimer()
-      newVoiceFile.value = {
+      if (totalVoiceCount.value >= 6) return
+      newVoiceFiles.value = [...newVoiceFiles.value, {
         tempFilePath: res.tempFilePath,
         duration: res.duration || recordDuration.value,
         size: res.fileSize || 0
-      }
+      }]
     })
     recorderManager.onError((error) => {
       recording.value = false
@@ -453,8 +461,11 @@ const startRecord = () => {
     uni.showToast({ title: '当前环境不支持录音', icon: 'none' })
     return
   }
+  if (totalVoiceCount.value >= 6) {
+    uni.showToast({ title: '最多保留6段语音', icon: 'none' })
+    return
+  }
 
-  newVoiceFile.value = null
   recordDuration.value = 0
   recording.value = true
   clearRecordTimer()
@@ -499,8 +510,8 @@ const playVoice = (src) => {
   })
 }
 
-const removeNewVoice = () => {
-  newVoiceFile.value = null
+const removeNewVoice = (index) => {
+  newVoiceFiles.value.splice(index, 1)
 }
 
 const uploadEditMedia = async () => {
@@ -526,18 +537,20 @@ const uploadEditMedia = async () => {
     }
   }
 
-  if (newVoiceFile.value?.tempFilePath) {
+  for (const voiceFile of newVoiceFiles.value) {
+    if (!voiceFile?.tempFilePath) continue
+
     try {
       const formData = {
         mediaType: 'audio',
-        duration: newVoiceFile.value.duration || 0
+        duration: voiceFile.duration || 0
       }
       let result
       try {
-        result = await uploadFile('/lesson-records/media', newVoiceFile.value.tempFilePath, formData)
+        result = await uploadFile('/lesson-records/media', voiceFile.tempFilePath, formData)
       } catch (uploadError) {
         console.warn('语音uploadFile失败，尝试base64降级上传:', uploadError?.message || uploadError)
-        result = await uploadFileData('/lesson-records/media-data', newVoiceFile.value.tempFilePath, formData)
+        result = await uploadFileData('/lesson-records/media-data', voiceFile.tempFilePath, formData)
       }
       if (result.data) {
         mediaItems.push(result.data)
