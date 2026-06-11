@@ -399,6 +399,41 @@ const getBalance = async (req, res) => {
   }
 }
 
+const unbindStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params
+
+    const binding = await GuardianBinding.findOneAndUpdate(
+      {
+        openId: req.guardianOpenId,
+        studentId,
+        status: 'active'
+      },
+      {
+        $set: {
+          status: 'inactive',
+          updatedAt: new Date()
+        }
+      },
+      { new: true }
+    )
+
+    if (!binding) {
+      return res.status(404).json({ message: '绑定关系不存在或已解除' })
+    }
+
+    const session = await buildGuardianSession(req.guardianOpenId)
+
+    res.json({
+      message: '解除绑定成功',
+      data: session
+    })
+  } catch (error) {
+    console.error('学生端解除绑定失败:', error)
+    res.status(500).json({ message: error.message || '服务器错误' })
+  }
+}
+
 const subscribe = async (req, res) => {
   try {
     await GuardianBinding.updateMany(
@@ -424,5 +459,6 @@ module.exports = {
   getLessonRecords,
   getPayments,
   getBalance,
+  unbindStudent,
   subscribe
 }

@@ -17,5 +17,6 @@ router.get('/guardian/students/:studentId/courses', authenticateGuardianToken, g
 router.get('/guardian/students/:studentId/lesson-records', authenticateGuardianToken, guardianController.getLessonRecords)
 router.get('/guardian/students/:studentId/payments', authenticateGuardianToken, guardianController.getPayments)
 router.get('/guardian/students/:studentId/balance', authenticateGuardianToken, guardianController.getBalance)
+router.delete('/guardian/students/:studentId/binding', authenticateGuardianToken, guardianController.unbindStudent)
 
 module.exports = router

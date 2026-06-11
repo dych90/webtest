@@ -19,11 +19,14 @@
           :class="{ active: student._id === selectedStudentId }"
           @click="selectStudent(student)"
         >
-          <view>
+          <view class="student-main">
             <text class="student-name">{{ student.name }}</text>
             <text class="teacher-name">老师：{{ student.teacher?.name || '未设置' }}</text>
           </view>
-          <text class="student-balance">{{ student.remainingLessons || 0 }}课时</text>
+          <view class="student-actions">
+            <text class="student-balance">{{ student.remainingLessons || 0 }}课时</text>
+            <button class="unbind-btn" @click.stop="handleUnbind(student)">解除</button>
+          </view>
         </view>
       </view>
     </view>
@@ -51,7 +54,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { get } from '@/utils/request'
+import { get, del } from '@/utils/request'
 import { clearGuardianSession, getSelectedGuardianStudentId, requestGuardianSubscription, saveGuardianSession } from '@/utils/guardian'
 
 const students = ref([])
@@ -81,6 +84,34 @@ const selectStudent = (student) => {
   selectedStudentId.value = student._id
   uni.setStorageSync('selectedGuardianStudentId', student._id)
   uni.showToast({ title: '已切换学生', icon: 'success' })
+}
+
+const handleUnbind = (student) => {
+  uni.showModal({
+    title: '解除绑定',
+    content: `确定从学生端删除“${student.name}”吗？不会删除学生资料和课程记录。`,
+    confirmText: '解除',
+    confirmColor: '#F56C6C',
+    success: async (res) => {
+      if (!res.confirm) return
+
+      try {
+        const result = await del(`/guardian/students/${student._id}/binding`)
+        const session = result.data || {
+          token: uni.getStorageSync('token'),
+          guardian: JSON.parse(uni.getStorageSync('guardianInfo') || '{}'),
+          students: students.value.filter(item => item._id !== student._id)
+        }
+
+        students.value = session.students || []
+        saveGuardianSession(session)
+        selectedStudentId.value = getSelectedGuardianStudentId(students.value)
+        uni.showToast({ title: '已解除绑定', icon: 'success' })
+      } catch (error) {
+        uni.showToast({ title: error.message || '解除失败', icon: 'none' })
+      }
+    }
+  })
 }
 
 const handleSubscribe = async () => {
@@ -187,6 +218,11 @@ const goRecords = () => {
   border-bottom: 1rpx solid #f0f0f0;
 }
 
+.student-main {
+  min-width: 0;
+  flex: 1;
+}
+
 .student-row:last-child {
   border-bottom: none;
 }
@@ -210,9 +246,29 @@ const goRecords = () => {
 }
 
 .student-balance {
-  flex-shrink: 0;
   font-size: 24rpx;
   color: #409EFF;
+}
+
+.student-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-left: 20rpx;
+}
+
+.unbind-btn {
+  width: 104rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  margin: 0;
+  padding: 0;
+  border-radius: 8rpx;
+  border: 1rpx solid #F56C6C;
+  background-color: #fff;
+  color: #F56C6C;
+  font-size: 24rpx;
 }
 
 .primary-btn,

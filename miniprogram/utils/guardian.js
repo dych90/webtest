@@ -14,6 +14,8 @@ export const saveGuardianSession = (session) => {
 
   if (selectedId) {
     uni.setStorageSync('selectedGuardianStudentId', selectedId)
+  } else {
+    uni.removeStorageSync('selectedGuardianStudentId')
   }
 }
 
