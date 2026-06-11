@@ -45,6 +45,13 @@
             />
           </el-select>
         </el-form-item>
+        <el-alert
+          v-if="selectedStudentPaymentType === 'free'"
+          title="免费学生不需要创建缴费记录"
+          type="info"
+          :closable="false"
+          show-icon
+        />
         <el-form-item label="缴费类型">
           <el-select v-model="form.paymentType" placeholder="请选择缴费类型" style="width: 100%">
             <el-option label="现金" value="现金" />
@@ -78,7 +85,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
+        <el-button type="primary" @click="handleSave" :disabled="selectedStudentPaymentType === 'free'">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -111,7 +118,7 @@ watch(() => form.value.studentId, (newStudentId) => {
   const student = students.value.find(s => s._id === newStudentId)
   if (student) {
     selectedStudentPaymentType.value = student.paymentType || 'prepaid'
-    if (student.paymentType === 'payPerLesson') {
+    if (student.paymentType !== 'prepaid') {
       form.value.totalLessons = 0
       form.value.bonusLessons = 0
     }
@@ -150,12 +157,14 @@ const handleAdd = () => {
     paymentDate: new Date().toISOString().split('T')[0],
     notes: ''
   }
+  selectedStudentPaymentType.value = 'prepaid'
   dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
   dialogTitle.value = '编辑缴费'
   form.value = { ...row }
+  selectedStudentPaymentType.value = row.studentId?.paymentType || 'prepaid'
   dialogVisible.value = true
 }
 
@@ -171,6 +180,10 @@ const handleDelete = async (row) => {
 
 const handleSave = async () => {
   try {
+    if (selectedStudentPaymentType.value === 'free') {
+      ElMessage.warning('免费学生不需要缴费记录')
+      return
+    }
     if (dialogTitle.value === '添加缴费') {
       await request.post('/payments', form.value)
       ElMessage.success('添加成功')

@@ -7,7 +7,7 @@
         </view>
         <view class="student-info">
           <text class="student-name">{{ student.name }}</text>
-          <text class="student-type">{{ student.paymentType === 'prepaid' ? '预付费' : '单次付费' }}</text>
+          <text class="student-type">{{ getPaymentTypeText(student.paymentType) }}</text>
         </view>
       </view>
       
@@ -40,7 +40,7 @@
           <text class="info-label">课程类型</text>
           <text class="info-value">{{ student.defaultCourseTypeId?.name || '未设置' }}</text>
         </view>
-        <view class="info-item">
+        <view class="info-item" v-if="student.paymentType !== 'free'">
           <text class="info-label">课时单价</text>
           <text class="info-value text-price">¥{{ student.currentPrice || 0 }}/课时</text>
         </view>
@@ -123,6 +123,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, del } from '@/utils/request'
+import { getPaymentTypeText } from '@/utils/paymentType'
 
 const student = ref({})
 const studentId = ref('')

@@ -77,6 +77,10 @@ const createStudent = async (req, res) => {
       ...req.body,
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
     }
+
+    if (studentData.paymentType === 'free') {
+      studentData.currentPrice = 0
+    }
     
     if (req.body.currentPrice && req.body.currentPrice > 0) {
       studentData.priceEffectiveDate = req.body.priceEffectiveDate || new Date()
@@ -84,7 +88,7 @@ const createStudent = async (req, res) => {
     
     const student = await Student.create(studentData)
     
-    if (req.body.currentPrice && req.body.currentPrice > 0 && req.body.defaultCourseTypeId) {
+    if (studentData.paymentType !== 'free' && req.body.currentPrice && req.body.currentPrice > 0 && req.body.defaultCourseTypeId) {
       await FeeStandard.create({
         studentId: student._id,
         courseTypeId: req.body.defaultCourseTypeId,
@@ -161,6 +165,8 @@ const importStudents = async (req, res) => {
             studentData.paymentType = 'prepaid'
           } else if (paymentTypeValue === '单次付费' || paymentTypeValue === 'payPerLesson' || paymentTypeValue === '单次') {
             studentData.paymentType = 'payPerLesson'
+          } else if (paymentTypeValue === '免费' || paymentTypeValue === 'free') {
+            studentData.paymentType = 'free'
           }
         }
         console.log(`最终付费类型:`, studentData.paymentType)
@@ -238,6 +244,14 @@ const updateStudent = async (req, res) => {
     
     if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
       return res.status(403).json({ message: '无权限修改此学生' })
+    }
+
+    if (req.body.paymentType === 'free') {
+      req.body.currentPrice = 0
+      await FeeStandard.updateMany(
+        { studentId: id, expireDate: { $exists: false } },
+        { expireDate: new Date() }
+      )
     }
     
     const oldPrice = student.currentPrice

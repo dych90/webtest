@@ -91,6 +91,10 @@ const createPayment = async (req, res) => {
     if (isTeacher && student.teacherId.toString() !== req.userId) {
       return res.status(403).json({ message: '无权限为此学生创建缴费记录' })
     }
+
+    if (student.paymentType === 'free') {
+      return res.status(400).json({ message: '免费学生不需要创建缴费记录' })
+    }
     
     const payment = await Payment.create(req.body)
     
@@ -128,9 +132,14 @@ const updatePayment = async (req, res) => {
       return res.status(403).json({ message: '无权限修改此缴费记录' })
     }
     
-    const payment = await Payment.findByIdAndUpdate(id, req.body, { new: true })
+    const targetStudentId = req.body.studentId || oldPayment.studentId._id || oldPayment.studentId
+    const student = await Student.findById(targetStudentId)
+
+    if (student && student.paymentType === 'free') {
+      return res.status(400).json({ message: '免费学生不需要缴费记录' })
+    }
     
-    const student = await Student.findById(payment.studentId)
+    const payment = await Payment.findByIdAndUpdate(id, req.body, { new: true })
     
     if (student && student.paymentType === 'prepaid' && oldPayment) {
       const lessonsChange = (payment.totalLessons + payment.bonusLessons) - (oldPayment.totalLessons + oldPayment.bonusLessons)

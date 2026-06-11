@@ -120,6 +120,72 @@ const addCoursesToGuardianMap = async (guardianMap, courses, fieldName) => {
   }
 }
 
+const buildTeacherDailyReminderMap = async (courses) => {
+  const teachers = await User.find({
+    role: 'teacher',
+    $or: [
+      { openIds: { $exists: true, $ne: [] } },
+      { openId: { $exists: true, $ne: '' } }
+    ]
+  })
+
+  const coursesByTeacherId = {}
+  for (const course of courses) {
+    const teacherId = course.teacherId?._id?.toString() || course.teacherId?.toString()
+    if (!teacherId) continue
+
+    if (!coursesByTeacherId[teacherId]) {
+      coursesByTeacherId[teacherId] = []
+    }
+    coursesByTeacherId[teacherId].push(course)
+  }
+
+  const teacherMap = {}
+  for (const teacher of teachers) {
+    const openIds = getTeacherOpenIds(teacher)
+    if (openIds.length === 0) continue
+
+    teacherMap[teacher._id.toString()] = {
+      teacher,
+      courses: coursesByTeacherId[teacher._id.toString()] || []
+    }
+  }
+
+  return teacherMap
+}
+
+const buildGuardianDailyReminderMap = async (courses) => {
+  const coursesByStudentId = {}
+  for (const course of courses) {
+    const studentId = getCourseStudentId(course)
+    if (!studentId) continue
+
+    if (!coursesByStudentId[studentId]) {
+      coursesByStudentId[studentId] = []
+    }
+    coursesByStudentId[studentId].push(course)
+  }
+
+  const bindings = await GuardianBinding.find({ status: 'active' })
+  const guardianMap = {}
+
+  for (const binding of bindings) {
+    if (!binding.openId) continue
+
+    if (!guardianMap[binding.openId]) {
+      guardianMap[binding.openId] = {
+        openId: binding.openId,
+        todayCourses: []
+      }
+    }
+
+    const studentId = binding.studentId.toString()
+    guardianMap[binding.openId].todayCourses.push(...(coursesByStudentId[studentId] || []))
+  }
+
+  return guardianMap
+}
+
 const formatGuardianCourseSummary = (courses) => {
   if (!courses || courses.length === 0) {
     return '暂无课程'
@@ -288,23 +354,9 @@ const sendMorningDailyReminder = async () => {
       status: 'normal'
     }).populate('teacherId').populate('studentId').populate('courseTypeId')
 
-    const teachersToRemind = {}
-    
-    for (const course of courses) {
-      const teacher = course.teacherId
-      const openIds = getTeacherOpenIds(teacher)
-      if (openIds.length === 0) continue
-      
-      if (!teachersToRemind[teacher._id]) {
-        teachersToRemind[teacher._id] = {
-          teacher,
-          courses: []
-        }
-      }
-      teachersToRemind[teacher._id].courses.push(course)
-    }
+    const teachersToRemind = await buildTeacherDailyReminderMap(courses)
 
-    console.log(`今日课程提醒：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师`)
+    console.log(`今日课程提醒：找到 ${Object.keys(teachersToRemind).length} 位需要提醒的教师，今日课程总数 ${courses.length} 节`)
 
     for (const teacherId in teachersToRemind) {
       const { teacher, courses } = teachersToRemind[teacherId]
@@ -320,10 +372,10 @@ const sendMorningDailyReminder = async () => {
             value: `今日${courses.length}节课`
           },
           thing12: {
-            value: '请检查记录'
+            value: courses.length > 0 ? '请检查记录' : '今日暂无课程'
           },
           phrase16: {
-            value: '核对消课'
+            value: courses.length > 0 ? '核对消课' : '无需消课'
           }
         }
 
@@ -335,10 +387,9 @@ const sendMorningDailyReminder = async () => {
       }
     }
 
-    const guardiansToRemind = {}
-    await addCoursesToGuardianMap(guardiansToRemind, courses, 'todayCourses')
+    const guardiansToRemind = await buildGuardianDailyReminderMap(courses)
 
-    console.log(`学生端今日课程提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
+    console.log(`学生端今日课程提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信，今日课程总数 ${courses.length} 节`)
 
     for (const openId in guardiansToRemind) {
       const { todayCourses } = guardiansToRemind[openId]

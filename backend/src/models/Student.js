@@ -9,7 +9,7 @@ const studentSchema = new mongoose.Schema({
   parentName: String,
   parentPhone: String,
   defaultCourseTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseType' },
-  paymentType: { type: String, enum: ['prepaid', 'payPerLesson'], default: 'prepaid' },
+  paymentType: { type: String, enum: ['prepaid', 'payPerLesson', 'free'], default: 'prepaid' },
   currentPrice: { type: Number, default: 0 },
   priceEffectiveDate: { type: Date, default: Date.now },
   pianoStartDate: Date,

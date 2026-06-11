@@ -24,13 +24,13 @@
             <text class="student-name">{{ formatStudentName(item.studentId?.name) }}</text>
           </view>
           <text class="payment-type" :class="item.studentId?.paymentType">
-            {{ item.studentId?.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+            {{ getPaymentTypeText(item.studentId?.paymentType) }}
           </text>
         </view>
         <view class="balance-body">
           <view class="balance-info">
             <text class="info-label">剩余课时</text>
-            <text class="info-value" :class="{ warning: item.remainingLessons <= 5 }">
+            <text class="info-value" :class="{ warning: item.studentId?.paymentType === 'prepaid' && item.remainingLessons <= 5 }">
               {{ item.studentId?.paymentType === 'prepaid' ? item.remainingLessons + ' 课时' : '-' }}
             </text>
           </view>
@@ -184,6 +184,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { onShow, onLoad } from '@dcloudio/uni-app'
 import { get, put } from '@/utils/request'
+import { getPaymentTypeText } from '@/utils/paymentType'
 
 const balances = ref([])
 const searchKeyword = ref('')
@@ -669,6 +670,11 @@ onLoad((options) => {
 .payment-type.payPerLesson {
   background-color: #f0f9eb;
   color: #67C23A;
+}
+
+.payment-type.free {
+  background-color: #f4f4f5;
+  color: #909399;
 }
 
 .balance-body {

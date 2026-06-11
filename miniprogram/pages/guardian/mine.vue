@@ -24,7 +24,7 @@
             <text class="teacher-name">老师：{{ student.teacher?.name || '未设置' }}</text>
           </view>
           <view class="student-actions">
-            <text class="student-balance">{{ student.remainingLessons || 0 }}课时</text>
+            <text class="student-balance">{{ getStudentBalanceText(student) }}</text>
             <button class="unbind-btn" @click.stop="handleUnbind(student)">解除</button>
           </view>
         </view>
@@ -84,6 +84,14 @@ const selectStudent = (student) => {
   selectedStudentId.value = student._id
   uni.setStorageSync('selectedGuardianStudentId', student._id)
   uni.showToast({ title: '已切换学生', icon: 'success' })
+}
+
+const getStudentBalanceText = (student) => {
+  if (student.paymentType === 'free') {
+    return '免费'
+  }
+
+  return `${student.remainingLessons || 0}课时`
 }
 
 const handleUnbind = (student) => {

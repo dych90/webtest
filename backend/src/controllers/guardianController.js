@@ -411,7 +411,7 @@ const unbindStudent = async (req, res) => {
       },
       {
         $set: {
-          status: 'inactive',
+          status: 'revoked',
           updatedAt: new Date()
         }
       },

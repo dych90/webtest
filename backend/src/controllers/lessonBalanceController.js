@@ -61,7 +61,7 @@ const updateLessonBalance = async (req, res) => {
     }
     
     if (student.paymentType !== 'prepaid') {
-      return res.status(400).json({ message: '单次付费模式的学生不能更新课时余额' })
+      return res.status(400).json({ message: '只有预付费学生可以更新课时余额' })
     }
     
     const balance = await LessonBalance.findOne({ studentId })

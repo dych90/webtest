@@ -47,8 +47,8 @@
           <view class="record-header">
             <text class="student-name">{{ record.studentId?.name || '未知学生' }}</text>
             <view class="header-right">
-              <text class="remaining-lessons clickable" :class="record.studentId?.paymentType === 'payPerLesson' ? 'pay-per-lesson' : ''" @click.stop="goToBalance(record.studentId?.name)">
-                {{ record.studentId?.paymentType === 'payPerLesson' ? '单次付费' : `剩余${record.studentId?.remainingLessons ?? 0}课时` }}
+              <text class="remaining-lessons clickable" :class="record.studentId?.paymentType" @click.stop="goToBalance(record.studentId?.name)">
+                {{ getStudentBalanceText(record.studentId) }}
               </text>
               <text class="record-date">记录时间：{{ formatDateTime(record.recordDate) }}</text>
             </view>
@@ -127,6 +127,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
+import { getPaymentTypeText } from '@/utils/paymentType'
 
 const activeTab = ref('records')
 const lessonRecords = ref([])
@@ -168,6 +169,14 @@ const filterRecords = () => {
       return name.toLowerCase().includes(keyword)
     })
   }
+}
+
+const getStudentBalanceText = (student) => {
+  if (!student) return '-'
+  if (student.paymentType !== 'prepaid') {
+    return getPaymentTypeText(student.paymentType)
+  }
+  return `剩余${student.remainingLessons ?? 0}课时`
 }
 
 const fetchPendingCourses = async () => {
@@ -381,7 +390,9 @@ onShow(() => {
   border-radius: 6rpx;
 }
 
-.remaining-lessons.pay-per-lesson {
+.remaining-lessons.pay-per-lesson,
+.remaining-lessons.payPerLesson,
+.remaining-lessons.free {
   color: #909399;
   background-color: #f4f4f5;
 }

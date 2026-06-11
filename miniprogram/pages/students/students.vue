@@ -52,9 +52,9 @@
             <text class="student-name">{{ student.name }}</text>
             <text 
               class="payment-tag" 
-              :class="student.paymentType === 'prepaid' ? 'prepaid' : 'single'"
+              :class="student.paymentType || 'prepaid'"
             >
-              {{ student.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+              {{ getPaymentTypeText(student.paymentType) }}
             </text>
           </view>
           <view class="student-detail">
@@ -84,6 +84,7 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
+import { getPaymentTypeText } from '@/utils/paymentType'
 
 const userStore = useUserStore()
 
@@ -372,9 +373,15 @@ onShow(() => {
   color: #409EFF;
 }
 
-.payment-tag.single {
+.payment-tag.single,
+.payment-tag.payPerLesson {
   background-color: #f0f9eb;
   color: #67C23A;
+}
+
+.payment-tag.free {
+  background-color: #f4f4f5;
+  color: #909399;
 }
 
 .student-detail {

@@ -10,6 +10,10 @@
           </view>
         </view>
       </view>
+
+      <view class="free-tip" v-if="selectedStudentPaymentType === 'free'">
+        免费学生不需要缴费记录
+      </view>
       
       <view class="form-item">
         <text class="form-label">缴费类型</text>
@@ -56,7 +60,7 @@
     
     <view class="form-actions">
       <button class="btn-cancel" @click="handleCancel">取消</button>
-      <button class="btn-submit" @click="handleSubmit" :loading="loading">保存</button>
+      <button class="btn-submit" @click="handleSubmit" :loading="loading" :disabled="selectedStudentPaymentType === 'free'">保存</button>
     </view>
     
     <!-- 学生选择弹窗 -->
@@ -140,7 +144,7 @@ watch(() => form.studentId, (newStudentId) => {
   const student = students.value.find(s => s._id === newStudentId)
   if (student) {
     selectedStudentPaymentType.value = student.paymentType || 'prepaid'
-    if (student.paymentType === 'payPerLesson') {
+    if (student.paymentType !== 'prepaid') {
       form.totalLessons = ''
       form.bonusLessons = ''
     }
@@ -203,7 +207,7 @@ const formatStudentName = (name) => {
 const selectStudent = (student) => {
   form.studentId = student._id
   selectedStudentPaymentType.value = student.paymentType || 'prepaid'
-  if (student.paymentType === 'payPerLesson') {
+  if (student.paymentType !== 'prepaid') {
     form.totalLessons = ''
     form.bonusLessons = ''
   }
@@ -226,6 +230,10 @@ const handleCancel = () => {
 const handleSubmit = async () => {
   if (!form.studentId) {
     uni.showToast({ title: '请选择学生', icon: 'none' })
+    return
+  }
+  if (selectedStudentPaymentType.value === 'free') {
+    uni.showToast({ title: '免费学生不需要缴费记录', icon: 'none' })
     return
   }
   if (form.amount === '' || form.amount === null || form.amount === undefined) {
@@ -275,6 +283,15 @@ const handleSubmit = async () => {
 
 .form-item {
   margin-bottom: 30rpx;
+}
+
+.free-tip {
+  margin-bottom: 30rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 8rpx;
+  background-color: #f4f4f5;
+  color: #909399;
+  font-size: 26rpx;
 }
 
 .form-label {

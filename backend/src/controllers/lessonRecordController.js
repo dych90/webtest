@@ -166,6 +166,8 @@ const createLessonRecord = async (req, res) => {
       } else {
         console.log('❌ 未提供课程类型ID (courseTypeId)')
       }
+    } else if (student.paymentType === 'free') {
+      console.log('免费学生 - 不计算单价，不扣课时，不创建缴费记录')
     }
     
     const lessonRecordData = {
@@ -252,9 +254,9 @@ const createLessonRecord = async (req, res) => {
       }
     } else {
       if (lessonRecord.isDeducted) {
-        console.log('学生为单次付费模式但未扣课，不创建缴费记录')
+        console.log('学生为免费模式，不创建缴费记录')
       } else {
-        console.log('学生为单次付费模式，未标记为已上课')
+        console.log('学生未标记为已上课，不创建缴费记录')
       }
     }
     

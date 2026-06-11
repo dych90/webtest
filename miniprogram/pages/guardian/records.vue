@@ -10,7 +10,7 @@
 
       <view class="balance-row">
         <text class="balance-label">剩余课时</text>
-        <text class="balance-value">{{ balance.remainingLessons || 0 }}</text>
+        <text class="balance-value">{{ getBalanceText() }}</text>
       </view>
     </view>
 
@@ -88,6 +88,14 @@ const studentIndex = computed(() => {
 const currentStudent = computed(() => {
   return students.value.find(student => student._id === selectedStudentId.value) || students.value[0]
 })
+
+const getBalanceText = () => {
+  if (currentStudent.value?.paymentType === 'free') {
+    return '免费'
+  }
+
+  return balance.value.remainingLessons || 0
+}
 
 onShow(() => {
   fetchStudents()

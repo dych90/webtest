@@ -66,7 +66,7 @@
         </picker>
       </view>
       
-      <view class="form-item">
+      <view class="form-item" v-if="form.paymentType !== 'free'">
         <text class="form-label">课时单价</text>
         <view class="price-input-wrapper">
           <text class="price-unit">¥</text>
@@ -116,10 +116,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { get, post } from '@/utils/request'
+import { PAYMENT_TYPE_OPTIONS, getPaymentTypeValue } from '@/utils/paymentType'
 
 const genders = ['未设置', '男', '女']
 const genderIndex = ref(0)
-const paymentTypes = ['预付费', '单次付费']
+const paymentTypes = PAYMENT_TYPE_OPTIONS.map(item => item.label)
 const paymentTypeIndex = ref(0)
 const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
 const courseTypeIndex = ref(0)
@@ -184,7 +185,10 @@ const onCourseTypeChange = (e) => {
 const onPaymentTypeChange = (e) => {
   const index = Number(e.detail.value)
   paymentTypeIndex.value = index
-  form.paymentType = index === 0 ? 'prepaid' : 'payPerLesson'
+  form.paymentType = getPaymentTypeValue(index)
+  if (form.paymentType === 'free') {
+    form.currentPrice = ''
+  }
 }
 
 const onPianoStartDateChange = (e) => {

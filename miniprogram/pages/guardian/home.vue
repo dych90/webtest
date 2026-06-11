@@ -15,7 +15,7 @@
     <view class="summary-grid">
       <view class="summary-card">
         <text class="summary-label">剩余课时</text>
-        <text class="summary-value">{{ overview.balance?.remainingLessons || 0 }}</text>
+        <text class="summary-value">{{ getBalanceText() }}</text>
       </view>
       <view class="summary-card">
         <text class="summary-label">今日课程</text>
@@ -92,6 +92,14 @@ const studentIndex = computed(() => {
 const currentStudent = computed(() => {
   return students.value.find(student => student._id === selectedStudentId.value) || students.value[0]
 })
+
+const getBalanceText = () => {
+  if (currentStudent.value?.paymentType === 'free') {
+    return '免费'
+  }
+
+  return overview.value.balance?.remainingLessons || 0
+}
 
 onShow(() => {
   fetchStudents()

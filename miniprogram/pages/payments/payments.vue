@@ -19,8 +19,8 @@
         <view class="payment-header">
           <text class="student-name">{{ payment.studentId?.name || '未知学生' }}</text>
           <view class="header-right">
-            <text class="remaining-lessons clickable" :class="payment.studentId?.paymentType === 'payPerLesson' ? 'pay-per-lesson' : ''" @click.stop="goToBalance(payment.studentId?.name)">
-              {{ payment.studentId?.paymentType === 'payPerLesson' ? '单次付费' : `剩余${payment.studentId?.remainingLessons ?? 0}课时` }}
+            <text class="remaining-lessons clickable" :class="payment.studentId?.paymentType" @click.stop="goToBalance(payment.studentId?.name)">
+              {{ getStudentBalanceText(payment.studentId) }}
             </text>
             <text class="payment-amount">¥{{ payment.amount }}</text>
           </view>
@@ -64,6 +64,7 @@
 import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, del } from '@/utils/request'
+import { getPaymentTypeText } from '@/utils/paymentType'
 
 const payments = ref([])
 const searchKeyword = ref('')
@@ -73,6 +74,14 @@ const formatDate = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const getStudentBalanceText = (student) => {
+  if (!student) return '-'
+  if (student.paymentType !== 'prepaid') {
+    return getPaymentTypeText(student.paymentType)
+  }
+  return `剩余${student.remainingLessons ?? 0}课时`
 }
 
 const fetchPayments = async () => {
@@ -227,7 +236,9 @@ onShow(() => {
   border-radius: 6rpx;
 }
 
-.remaining-lessons.pay-per-lesson {
+.remaining-lessons.pay-per-lesson,
+.remaining-lessons.payPerLesson,
+.remaining-lessons.free {
   color: #909399;
   background-color: #f4f4f5;
 }

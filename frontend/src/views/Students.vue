@@ -114,14 +114,15 @@
           <el-table-column prop="defaultCourseTypeName" label="课程类型" min-width="100" />
           <el-table-column label="课时单价" width="100">
             <template #default="{ row }">
-              <span v-if="row.currentPrice" class="price-text">¥{{ row.currentPrice }}</span>
+              <span v-if="row.paymentType === 'free'" class="no-price">免费</span>
+              <span v-else-if="row.currentPrice" class="price-text">¥{{ row.currentPrice }}</span>
               <span v-else class="no-price">未设置</span>
             </template>
           </el-table-column>
           <el-table-column prop="paymentType" label="付费类型" width="90">
             <template #default="{ row }">
-              <el-tag :type="row.paymentType === 'prepaid' ? 'primary' : 'success'">
-                {{ row.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+              <el-tag :type="getPaymentTypeTagType(row.paymentType)">
+                {{ getPaymentTypeText(row.paymentType) }}
               </el-tag>
             </template>
           </el-table-column>
@@ -152,14 +153,15 @@
           <el-icon v-if="isSortMode" class="drag-icon-mobile"><Rank /></el-icon>
           <div class="student-info">
             <div class="student-name">{{ student.name }}</div>
-            <el-tag :type="student.paymentType === 'prepaid' ? 'primary' : 'success'" size="small">
-              {{ student.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+            <el-tag :type="getPaymentTypeTagType(student.paymentType)" size="small">
+              {{ getPaymentTypeText(student.paymentType) }}
             </el-tag>
           </div>
           <div class="student-detail">
             <div class="detail-item">
               <span class="label">课时单价:</span>
-              <span class="value price-text" v-if="student.currentPrice">¥{{ student.currentPrice }}</span>
+              <span class="value no-price" v-if="student.paymentType === 'free'">免费</span>
+              <span class="value price-text" v-else-if="student.currentPrice">¥{{ student.currentPrice }}</span>
               <span class="value no-price" v-else>未设置</span>
             </div>
             <div class="detail-item">
@@ -223,12 +225,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="付费类型">
-          <el-select v-model="form.paymentType" placeholder="请选择付费类型" style="width: 100%">
+          <el-select v-model="form.paymentType" placeholder="请选择付费类型" style="width: 100%" @change="handlePaymentTypeChange">
             <el-option label="预付费" value="prepaid" />
             <el-option label="单次付费" value="payPerLesson" />
+            <el-option label="免费" value="free" />
           </el-select>
         </el-form-item>
-        <el-form-item label="课时单价">
+        <el-form-item v-if="form.paymentType !== 'free'" label="课时单价">
           <el-input-number 
             v-model="form.currentPrice" 
             :min="0" 
@@ -279,8 +282,8 @@
           <div class="detail-avatar">{{ currentStudent.name?.charAt(0) || '学' }}</div>
           <div class="detail-info">
             <div class="detail-name">{{ currentStudent.name }}</div>
-            <el-tag :type="currentStudent.paymentType === 'prepaid' ? 'primary' : 'success'">
-              {{ currentStudent.paymentType === 'prepaid' ? '预付费' : '单次付费' }}
+            <el-tag :type="getPaymentTypeTagType(currentStudent.paymentType)">
+              {{ getPaymentTypeText(currentStudent.paymentType) }}
             </el-tag>
           </div>
         </div>
@@ -293,7 +296,7 @@
           <el-descriptions-item label="联系电话">{{ currentStudent.phone || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="家长电话">{{ currentStudent.parentPhone || '未设置' }}</el-descriptions-item>
           <el-descriptions-item label="课程类型">{{ currentStudent.defaultCourseTypeId?.name || '未设置' }}</el-descriptions-item>
-          <el-descriptions-item label="课时单价">
+          <el-descriptions-item v-if="currentStudent.paymentType !== 'free'" label="课时单价">
             <span class="price-text">¥{{ currentStudent.currentPrice || 0 }}/课时</span>
           </el-descriptions-item>
           <el-descriptions-item v-if="currentStudent.paymentType === 'prepaid'" label="剩余课时">
@@ -365,6 +368,20 @@ const originalStudents = ref([])
 const draggedIndex = ref(null)
 
 const isMobile = computed(() => windowWidth.value < 768)
+
+const paymentTypeMap = {
+  prepaid: { text: '预付费', tagType: 'primary' },
+  payPerLesson: { text: '单次付费', tagType: 'success' },
+  free: { text: '免费', tagType: 'info' }
+}
+
+const getPaymentTypeText = (paymentType) => {
+  return paymentTypeMap[paymentType]?.text || '预付费'
+}
+
+const getPaymentTypeTagType = (paymentType) => {
+  return paymentTypeMap[paymentType]?.tagType || 'primary'
+}
 
 const handleResize = () => {
   windowWidth.value = window.innerWidth
@@ -613,6 +630,12 @@ const handleEditFromDetail = () => {
   handleEdit(currentStudent.value)
 }
 
+const handlePaymentTypeChange = (paymentType) => {
+  if (paymentType === 'free') {
+    form.value.currentPrice = 0
+  }
+}
+
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(`确定要删除学生"${row.name}"吗？`, '确认删除', {
@@ -638,6 +661,9 @@ const handleSave = async () => {
     }
     if (submitData.pianoStartDate) {
       submitData.pianoStartDate = new Date(submitData.pianoStartDate)
+    }
+    if (submitData.paymentType === 'free') {
+      submitData.currentPrice = 0
     }
     
     if (dialogTitle.value === '添加学生') {

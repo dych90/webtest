@@ -22,7 +22,7 @@
               </el-tag>
             </template>
             <template v-else>
-              <el-tag type="info">单次付费</el-tag>
+              <el-tag type="info">{{ getPaymentTypeText(row.paymentType) }}</el-tag>
             </template>
           </template>
         </el-table-column>
@@ -172,6 +172,15 @@ const reportImage = ref(null)
 const reportChartInstance = ref(null)
 
 const isMobile = computed(() => window.innerWidth < 768)
+
+const getPaymentTypeText = (paymentType) => {
+  const map = {
+    prepaid: '预付费',
+    payPerLesson: '单次付费',
+    free: '免费'
+  }
+  return map[paymentType] || '预付费'
+}
 
 const form = ref({
   studentId: '',
