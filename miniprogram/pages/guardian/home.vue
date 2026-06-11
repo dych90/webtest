@@ -40,10 +40,22 @@
         <text class="card-title">今日安排</text>
       </view>
       <view v-if="overview.todayCourses?.length" class="course-list">
-        <view v-for="course in overview.todayCourses" :key="course._id" class="course-row">
+        <view
+          v-for="course in overview.todayCourses"
+          :key="course._id"
+          class="course-row"
+          :class="{ clickable: course.lessonRecord }"
+          @click="goCourseRecord(course)"
+        >
           <text class="course-time">{{ formatTimeRange(course) }}</text>
-          <text class="course-name">{{ course.courseTypeId?.name || '课程' }}</text>
-          <text class="status" :class="course.status">{{ getStatusText(course.status) }}</text>
+          <view class="course-main">
+            <text class="course-name">{{ course.courseTypeId?.name || '课程' }}</text>
+            <text v-if="course.lessonRecord" class="record-summary">{{ getRecordSummary(course.lessonRecord) }}</text>
+          </view>
+          <view class="course-side">
+            <text class="status" :class="course.status">{{ getStatusText(course.status) }}</text>
+            <text v-if="course.lessonRecord" class="record-link">看记录</text>
+          </view>
         </view>
       </view>
       <view v-else class="empty">今日暂无课程</view>
@@ -55,12 +67,16 @@
         <text class="card-link" @click="goRecords">查看全部</text>
       </view>
       <view v-if="overview.recentLessonRecords?.length" class="record-list">
-        <view v-for="record in overview.recentLessonRecords" :key="record._id" class="record-row">
+        <view v-for="record in overview.recentLessonRecords" :key="record._id" class="record-row" @click="goRecord(record)">
           <view>
             <text class="record-title">{{ record.courseTypeId?.name || '消课记录' }}</text>
             <text class="record-date">{{ formatDate(record.recordDate) }}</text>
+            <text class="record-summary">{{ getRecordSummary(record) }}</text>
           </view>
-          <text class="record-count">{{ record.lessonsConsumed }}课时</text>
+          <view class="record-side">
+            <text class="record-count">{{ record.lessonsConsumed }}课时</text>
+            <text class="record-link">查看</text>
+          </view>
         </view>
       </view>
       <view v-else class="empty">暂无消课记录</view>
@@ -171,6 +187,33 @@ const getStatusText = (status) => {
     rescheduled: '已改期'
   }
   return map[status] || '待上课'
+}
+
+const getRecordSummary = (record) => {
+  const parts = []
+  if (record?.lessonContent) {
+    parts.push('文字')
+  }
+
+  const mediaCount = record?.mediaItems?.length || 0
+  if (mediaCount > 0) {
+    parts.push(`${mediaCount}个素材`)
+  }
+
+  return parts.length ? parts.join(' · ') : '课后记录'
+}
+
+const goRecord = (record) => {
+  if (!record?._id || !selectedStudentId.value) return
+
+  uni.navigateTo({
+    url: `/pages/guardian/records?studentId=${selectedStudentId.value}&recordId=${record._id}`
+  })
+}
+
+const goCourseRecord = (course) => {
+  if (!course?.lessonRecord) return
+  goRecord(course.lessonRecord)
 }
 
 const goSchedule = () => {
@@ -301,9 +344,28 @@ const goMine = () => {
   gap: 12rpx;
 }
 
+.course-row.clickable,
+.record-row {
+  cursor: pointer;
+}
+
 .course-row:last-child,
 .record-row:last-child {
   border-bottom: none;
+}
+
+.course-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.course-side,
+.record-side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6rpx;
 }
 
 .course-time,
@@ -314,20 +376,32 @@ const goMine = () => {
 
 .course-name,
 .record-title {
+  display: block;
   font-size: 28rpx;
   color: #303133;
   font-weight: bold;
 }
 
-.record-title,
 .record-date {
   display: block;
+}
+
+.record-summary {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #909399;
 }
 
 .status,
 .record-count {
   flex-shrink: 0;
   font-size: 24rpx;
+  color: #409EFF;
+}
+
+.record-link {
+  font-size: 22rpx;
   color: #409EFF;
 }
 

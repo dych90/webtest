@@ -89,6 +89,33 @@ const sanitizeMediaItems = (mediaItems) => {
     .filter(Boolean)
 }
 
+const mergeLessonRecordMediaItems = (oldMediaItems = [], requestedMediaItems = []) => {
+  if (!Array.isArray(requestedMediaItems)) return undefined
+
+  const oldMediaMap = {}
+  oldMediaItems.forEach((item) => {
+    if (!item || !item.id) return
+    const plainItem = item.toObject ? item.toObject() : item
+    oldMediaMap[plainItem.id.toString()] = plainItem
+  })
+
+  return requestedMediaItems
+    .slice(0, 12)
+    .map((item) => {
+      if (!item || !item.id || !['image', 'audio'].includes(item.type)) {
+        return null
+      }
+
+      const itemId = item.id.toString()
+      if (oldMediaMap[itemId]) {
+        return oldMediaMap[itemId]
+      }
+
+      return sanitizeMediaItems([item])[0] || null
+    })
+    .filter(Boolean)
+}
+
 const buildLessonRecordNotifyData = (lessonRecord, student, courseType) => {
   const mediaCount = Array.isArray(lessonRecord.mediaItems) ? lessonRecord.mediaItems.length : 0
   const summaryParts = []
@@ -669,7 +696,12 @@ const updateLessonRecord = async (req, res) => {
       return res.status(403).json({ message: '无权限修改此消课记录' })
     }
     
-    const lessonRecord = await LessonRecord.findByIdAndUpdate(id, req.body, { new: true })
+    const updateData = { ...req.body }
+    if (Array.isArray(req.body.mediaItems)) {
+      updateData.mediaItems = mergeLessonRecordMediaItems(oldRecord.mediaItems, req.body.mediaItems)
+    }
+
+    const lessonRecord = await LessonRecord.findByIdAndUpdate(id, updateData, { new: true })
     
     if (req.body.courseId || oldRecord.courseId) {
       const courseId = req.body.courseId || oldRecord.courseId

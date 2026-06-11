@@ -30,14 +30,19 @@
             v-for="course in group.courses"
             :key="course._id"
             class="course-row"
-            :class="course.status"
+            :class="[course.status, { clickable: course.lessonRecord }]"
+            @click="goCourseRecord(course)"
           >
             <text class="course-time">{{ formatTime(course.startTime) }}-{{ formatTime(course.endTime) }}</text>
             <view class="course-main">
               <text class="course-name">{{ course.courseTypeId?.name || '课程' }}</text>
               <text class="teacher-name">老师：{{ course.teacherId?.name || '未设置' }}</text>
+              <text v-if="course.lessonRecord" class="record-summary">{{ getRecordSummary(course.lessonRecord) }}</text>
             </view>
-            <text class="status">{{ getStatusText(course.status) }}</text>
+            <view class="course-side">
+              <text class="status">{{ getStatusText(course.status) }}</text>
+              <text v-if="course.lessonRecord" class="record-link" @click.stop="goCourseRecord(course)">看记录</text>
+            </view>
           </view>
         </view>
       </view>
@@ -178,6 +183,28 @@ const getStatusText = (status) => {
   return map[status] || '待上课'
 }
 
+const getRecordSummary = (record) => {
+  const parts = []
+  if (record?.lessonContent) {
+    parts.push('文字')
+  }
+
+  const mediaCount = record?.mediaItems?.length || 0
+  if (mediaCount > 0) {
+    parts.push(`${mediaCount}个素材`)
+  }
+
+  return parts.length ? parts.join(' · ') : '课后记录'
+}
+
+const goCourseRecord = (course) => {
+  if (!course?.lessonRecord?._id || !selectedStudentId.value) return
+
+  uni.navigateTo({
+    url: `/pages/guardian/records?studentId=${selectedStudentId.value}&recordId=${course.lessonRecord._id}`
+  })
+}
+
 const goHome = () => {
   uni.navigateTo({ url: '/pages/guardian/home' })
 }
@@ -285,10 +312,14 @@ const goMine = () => {
   padding: 12rpx 18rpx;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 120rpx 1fr 86rpx;
+  grid-template-columns: 120rpx 1fr 110rpx;
   column-gap: 12rpx;
   align-items: center;
   border-bottom: 1rpx solid #f0f0f0;
+}
+
+.course-row.clickable {
+  cursor: pointer;
 }
 
 .course-row:last-child {
@@ -330,9 +361,29 @@ const goMine = () => {
   color: #909399;
 }
 
+.record-summary {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #67C23A;
+}
+
+.course-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6rpx;
+}
+
 .status {
   font-size: 22rpx;
   color: #606266;
+  text-align: right;
+}
+
+.record-link {
+  font-size: 22rpx;
+  color: #409EFF;
   text-align: right;
 }
 

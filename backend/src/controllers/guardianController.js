@@ -96,6 +96,40 @@ const requireGuardianStudent = async (req, res) => {
   return binding
 }
 
+const toPlainObject = (doc) => {
+  return doc?.toObject ? doc.toObject() : doc
+}
+
+const attachLessonRecordsToCourses = async (courses = []) => {
+  if (!courses.length) return []
+
+  const courseIds = courses.map(course => course?._id).filter(Boolean)
+  if (!courseIds.length) return courses.map(toPlainObject)
+
+  const lessonRecords = await LessonRecord.find({ courseId: { $in: courseIds } })
+    .sort({ recordDate: -1, createdAt: -1 })
+    .select('courseTypeId courseId lessonsConsumed lessonContent mediaItems isDeducted isGiftLesson recordDate courseStartTime createdAt')
+    .populate('courseTypeId', 'name duration')
+
+  const recordMap = {}
+  lessonRecords.forEach(record => {
+    const plainRecord = toPlainObject(record)
+    const courseId = plainRecord.courseId?.toString()
+    if (courseId && !recordMap[courseId]) {
+      recordMap[courseId] = plainRecord
+    }
+  })
+
+  return courses.map(course => {
+    const plainCourse = toPlainObject(course)
+    const courseId = plainCourse._id?.toString()
+    return {
+      ...plainCourse,
+      lessonRecord: courseId ? recordMap[courseId] || null : null
+    }
+  })
+}
+
 const createInvite = async (req, res) => {
   try {
     const { studentId } = req.body
@@ -293,6 +327,7 @@ const getOverview = async (req, res) => {
         .select('-notes')
         .limit(5)
     ])
+    const todayCoursesWithRecords = await attachLessonRecordsToCourses(todayCourses)
 
     res.json({
       message: '获取成功',
@@ -300,7 +335,7 @@ const getOverview = async (req, res) => {
         student,
         balance: balance || { remainingLessons: 0 },
         nextCourse,
-        todayCourses,
+        todayCourses: todayCoursesWithRecords,
         recentLessonRecords,
         recentPayments
       }
@@ -331,10 +366,11 @@ const getCourses = async (req, res) => {
       .select('-notes -reminderSent')
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name phone username')
+    const coursesWithRecords = await attachLessonRecordsToCourses(courses)
 
     res.json({
       message: '获取成功',
-      data: courses
+      data: coursesWithRecords
     })
   } catch (error) {
     console.error('获取学生端课程失败:', error)

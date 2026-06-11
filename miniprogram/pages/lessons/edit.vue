@@ -73,6 +73,51 @@
         <text class="form-label">上课曲目</text>
         <textarea class="form-textarea" v-model="form.lessonContent" placeholder="请输入上课曲目" />
       </view>
+
+      <view class="form-item">
+        <view class="form-label-row">
+          <text class="form-label">课堂照片</text>
+          <text class="form-hint">{{ totalPhotoCount }}/6</text>
+        </view>
+        <view class="photo-grid">
+          <view class="photo-item" v-for="(media, imageIndex) in savedImages" :key="media.id">
+            <image class="photo-preview" :src="mediaCache[media.id]" mode="aspectFill" @click="previewPhoto(imageIndex)"></image>
+            <text class="photo-remove" @click.stop="removeSavedMedia(media.id)">×</text>
+          </view>
+          <view class="photo-item" v-for="(photo, photoIndex) in newPhotoFiles" :key="photo.tempFilePath || photo.path">
+            <image class="photo-preview" :src="photo.tempFilePath || photo.path" mode="aspectFill" @click="previewPhoto(savedImages.length + photoIndex)"></image>
+            <text class="photo-remove" @click.stop="removeNewPhoto(photoIndex)">×</text>
+          </view>
+          <view v-if="totalPhotoCount < 6" class="photo-add" @click="choosePhotos">
+            <text class="photo-add-icon">+</text>
+            <text class="photo-add-text">添加</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">语音记录</text>
+        <view class="voice-box">
+          <view
+            v-for="media in savedAudios"
+            :key="media.id"
+            class="voice-result"
+          >
+            <text class="voice-info" @click="playVoice(mediaCache[media.id])">播放已保存语音 {{ formatDuration(media.duration || 0) }}</text>
+            <text class="voice-remove" @click="removeSavedMedia(media.id)">删除</text>
+          </view>
+          <button v-if="!recording" class="voice-btn" @click="startRecord">
+            {{ newVoiceFile ? '重新录音' : '开始录音' }}
+          </button>
+          <button v-else class="voice-btn recording" @click="stopRecord">
+            停止录音 {{ formatDuration(recordDuration) }}
+          </button>
+          <view v-if="newVoiceFile" class="voice-result">
+            <text class="voice-info" @click="playVoice(newVoiceFile.tempFilePath)">播放新录音 {{ formatDuration(newVoiceFile.duration || 0) }}</text>
+            <text class="voice-remove" @click="removeNewVoice">删除</text>
+          </view>
+        </view>
+      </view>
       
       <view class="form-item switch-item">
         <text class="form-label">是否扣费</text>
@@ -93,8 +138,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { get, put } from '@/utils/request'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { get, put, uploadFile, uploadFileData, downloadFile } from '@/utils/request'
 
 const students = ref([])
 const filteredStudents = ref([])
@@ -109,6 +154,14 @@ const recordId = ref('')
 const lessonCountIndex = ref(1)
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const savedMediaItems = ref([])
+const mediaCache = ref({})
+const newPhotoFiles = ref([])
+const newVoiceFile = ref(null)
+const recording = ref(false)
+const recordDuration = ref(0)
+let recorderManager = null
+let recordTimer = null
 
 const form = reactive({
   studentId: '',
@@ -126,6 +179,18 @@ const courseTypeOptions = computed(() => {
   return courseTypes.value.map(c => c.name)
 })
 
+const savedImages = computed(() => {
+  return savedMediaItems.value.filter(item => item.type === 'image')
+})
+
+const savedAudios = computed(() => {
+  return savedMediaItems.value.filter(item => item.type === 'audio')
+})
+
+const totalPhotoCount = computed(() => {
+  return savedImages.value.length + newPhotoFiles.value.length
+})
+
 const courseOptions = computed(() => {
   const filtered = courses.value.filter(c => {
     const courseStudentId = c.studentId?._id || c.studentId
@@ -138,16 +203,40 @@ const courseOptions = computed(() => {
   })
 })
 
-onMounted(() => {
+onMounted(async () => {
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   recordId.value = currentPage.options?.id || ''
   if (recordId.value) {
-    fetchRecord()
-    fetchStudents()
-    fetchCourses()
-    fetchCourseTypes()
+    await fetchRecord()
+    await Promise.all([
+      fetchStudents(),
+      fetchCourses(),
+      fetchCourseTypes()
+    ])
   }
+
+  if (uni.getRecorderManager) {
+    recorderManager = uni.getRecorderManager()
+    recorderManager.onStop((res) => {
+      recording.value = false
+      clearRecordTimer()
+      newVoiceFile.value = {
+        tempFilePath: res.tempFilePath,
+        duration: res.duration || recordDuration.value,
+        size: res.fileSize || 0
+      }
+    })
+    recorderManager.onError((error) => {
+      recording.value = false
+      clearRecordTimer()
+      uni.showToast({ title: error.errMsg || '录音失败', icon: 'none' })
+    })
+  }
+})
+
+onUnmounted(() => {
+  clearRecordTimer()
 })
 
 const fetchRecord = async () => {
@@ -161,6 +250,9 @@ const fetchRecord = async () => {
     form.lessonContent = data.lessonContent || ''
     form.isDeducted = data.isDeducted !== false
     form.notes = data.notes || ''
+    savedMediaItems.value = data.mediaItems || []
+    mediaCache.value = {}
+    loadRecordMedia()
     
     if (data.courseStartTime) {
       const date = new Date(data.courseStartTime)
@@ -191,7 +283,10 @@ const fetchStudents = async () => {
 const fetchCourses = async () => {
   try {
     const res = await get('/courses')
-    courses.value = (res.data || []).filter(c => c.status === 'normal')
+    courses.value = (res.data || []).filter(c => {
+      const courseId = c._id || c
+      return c.status === 'normal' || courseId === form.courseId
+    })
     
     const idx = courses.value.findIndex(c => (c._id || c) === form.courseId)
     courseIndex.value = idx >= 0 ? idx : -1
@@ -262,6 +357,199 @@ const onLessonChange = (e) => {
   form.lessonsConsumed = lessonCountValues[e.detail.value]
 }
 
+const clearRecordTimer = () => {
+  if (recordTimer) {
+    clearInterval(recordTimer)
+    recordTimer = null
+  }
+}
+
+const formatDuration = (duration = 0) => {
+  const totalSeconds = Math.max(0, Math.round(duration / 1000))
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0')
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0')
+  return `${minutes}:${seconds}`
+}
+
+const loadRecordMedia = async () => {
+  const mediaItems = savedMediaItems.value.filter(item => item.id && item.url && !mediaCache.value[item.id])
+
+  for (const media of mediaItems) {
+    try {
+      const tempFilePath = await downloadFile(media.url)
+      mediaCache.value = {
+        ...mediaCache.value,
+        [media.id]: tempFilePath
+      }
+    } catch (error) {
+      console.warn('课后记录媒体下载失败', media.id, error?.message || error)
+    }
+  }
+}
+
+const choosePhotos = async () => {
+  const remainCount = 6 - totalPhotoCount.value
+  if (remainCount <= 0) return
+
+  try {
+    const result = uni.chooseMedia ? await new Promise((resolve, reject) => {
+      uni.chooseMedia({
+        count: remainCount,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        success: resolve,
+        fail: reject
+      })
+    }) : await new Promise((resolve, reject) => {
+      uni.chooseImage({
+        count: remainCount,
+        sourceType: ['album', 'camera'],
+        sizeType: ['compressed'],
+        success: resolve,
+        fail: reject
+      })
+    })
+
+    const sourceFiles = result.tempFiles || (result.tempFilePaths || []).map(path => ({ path }))
+    const files = sourceFiles.map(file => ({
+      tempFilePath: file.tempFilePath || file.path,
+      size: file.size || 0
+    })).filter(file => file.tempFilePath)
+
+    newPhotoFiles.value = [...newPhotoFiles.value, ...files].slice(0, 6 - savedImages.value.length)
+  } catch (error) {
+    if (error?.errMsg?.includes('cancel')) return
+    uni.showToast({ title: '选择照片失败', icon: 'none' })
+  }
+}
+
+const previewPhoto = (index) => {
+  const savedUrls = savedImages.value
+    .map(media => mediaCache.value[media.id])
+    .filter(Boolean)
+  const newUrls = newPhotoFiles.value
+    .map(photo => photo.tempFilePath || photo.path)
+    .filter(Boolean)
+  const urls = [...savedUrls, ...newUrls]
+  if (urls.length === 0) return
+
+  uni.previewImage({
+    urls,
+    current: urls[Math.min(index, urls.length - 1)]
+  })
+}
+
+const removeSavedMedia = (mediaId) => {
+  savedMediaItems.value = savedMediaItems.value.filter(item => item.id !== mediaId)
+}
+
+const removeNewPhoto = (index) => {
+  newPhotoFiles.value.splice(index, 1)
+}
+
+const startRecord = () => {
+  if (!recorderManager) {
+    uni.showToast({ title: '当前环境不支持录音', icon: 'none' })
+    return
+  }
+
+  newVoiceFile.value = null
+  recordDuration.value = 0
+  recording.value = true
+  clearRecordTimer()
+  recordTimer = setInterval(() => {
+    recordDuration.value += 1000
+  }, 1000)
+
+  try {
+    recorderManager.start({
+      duration: 10 * 60 * 1000,
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+      format: 'mp3'
+    })
+  } catch (error) {
+    recording.value = false
+    clearRecordTimer()
+    uni.showToast({ title: '录音启动失败', icon: 'none' })
+  }
+}
+
+const stopRecord = () => {
+  if (!recorderManager || !recording.value) return
+
+  recorderManager.stop()
+  clearRecordTimer()
+}
+
+const playVoice = (src) => {
+  if (!src) return
+
+  const audioContext = uni.createInnerAudioContext()
+  audioContext.src = src
+  audioContext.play()
+  audioContext.onEnded(() => {
+    audioContext.destroy()
+  })
+  audioContext.onError(() => {
+    audioContext.destroy()
+    uni.showToast({ title: '播放失败', icon: 'none' })
+  })
+}
+
+const removeNewVoice = () => {
+  newVoiceFile.value = null
+}
+
+const uploadEditMedia = async () => {
+  const mediaItems = []
+
+  for (const photo of newPhotoFiles.value) {
+    try {
+      const formData = {
+        mediaType: 'image'
+      }
+      let result
+      try {
+        result = await uploadFile('/lesson-records/media', photo.tempFilePath, formData)
+      } catch (uploadError) {
+        console.warn('照片uploadFile失败，尝试base64降级上传:', uploadError?.message || uploadError)
+        result = await uploadFileData('/lesson-records/media-data', photo.tempFilePath, formData)
+      }
+      if (result.data) {
+        mediaItems.push(result.data)
+      }
+    } catch (error) {
+      throw new Error(`照片上传失败：${error.message || '请检查网络'}`)
+    }
+  }
+
+  if (newVoiceFile.value?.tempFilePath) {
+    try {
+      const formData = {
+        mediaType: 'audio',
+        duration: newVoiceFile.value.duration || 0
+      }
+      let result
+      try {
+        result = await uploadFile('/lesson-records/media', newVoiceFile.value.tempFilePath, formData)
+      } catch (uploadError) {
+        console.warn('语音uploadFile失败，尝试base64降级上传:', uploadError?.message || uploadError)
+        result = await uploadFileData('/lesson-records/media-data', newVoiceFile.value.tempFilePath, formData)
+      }
+      if (result.data) {
+        mediaItems.push(result.data)
+      }
+    } catch (error) {
+      throw new Error(`语音上传失败：${error.message || '请检查网络'}`)
+    }
+  }
+
+  return mediaItems
+}
+
 const handleCancel = () => {
   uni.navigateBack()
 }
@@ -272,24 +560,30 @@ const handleSubmit = async () => {
     uni.showToast({ title: '请选择有效的消课数量', icon: 'none' })
     return
   }
+  if (recording.value) {
+    uni.showToast({ title: '请先停止录音', icon: 'none' })
+    return
+  }
   
   loading.value = true
   
-  const submitData = {
-    studentId: form.studentId,
-    courseId: form.courseId || undefined,
-    courseTypeId: form.courseTypeId || undefined,
-    lessonsConsumed: lessonsConsumed,
-    lessonContent: form.lessonContent,
-    isDeducted: form.isDeducted,
-    notes: form.notes
-  }
-  
-  if (form.courseDate && form.courseTime) {
-    submitData.courseStartTime = new Date(`${form.courseDate}T${form.courseTime}:00`).toISOString()
-  }
-  
   try {
+    const newMediaItems = await uploadEditMedia()
+    const submitData = {
+      studentId: form.studentId,
+      courseId: form.courseId || undefined,
+      courseTypeId: form.courseTypeId || undefined,
+      lessonsConsumed: lessonsConsumed,
+      lessonContent: form.lessonContent,
+      mediaItems: [...savedMediaItems.value, ...newMediaItems],
+      isDeducted: form.isDeducted,
+      notes: form.notes
+    }
+
+    if (form.courseDate && form.courseTime) {
+      submitData.courseStartTime = new Date(`${form.courseDate}T${form.courseTime}:00`).toISOString()
+    }
+
     await put(`/lesson-records/${recordId.value}`, submitData)
     uni.showToast({ title: '更新成功', icon: 'success' })
     setTimeout(() => {
@@ -326,6 +620,22 @@ const handleSubmit = async () => {
   font-size: 28rpx;
   color: #333;
   margin-bottom: 12rpx;
+}
+
+.form-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.form-label-row .form-label {
+  margin-bottom: 0;
+}
+
+.form-hint {
+  font-size: 24rpx;
+  color: #909399;
 }
 
 .form-input {
@@ -371,6 +681,103 @@ const handleSubmit = async () => {
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+}
+
+.photo-item,
+.photo-add {
+  position: relative;
+  height: 140rpx;
+  border-radius: 10rpx;
+  overflow: hidden;
+  background-color: #f5f7fa;
+}
+
+.photo-preview {
+  width: 100%;
+  height: 100%;
+}
+
+.photo-remove {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 34rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  text-align: center;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 28rpx;
+}
+
+.photo-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx dashed #c0c4cc;
+}
+
+.photo-add-icon {
+  font-size: 42rpx;
+  line-height: 42rpx;
+  color: #909399;
+}
+
+.photo-add-text {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #909399;
+}
+
+.voice-box {
+  padding: 18rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+}
+
+.voice-btn {
+  height: 68rpx;
+  line-height: 68rpx;
+  margin: 0;
+  padding: 0 24rpx;
+  border-radius: 8rpx;
+  background-color: #ecf5ff;
+  color: #409EFF;
+  font-size: 26rpx;
+}
+
+.voice-btn.recording {
+  background-color: #fef0f0;
+  color: #F56C6C;
+}
+
+.voice-result {
+  margin-bottom: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.voice-result:last-child {
+  margin-bottom: 0;
+}
+
+.voice-info {
+  font-size: 26rpx;
+  color: #409EFF;
+}
+
+.voice-remove {
+  font-size: 24rpx;
+  color: #F56C6C;
 }
 
 .switch-item {

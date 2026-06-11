@@ -66,6 +66,10 @@
               <text class="info-label">上课曲目：</text>
               <text class="info-value">{{ record.lessonContent }}</text>
             </view>
+            <view class="record-info" v-if="getMediaSummary(record)">
+              <text class="info-label">课后素材：</text>
+              <text class="info-value primary">{{ getMediaSummary(record) }}</text>
+            </view>
             <view class="record-info">
               <text class="info-label">是否扣费：</text>
               <text class="info-value" :class="record.isDeducted ? 'text-success' : 'text-info'">
@@ -177,6 +181,22 @@ const getStudentBalanceText = (student) => {
     return getPaymentTypeText(student.paymentType)
   }
   return `剩余${student.remainingLessons ?? 0}课时`
+}
+
+const getMediaSummary = (record) => {
+  const mediaItems = record.mediaItems || []
+  const imageCount = mediaItems.filter(item => item.type === 'image').length
+  const audioCount = mediaItems.filter(item => item.type === 'audio').length
+  const parts = []
+
+  if (imageCount > 0) {
+    parts.push(`${imageCount}张照片`)
+  }
+  if (audioCount > 0) {
+    parts.push(`${audioCount}段语音`)
+  }
+
+  return parts.join('，')
 }
 
 const fetchPendingCourses = async () => {
