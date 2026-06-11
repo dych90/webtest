@@ -112,7 +112,7 @@ const createInvite = async (req, res) => {
     }
 
     if (!user || (user.role !== 'admin' && student.teacherId.toString() !== req.userId.toString())) {
-      return res.status(403).json({ message: '无权为该学生生成家长绑定码' })
+      return res.status(403).json({ message: '无权为该学生生成学生端绑定码' })
     }
 
     const token = crypto.randomBytes(16).toString('hex')
@@ -135,7 +135,7 @@ const createInvite = async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('生成家长绑定邀请失败:', error)
+    console.error('生成学生端绑定邀请失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -166,7 +166,7 @@ const getInviteInfo = async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('获取家长绑定邀请失败:', error)
+    console.error('获取学生端绑定邀请失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -214,7 +214,7 @@ const bindByInvite = async (req, res) => {
       data: session
     })
   } catch (error) {
-    console.error('家长绑定失败:', error)
+    console.error('学生端绑定失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -239,7 +239,7 @@ const login = async (req, res) => {
       data: session
     })
   } catch (error) {
-    console.error('家长端登录失败:', error)
+    console.error('学生端登录失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -253,7 +253,7 @@ const getStudents = async (req, res) => {
       data: session.students
     })
   } catch (error) {
-    console.error('获取家长绑定学生失败:', error)
+    console.error('获取学生端绑定学生失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -306,7 +306,7 @@ const getOverview = async (req, res) => {
       }
     })
   } catch (error) {
-    console.error('获取家长端学生概览失败:', error)
+    console.error('获取学生端学生概览失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -337,7 +337,7 @@ const getCourses = async (req, res) => {
       data: courses
     })
   } catch (error) {
-    console.error('获取家长端课程失败:', error)
+    console.error('获取学生端课程失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -358,7 +358,7 @@ const getLessonRecords = async (req, res) => {
       data: records
     })
   } catch (error) {
-    console.error('获取家长端消课记录失败:', error)
+    console.error('获取学生端消课记录失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -377,7 +377,7 @@ const getPayments = async (req, res) => {
       data: payments
     })
   } catch (error) {
-    console.error('获取家长端缴费记录失败:', error)
+    console.error('获取学生端缴费记录失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -394,7 +394,7 @@ const getBalance = async (req, res) => {
       data: balance || { studentId: binding.studentId, remainingLessons: 0 }
     })
   } catch (error) {
-    console.error('获取家长端课时余额失败:', error)
+    console.error('获取学生端课时余额失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }
@@ -408,7 +408,7 @@ const subscribe = async (req, res) => {
 
     res.json({ message: '订阅状态已记录' })
   } catch (error) {
-    console.error('记录家长端订阅状态失败:', error)
+    console.error('记录学生端订阅状态失败:', error)
     res.status(500).json({ message: error.message || '服务器错误' })
   }
 }

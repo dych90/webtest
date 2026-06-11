@@ -1,7 +1,7 @@
 <template>
   <view class="guardian-page">
     <view class="profile-card">
-      <text class="profile-title">家长端</text>
+      <text class="profile-title">学生端</text>
       <text class="profile-desc">只能查看已绑定学生的数据</text>
     </view>
 
@@ -36,7 +36,7 @@
     </view>
 
     <view class="card">
-      <button class="logout-btn" @click="handleLogout">退出家长端</button>
+      <button class="logout-btn" @click="handleLogout">退出学生端</button>
     </view>
 
     <view class="guardian-tabbar">
@@ -99,7 +99,7 @@ const handleSubscribe = async () => {
 const handleLogout = () => {
   uni.showModal({
     title: '退出登录',
-    content: '确定退出家长端吗？',
+    content: '确定退出学生端吗？',
     success: (res) => {
       if (!res.confirm) return
 

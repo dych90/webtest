@@ -29,11 +29,11 @@
           <text class="info-value">{{ student.phone || '未设置' }}</text>
         </view>
         <view class="info-item">
-          <text class="info-label">家长姓名</text>
+          <text class="info-label">联系人姓名</text>
           <text class="info-value">{{ student.parentName || '未设置' }}</text>
         </view>
         <view class="info-item">
-          <text class="info-label">家长电话</text>
+          <text class="info-label">联系人电话</text>
           <text class="info-value">{{ student.parentPhone || '未设置' }}</text>
         </view>
         <view class="info-item">
@@ -112,7 +112,7 @@
     </view>
     
     <view class="action-section">
-      <button class="btn-guardian" @click="handleCreateGuardianInvite">家长绑定码</button>
+      <button class="btn-guardian" @click="handleCreateGuardianInvite">学生端绑定码</button>
       <button class="btn-edit" @click="handleEdit">编辑学生</button>
       <button class="btn-delete" @click="handleDelete">删除学生</button>
     </view>
@@ -184,8 +184,8 @@ const handleCreateGuardianInvite = async () => {
       data: invite.token,
       success: () => {
         uni.showModal({
-          title: '家长绑定码',
-          content: `绑定码已复制：${invite.token}\n家长端路径：${invite.path}`,
+          title: '学生端绑定码',
+          content: `绑定码已复制：${invite.token}\n学生端路径：${invite.path}`,
           showCancel: false
         })
       }

@@ -338,7 +338,7 @@ const sendMorningDailyReminder = async () => {
     const guardiansToRemind = {}
     await addCoursesToGuardianMap(guardiansToRemind, courses, 'todayCourses')
 
-    console.log(`家长端今日课程提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
+    console.log(`学生端今日课程提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
 
     for (const openId in guardiansToRemind) {
       const { todayCourses } = guardiansToRemind[openId]
@@ -360,9 +360,9 @@ const sendMorningDailyReminder = async () => {
         }
 
         await sendSubscribeMessage(openId, messageData, 'pages/guardian/schedule')
-        console.log(`已向家长 openId=${openId} 发送今日课程提醒，课程数: ${todayCourses.length}`)
+        console.log(`已向学生端 openId=${openId} 发送今日课程提醒，课程数: ${todayCourses.length}`)
       } catch (error) {
-        console.error(`发送家长端今日课程提醒失败 openId=${openId}:`, error.message)
+        console.error(`发送学生端今日课程提醒失败 openId=${openId}:`, error.message)
       }
     }
 
@@ -448,7 +448,7 @@ const sendEveningDailyReminder = async () => {
     await addCoursesToGuardianMap(guardiansToRemind, todayCompletedCourses, 'todayCompletedCourses')
     await addCoursesToGuardianMap(guardiansToRemind, tomorrowCourses, 'tomorrowCourses')
 
-    console.log(`家长端晚上10点提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
+    console.log(`学生端晚上10点提醒：找到 ${Object.keys(guardiansToRemind).length} 个需要提醒的微信`)
 
     for (const openId in guardiansToRemind) {
       const { todayCompletedCourses, tomorrowCourses } = guardiansToRemind[openId]
@@ -470,9 +470,9 @@ const sendEveningDailyReminder = async () => {
         }
 
         await sendSubscribeMessage(openId, messageData, 'pages/guardian/schedule')
-        console.log(`已向家长 openId=${openId} 发送晚上汇总，今日已上: ${todayCompletedCourses.length}节，明日安排: ${tomorrowCourses.length}节`)
+        console.log(`已向学生端 openId=${openId} 发送晚上汇总，今日已上: ${todayCompletedCourses.length}节，明日安排: ${tomorrowCourses.length}节`)
       } catch (error) {
-        console.error(`发送家长端晚上汇总失败 openId=${openId}:`, error.message)
+        console.error(`发送学生端晚上汇总失败 openId=${openId}:`, error.message)
       }
     }
 

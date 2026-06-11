@@ -71,7 +71,7 @@
         </button>
 
         <button class="guardian-entry-btn" @tap="goGuardianLogin">
-          家长端入口
+          学生端入口
         </button>
       </view>
       
@@ -478,10 +478,11 @@ const goGuardianLogin = () => {
   line-height: 82rpx;
   margin-top: 18rpx;
   border-radius: 12rpx;
-  border: 2rpx solid rgba(255, 255, 255, 0.7);
-  background-color: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  border: 2rpx solid rgba(102, 126, 234, 0.35);
+  background-color: #f4f5ff;
+  color: #667eea;
   font-size: 28rpx;
+  font-weight: 600;
 }
 
 .btn-text {

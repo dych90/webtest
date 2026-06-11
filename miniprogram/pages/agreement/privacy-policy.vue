@@ -11,7 +11,7 @@
         <text class="section-text">为了向您提供服务，我们会收集以下信息：</text>
         <text class="section-text">1.1 账号信息：用户名、密码等登录凭证信息。</text>
         <text class="section-text">1.2 身份信息：姓名、性别、身份证号（可选）。</text>
-        <text class="section-text">1.3 联系信息：手机号码、家长联系电话。</text>
+        <text class="section-text">1.3 联系信息：手机号码、联系人电话。</text>
         <text class="section-text">1.4 业务信息：学生信息、课程安排、缴费记录、消课记录等教学管理相关数据。</text>
         <text class="section-text">1.5 设备信息：包括设备型号、操作系统版本、设备标识符等信息。</text>
       </view>

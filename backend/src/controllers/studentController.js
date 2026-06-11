@@ -7,6 +7,9 @@ const xlsx = require('xlsx')
 const fs = require('fs')
 const path = require('path')
 
+const LEGACY_PARENT_NAME_COLUMN = '\u5bb6\u957f\u59d3\u540d'
+const LEGACY_PARENT_PHONE_COLUMN = '\u5bb6\u957f\u7535\u8bdd'
+
 const getStudents = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
@@ -135,8 +138,8 @@ const importStudents = async (req, res) => {
           name: row['姓名'] || row['name'] || '',
           gender: row['性别'] || row['gender'] || '',
           phone: row['联系电话'] || row['phone'] || '',
-          parentName: row['家长姓名'] || row['parentName'] || '',
-          parentPhone: row['家长电话'] || row['parentPhone'] || '',
+          parentName: row['联系人姓名'] || row[LEGACY_PARENT_NAME_COLUMN] || row['parentName'] || '',
+          parentPhone: row['联系人电话'] || row[LEGACY_PARENT_PHONE_COLUMN] || row['parentPhone'] || '',
           practiceTeacher: row['陪练老师'] || row['practiceTeacher'] || '',
           notes: row['备注'] || row['notes'] || '',
           paymentType: 'prepaid',

@@ -11,7 +11,7 @@
     {
       "path": "pages/guardian/login",
       "style": {
-        "navigationBarTitleText": "家长端登录",
+        "navigationBarTitleText": "学生端登录",
         "navigationBarBackgroundColor": "#409EFF",
         "navigationBarTextStyle": "white"
       }
@@ -19,7 +19,7 @@
     {
       "path": "pages/guardian/home",
       "style": {
-        "navigationBarTitleText": "家长端",
+        "navigationBarTitleText": "学生端",
         "navigationBarBackgroundColor": "#409EFF",
         "navigationBarTextStyle": "white"
       }

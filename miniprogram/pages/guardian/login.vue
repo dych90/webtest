@@ -1,7 +1,7 @@
 <template>
   <view class="guardian-login">
     <view class="header">
-      <text class="title">家长端</text>
+      <text class="title">学生端</text>
       <text class="subtitle">查看课表、课时和缴费记录</text>
     </view>
 
@@ -25,7 +25,7 @@
     </view>
 
     <view class="card">
-      <text class="card-title">已绑定家长</text>
+      <text class="card-title">已绑定学生</text>
       <text class="desc">如果这个微信已经绑定过学生，可以直接登录。</text>
       <button class="secondary-btn" :loading="loggingIn" @click="handleLogin">
         微信登录

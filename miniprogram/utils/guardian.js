@@ -42,7 +42,7 @@ export const requestGuardianSubscription = async () => {
     await post('/guardian/subscribe')
     return true
   } catch (error) {
-    console.warn('家长端订阅提醒失败', error?.message || error)
+    console.warn('学生端订阅提醒失败', error?.message || error)
     return false
   }
 }

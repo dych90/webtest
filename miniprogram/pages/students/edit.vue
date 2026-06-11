@@ -32,8 +32,8 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">家长姓名</text>
-        <input class="form-input" v-model="form.parentName" placeholder="请输入家长姓名" />
+        <text class="form-label">联系人姓名</text>
+        <input class="form-input" v-model="form.parentName" placeholder="请输入联系人姓名" />
       </view>
       
       <view class="form-item">
@@ -42,8 +42,8 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">家长电话</text>
-        <input class="form-input" v-model="form.parentPhone" placeholder="请输入家长电话" type="tel" />
+        <text class="form-label">联系人电话</text>
+        <input class="form-input" v-model="form.parentPhone" placeholder="请输入联系人电话" type="tel" />
       </view>
       
       <view class="form-item">
