@@ -1,5 +1,5 @@
 <template>
-  <view class="lessons-container">
+  <view class="lessons-container" :class="themeClass">
     <view class="tabs">
       <view 
         class="tab-item" 
@@ -132,6 +132,7 @@ import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
+import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
 
 const activeTab = ref('records')
 const lessonRecords = ref([])
@@ -140,6 +141,8 @@ const searchKeyword = ref('')
 const courseSearchKeyword = ref('')
 const filteredRecords = ref([])
 const filteredCourses = ref([])
+const themeClass = ref(getThemeClass())
+const themeColors = ref(getCurrentTheme())
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -244,7 +247,7 @@ const handleDelete = (record) => {
   uni.showModal({
     title: '确认删除',
     content: '确定要删除这条消课记录吗？',
-    confirmColor: '#F56C6C',
+    confirmColor: themeColors.value.danger,
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -289,30 +292,39 @@ const handleAttend = async (course) => {
 }
 
 onMounted(() => {
+  refreshTheme()
   fetchRecords()
   fetchPendingCourses()
 })
 
 onShow(() => {
+  refreshTheme()
   fetchRecords()
   fetchPendingCourses()
 })
+
+const refreshTheme = () => {
+  themeClass.value = getThemeClass()
+  themeColors.value = applyTheme()
+}
 </script>
 
 <style scoped>
 .lessons-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background: var(--theme-page-bg);
   min-height: 100vh;
   padding-bottom: 140rpx;
 }
 
 .tabs {
   display: flex;
-  background-color: #fff;
-  border-radius: 12rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-tab-radius);
   margin-bottom: 20rpx;
   overflow: hidden;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .tab-item {
@@ -320,12 +332,12 @@ onShow(() => {
   text-align: center;
   padding: 24rpx 0;
   font-size: 28rpx;
-  color: #606266;
+  color: var(--theme-muted);
   position: relative;
 }
 
 .tab-item.active {
-  color: #409EFF;
+  color: var(--theme-primary);
   font-weight: bold;
 }
 
@@ -337,17 +349,19 @@ onShow(() => {
   transform: translateX(-50%);
   width: 60rpx;
   height: 4rpx;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   border-radius: 2rpx;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: #fff;
-  border-radius: 12rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-search-radius);
   padding: 16rpx 20rpx;
   margin-bottom: 20rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .search-input {
@@ -359,19 +373,19 @@ onShow(() => {
 }
 
 .search-input::placeholder {
-  color: #c0c4cc;
+  color: var(--theme-muted);
 }
 
 .search-icon {
   font-size: 32rpx;
-  color: #909399;
+  color: var(--theme-muted);
   margin-left: 16rpx;
 }
 
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: var(--theme-muted);
   font-size: 28rpx;
 }
 
@@ -382,9 +396,11 @@ onShow(() => {
 }
 
 .record-item, .course-item {
-  background-color: #fff;
-  border-radius: 16rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-card-radius);
   padding: 24rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .record-header, .course-header {
@@ -393,7 +409,7 @@ onShow(() => {
   align-items: center;
   margin-bottom: 16rpx;
   padding-bottom: 16rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .header-right {
@@ -404,8 +420,8 @@ onShow(() => {
 
 .remaining-lessons {
   font-size: 22rpx;
-  color: #E6A23C;
-  background-color: #fdf6ec;
+  color: var(--theme-warning);
+  background-color: var(--theme-warning-soft);
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
 }
@@ -413,8 +429,8 @@ onShow(() => {
 .remaining-lessons.pay-per-lesson,
 .remaining-lessons.payPerLesson,
 .remaining-lessons.free {
-  color: #909399;
-  background-color: #f4f4f5;
+  color: var(--theme-muted);
+  background-color: var(--theme-bg);
 }
 
 .remaining-lessons.clickable {
@@ -428,18 +444,18 @@ onShow(() => {
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .record-date {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .course-type {
   font-size: 24rpx;
-  color: #409EFF;
-  background-color: #ecf5ff;
+  color: var(--theme-primary);
+  background-color: var(--theme-primary-soft);
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
 }
@@ -457,49 +473,49 @@ onShow(() => {
 }
 
 .info-label {
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .info-value {
-  color: #333;
+  color: var(--theme-text);
 }
 
 .info-value.primary {
-  color: #409EFF;
+  color: var(--theme-primary);
   font-weight: bold;
 }
 
 .text-success {
-  color: #67C23A;
+  color: var(--theme-success);
 }
 
 .text-info {
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .text-gift {
-  color: #9b59b6;
+  color: var(--theme-accent);
 }
 
 .record-info.highlight {
-  background-color: #ecf5ff;
+  background-color: var(--theme-primary-soft);
   padding: 12rpx 16rpx;
   border-radius: 8rpx;
-  border-left: 4rpx solid #409EFF;
+  border-left: 4rpx solid var(--theme-primary);
 }
 
 .record-actions, .course-actions {
   display: flex;
   gap: 16rpx;
   padding-top: 16rpx;
-  border-top: 1rpx solid #f0f0f0;
+  border-top: 1rpx solid var(--theme-border);
 }
 
 .btn-edit {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   color: #fff;
   font-size: 24rpx;
   border: none;
@@ -510,10 +526,10 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #fff;
-  color: #F56C6C;
+  background-color: var(--theme-card);
+  color: var(--theme-danger);
   font-size: 24rpx;
-  border: 2rpx solid #F56C6C;
+  border: 2rpx solid var(--theme-danger);
   border-radius: 8rpx;
 }
 
@@ -521,7 +537,7 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #67C23A;
+  background-color: var(--theme-success);
   color: #fff;
   font-size: 24rpx;
   border: none;
@@ -535,11 +551,11 @@ onShow(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(64, 158, 255, 0.4);
+  box-shadow: 0 10rpx 30rpx rgba(184, 121, 62, 0.34);
 }
 
 .add-btn text {

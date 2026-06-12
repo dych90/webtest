@@ -1,5 +1,5 @@
 <template>
-  <view class="guardian-page">
+  <view class="guardian-page" :class="themeClass">
     <view class="top-card">
       <picker :range="students" range-key="name" :value="studentIndex" @change="onStudentChange">
         <view class="student-picker">
@@ -62,6 +62,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
 import { getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
+import { applyTheme, getThemeClass } from '@/utils/theme'
 
 const now = new Date()
 const currentYear = ref(now.getFullYear())
@@ -69,6 +70,7 @@ const currentMonth = ref(now.getMonth())
 const students = ref([])
 const selectedStudentId = ref('')
 const courses = ref([])
+const themeClass = ref(getThemeClass())
 
 const studentIndex = computed(() => {
   return Math.max(0, students.value.findIndex(student => student._id === selectedStudentId.value))
@@ -97,8 +99,14 @@ const courseGroups = computed(() => {
 })
 
 onShow(() => {
+  refreshTheme()
   fetchStudents()
 })
+
+const refreshTheme = () => {
+  themeClass.value = getThemeClass()
+  applyTheme()
+}
 
 const fetchStudents = async () => {
   try {
@@ -223,14 +231,15 @@ const goMine = () => {
   min-height: 100vh;
   padding: 20rpx 20rpx 120rpx;
   box-sizing: border-box;
-  background-color: #f6f7fb;
+  background: var(--theme-page-bg);
 }
 
 .top-card,
 .day-card {
-  background-color: #fff;
-  border-radius: 8rpx;
-  box-shadow: 0 4rpx 16rpx rgba(31, 45, 61, 0.05);
+  background-color: var(--theme-card);
+  border-radius: var(--theme-guardian-card-radius);
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .top-card {
@@ -244,19 +253,19 @@ const goMine = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1rpx solid #ebeef5;
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .switch-text,
 .day-count {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .month-nav {
@@ -273,13 +282,13 @@ const goMine = () => {
   line-height: 72rpx;
   text-align: center;
   font-size: 44rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .month-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .course-scroll {
@@ -297,14 +306,14 @@ const goMine = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #f8f8f8;
-  border-bottom: 1rpx solid #ebeef5;
+  background-color: var(--theme-bg-soft);
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .day-date {
   font-size: 28rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .course-row {
@@ -327,17 +336,17 @@ const goMine = () => {
 }
 
 .course-row.completed {
-  background-color: #f0f9eb;
+  background-color: var(--theme-success-soft);
 }
 
 .course-row.cancelled,
 .course-row.rescheduled {
-  background-color: #f4f4f5;
+  background-color: var(--theme-bg);
 }
 
 .course-time {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .course-main {
@@ -348,7 +357,7 @@ const goMine = () => {
   display: block;
   font-size: 28rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -358,14 +367,14 @@ const goMine = () => {
   display: block;
   margin-top: 4rpx;
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .record-summary {
   display: block;
   margin-top: 4rpx;
   font-size: 22rpx;
-  color: #67C23A;
+  color: var(--theme-success);
 }
 
 .course-side {
@@ -377,20 +386,20 @@ const goMine = () => {
 
 .status {
   font-size: 22rpx;
-  color: #606266;
+  color: var(--theme-muted);
   text-align: right;
 }
 
 .record-link {
   font-size: 22rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
   text-align: right;
 }
 
 .empty {
   padding: 90rpx 0;
   text-align: center;
-  color: #909399;
+  color: var(--theme-muted);
   font-size: 28rpx;
 }
 
@@ -402,8 +411,8 @@ const goMine = () => {
   height: 96rpx;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background-color: #fff;
-  border-top: 1rpx solid #ebeef5;
+  background-color: var(--theme-card);
+  border-top: 1rpx solid var(--theme-border);
 }
 
 .tab {
@@ -411,11 +420,11 @@ const goMine = () => {
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .tab.active {
-  color: #409EFF;
+  color: var(--theme-primary);
   font-weight: bold;
 }
 </style>

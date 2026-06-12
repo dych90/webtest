@@ -1,5 +1,5 @@
 <template>
-  <view class="guardian-page">
+  <view class="guardian-page" :class="themeClass">
     <view class="student-switch" v-if="students.length > 0">
       <picker :range="students" range-key="name" :value="studentIndex" @change="onStudentChange">
         <view class="student-picker">
@@ -96,10 +96,12 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
 import { getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
+import { applyTheme, getThemeClass } from '@/utils/theme'
 
 const students = ref([])
 const selectedStudentId = ref('')
 const overview = ref({})
+const themeClass = ref(getThemeClass())
 
 const studentIndex = computed(() => {
   return Math.max(0, students.value.findIndex(student => student._id === selectedStudentId.value))
@@ -118,8 +120,14 @@ const getBalanceText = () => {
 }
 
 onShow(() => {
+  refreshTheme()
   fetchStudents()
 })
+
+const refreshTheme = () => {
+  themeClass.value = getThemeClass()
+  applyTheme()
+}
 
 const fetchStudents = async () => {
   try {
@@ -234,15 +242,16 @@ const goMine = () => {
   min-height: 100vh;
   padding: 20rpx 20rpx 120rpx;
   box-sizing: border-box;
-  background-color: #f6f7fb;
+  background: var(--theme-page-bg);
 }
 
 .student-switch,
 .card,
 .summary-card {
-  background-color: #fff;
-  border-radius: 8rpx;
-  box-shadow: 0 4rpx 16rpx rgba(31, 45, 61, 0.05);
+  background-color: var(--theme-card);
+  border-radius: var(--theme-guardian-card-radius);
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .student-switch {
@@ -262,20 +271,20 @@ const goMine = () => {
   display: block;
   font-size: 34rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .student-teacher {
   display: block;
   margin-top: 6rpx;
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .switch-text,
 .card-link {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .summary-grid {
@@ -292,7 +301,7 @@ const goMine = () => {
 .summary-label {
   display: block;
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .summary-value {
@@ -301,7 +310,7 @@ const goMine = () => {
   font-size: 44rpx;
   line-height: 52rpx;
   font-weight: bold;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .card {
@@ -319,7 +328,7 @@ const goMine = () => {
 .card-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .next-course {
@@ -371,14 +380,14 @@ const goMine = () => {
 .course-time,
 .record-date {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .course-name,
 .record-title {
   display: block;
   font-size: 28rpx;
-  color: #303133;
+  color: var(--theme-text);
   font-weight: bold;
 }
 
@@ -390,34 +399,34 @@ const goMine = () => {
   display: block;
   margin-top: 4rpx;
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .status,
 .record-count {
   flex-shrink: 0;
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .record-link {
   font-size: 22rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .status.completed {
-  color: #67C23A;
+  color: var(--theme-success);
 }
 
 .status.cancelled,
 .status.rescheduled {
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .empty {
   padding: 24rpx 0;
   text-align: center;
-  color: #909399;
+  color: var(--theme-muted);
   font-size: 26rpx;
 }
 
@@ -429,8 +438,8 @@ const goMine = () => {
   height: 96rpx;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background-color: #fff;
-  border-top: 1rpx solid #ebeef5;
+  background-color: var(--theme-card);
+  border-top: 1rpx solid var(--theme-border);
 }
 
 .tab {
@@ -438,11 +447,11 @@ const goMine = () => {
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .tab.active {
-  color: #409EFF;
+  color: var(--theme-primary);
   font-weight: bold;
 }
 </style>

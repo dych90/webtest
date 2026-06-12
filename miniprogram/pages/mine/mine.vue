@@ -1,5 +1,5 @@
 <template>
-  <view class="mine-container">
+  <view class="mine-container" :class="themeClass">
     <view class="user-section">
       <view class="user-avatar">
         <text>{{ userStore.userInfo?.name?.charAt(0) || 'U' }}</text>
@@ -56,6 +56,16 @@
       </view>
       
       <view class="menu-group">
+        <picker :value="themeIndex" :range="themeOptions" @change="onThemeChange">
+          <view class="menu-item">
+            <view class="menu-icon">🎨</view>
+            <text class="menu-text">界面主题</text>
+            <text class="menu-arrow theme-value">{{ currentThemeName }}</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="menu-group">
         <view class="menu-item" @click="handleLogout">
           <view class="menu-icon logout-icon">🚪</view>
           <text class="menu-text logout-text">退出登录</text>
@@ -75,10 +85,14 @@ import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
+import { applyTheme, getThemeClass, getThemeIndex, getThemeOptions, setCurrentThemeByIndex } from '@/utils/theme'
 
 const userStore = useUserStore()
 const isSubscribed = ref(false)
 const subscribedCount = ref(0)
+const themeOptions = getThemeOptions()
+const themeIndex = ref(getThemeIndex())
+const themeClass = ref(getThemeClass())
 
 const roleText = computed(() => {
   if (userStore.isAdmin()) return '管理员'
@@ -92,6 +106,23 @@ const subscriptionText = computed(() => {
   }
   return '订阅上课提醒'
 })
+
+const currentThemeName = computed(() => {
+  return themeOptions[themeIndex.value] || themeOptions[0]
+})
+
+const refreshTheme = () => {
+  themeIndex.value = getThemeIndex()
+  themeClass.value = getThemeClass()
+  applyTheme()
+}
+
+const onThemeChange = (event) => {
+  const theme = setCurrentThemeByIndex(event.detail.value)
+  themeIndex.value = getThemeIndex(theme.key)
+  themeClass.value = getThemeClass(theme.key)
+  uni.showToast({ title: `已切换为${theme.name}`, icon: 'none' })
+}
 
 const checkSubscriptionStatus = async () => {
   if (!userStore.isTeacher()) {
@@ -215,11 +246,13 @@ const handleSubscribeMessage = async () => {
 }
 
 onMounted(() => {
+  refreshTheme()
   console.log('页面已挂载，开始检查订阅状态')
   checkSubscriptionStatus()
 })
 
 onShow(() => {
+  refreshTheme()
   console.log('页面显示，检查订阅状态')
   checkSubscriptionStatus()
 })
@@ -228,7 +261,7 @@ onShow(() => {
 <style scoped>
 .mine-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background: var(--theme-page-bg);
   min-height: 100vh;
 }
 
@@ -236,16 +269,18 @@ onShow(() => {
   display: flex;
   align-items: center;
   padding: 40rpx;
-  background-color: #fff;
-  border-radius: 20rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-mine-card-radius);
   margin-bottom: 20rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .user-avatar {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  background: linear-gradient(135deg, #409EFF 0%, #66b1ff 100%);
+  background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-primary-pressed) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -266,13 +301,13 @@ onShow(() => {
 .user-name {
   font-size: 36rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--theme-text);
   margin-bottom: 8rpx;
 }
 
 .user-role {
   font-size: 26rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .menu-section {
@@ -282,16 +317,18 @@ onShow(() => {
 }
 
 .menu-group {
-  background-color: #fff;
-  border-radius: 20rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-mine-card-radius);
   overflow: hidden;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   padding: 30rpx;
-  border-bottom: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .menu-item:last-child {
@@ -311,31 +348,36 @@ onShow(() => {
 .menu-text {
   flex: 1;
   font-size: 30rpx;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .menu-arrow {
   font-size: 32rpx;
-  color: #c0c4cc;
+  color: var(--theme-border);
 }
 
 .logout-icon {
-  color: #F56C6C;
+  color: var(--theme-danger);
 }
 
 .logout-text {
-  color: #F56C6C;
+  color: var(--theme-danger);
 }
 
 .subscribed-text {
-  color: #67C23A;
+  color: var(--theme-success);
   font-weight: bold;
 }
 
 .subscribed-arrow {
-  color: #67C23A;
+  color: var(--theme-success);
   font-weight: bold;
   font-size: 36rpx;
+}
+
+.theme-value {
+  color: var(--theme-primary);
+  font-size: 26rpx;
 }
 
 .debug-info {
@@ -358,6 +400,6 @@ onShow(() => {
 
 .version text {
   font-size: 24rpx;
-  color: #c0c4cc;
+  color: var(--theme-border);
 }
 </style>

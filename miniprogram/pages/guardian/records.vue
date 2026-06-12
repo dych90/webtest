@@ -1,5 +1,5 @@
 <template>
-  <view class="guardian-page">
+  <view class="guardian-page" :class="themeClass">
     <view class="top-card">
       <picker :range="students" range-key="name" :value="studentIndex" @change="onStudentChange">
         <view class="student-picker">
@@ -94,6 +94,7 @@ import { computed, ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { get, downloadFile } from '@/utils/request'
 import { getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
+import { applyTheme, getThemeClass } from '@/utils/theme'
 
 const students = ref([])
 const selectedStudentId = ref('')
@@ -104,6 +105,7 @@ const activeTab = ref('lessons')
 const targetStudentId = ref('')
 const targetRecordId = ref('')
 const mediaCache = ref({})
+const themeClass = ref(getThemeClass())
 let audioContext = null
 
 const studentIndex = computed(() => {
@@ -128,8 +130,14 @@ onLoad((query = {}) => {
 })
 
 onShow(() => {
+  refreshTheme()
   fetchStudents()
 })
+
+const refreshTheme = () => {
+  themeClass.value = getThemeClass()
+  applyTheme()
+}
 
 const fetchStudents = async () => {
   try {
@@ -278,14 +286,15 @@ const goMine = () => {
   min-height: 100vh;
   padding: 20rpx 20rpx 120rpx;
   box-sizing: border-box;
-  background-color: #f6f7fb;
+  background: var(--theme-page-bg);
 }
 
 .top-card,
 .record-card {
-  background-color: #fff;
-  border-radius: 8rpx;
-  box-shadow: 0 4rpx 16rpx rgba(31, 45, 61, 0.05);
+  background-color: var(--theme-card);
+  border-radius: var(--theme-guardian-card-radius);
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .top-card {
@@ -299,18 +308,18 @@ const goMine = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1rpx solid #ebeef5;
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .switch-text {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .balance-row {
@@ -323,14 +332,14 @@ const goMine = () => {
 
 .balance-label {
   font-size: 26rpx;
-  color: #606266;
+  color: var(--theme-muted);
 }
 
 .balance-value {
   font-size: 42rpx;
   line-height: 48rpx;
   font-weight: bold;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .tabs {
@@ -345,13 +354,13 @@ const goMine = () => {
   line-height: 72rpx;
   text-align: center;
   border-radius: 8rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: var(--theme-card);
+  color: var(--theme-muted);
   font-size: 26rpx;
 }
 
 .tab-item.active {
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   color: #fff;
   font-weight: bold;
 }
@@ -366,7 +375,7 @@ const goMine = () => {
 }
 
 .record-card.highlighted {
-  border: 2rpx solid #409EFF;
+  border: 2rpx solid var(--theme-primary);
 }
 
 .record-main {
@@ -377,14 +386,14 @@ const goMine = () => {
   display: block;
   font-size: 30rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .record-date {
   display: block;
   margin-top: 6rpx;
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .record-side {
@@ -398,20 +407,20 @@ const goMine = () => {
 .money {
   font-size: 32rpx;
   font-weight: bold;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .money {
-  color: #E6A23C;
+  color: var(--theme-warning);
 }
 
 .record-tag {
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .record-tag.active {
-  color: #67C23A;
+  color: var(--theme-success);
 }
 
 .record-content {
@@ -419,7 +428,7 @@ const goMine = () => {
   margin-top: 14rpx;
   font-size: 24rpx;
   line-height: 34rpx;
-  color: #606266;
+  color: var(--theme-muted);
 }
 
 .record-images {
@@ -433,7 +442,7 @@ const goMine = () => {
   width: 100%;
   height: 150rpx;
   border-radius: 8rpx;
-  background-color: #f5f7fa;
+  background-color: var(--theme-bg-soft);
 }
 
 .record-audios {
@@ -450,23 +459,23 @@ const goMine = () => {
   align-items: center;
   gap: 12rpx;
   border-radius: 32rpx;
-  background-color: #ecf5ff;
+  background-color: var(--theme-primary-soft);
 }
 
 .audio-icon {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .audio-text {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .empty {
   padding: 90rpx 0;
   text-align: center;
-  color: #909399;
+  color: var(--theme-muted);
   font-size: 28rpx;
 }
 
@@ -478,8 +487,8 @@ const goMine = () => {
   height: 96rpx;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background-color: #fff;
-  border-top: 1rpx solid #ebeef5;
+  background-color: var(--theme-card);
+  border-top: 1rpx solid var(--theme-border);
 }
 
 .tab {
@@ -487,11 +496,11 @@ const goMine = () => {
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .tab.active {
-  color: #409EFF;
+  color: var(--theme-primary);
   font-weight: bold;
 }
 </style>

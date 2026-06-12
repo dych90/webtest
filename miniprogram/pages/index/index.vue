@@ -1,5 +1,5 @@
 <template>
-  <view class="index-container">
+  <view class="index-container" :class="themeClass">
     <view class="header-section">
       <view class="header-left">
         <text class="greeting">{{ greeting }}，{{ userStore.userInfo?.name || '老师' }}</text>
@@ -202,7 +202,7 @@
               <text class="form-label">立即通知学生端</text>
               <text class="notify-tip">订阅消息只提醒查看，完整内容在学生端记录页</text>
             </view>
-            <switch :checked="notifyGuardian" @change="notifyGuardian = $event.detail.value" color="#409EFF" />
+            <switch :checked="notifyGuardian" @change="notifyGuardian = $event.detail.value" :color="themeColors.primary" />
           </view>
         </view>
         <view class="dialog-footer">
@@ -219,6 +219,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post, put, del, uploadFile, uploadFileData } from '@/utils/request'
+import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
 
 const userStore = useUserStore()
 
@@ -250,6 +251,8 @@ const notifyGuardian = ref(false)
 const savingAttend = ref(false)
 const recording = ref(false)
 const recordDuration = ref(0)
+const themeClass = ref(getThemeClass())
+const themeColors = ref(getCurrentTheme())
 let recorderManager = null
 let recordTimer = null
 
@@ -704,7 +707,14 @@ const goToPage = (url) => {
   }
 }
 
+const refreshTheme = () => {
+  themeClass.value = getThemeClass()
+  themeColors.value = applyTheme()
+}
+
 onMounted(() => {
+  refreshTheme()
+
   if (uni.getRecorderManager) {
     recorderManager = uni.getRecorderManager()
     recorderManager.onStop((res) => {
@@ -729,6 +739,7 @@ onMounted(() => {
 })
 
 onShow(() => {
+  refreshTheme()
   fetchDayCourses()
   fetchStatistics()
 })
@@ -741,7 +752,7 @@ onUnmounted(() => {
 <style scoped>
 .index-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background: var(--theme-home-bg);
   min-height: 100vh;
 }
 
@@ -749,8 +760,11 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16rpx 0;
+  padding: var(--theme-header-padding);
   margin-bottom: 16rpx;
+  border-radius: var(--theme-header-radius);
+  background: var(--theme-header-bg);
+  box-shadow: var(--theme-header-shadow);
 }
 
 .header-left {
@@ -759,7 +773,7 @@ onUnmounted(() => {
 
 .greeting {
   font-size: 28rpx;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .header-right {
@@ -768,14 +782,16 @@ onUnmounted(() => {
 
 .date {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .quick-actions {
-  background-color: #fff;
-  border-radius: 16rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-card-radius);
   padding: 24rpx;
   margin-bottom: 20rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .action-grid {
@@ -803,35 +819,37 @@ onUnmounted(() => {
 }
 
 .student-icon {
-  background-color: #ecf5ff;
+  background-color: var(--theme-primary-soft);
 }
 
 .schedule-icon {
-  background-color: #fdf6ec;
+  background-color: var(--theme-warning-soft);
 }
 
 .lesson-icon {
-  background-color: #f0f9eb;
+  background-color: var(--theme-success-soft);
 }
 
 .payment-icon {
-  background-color: #fef0f0;
+  background-color: var(--theme-danger-soft);
 }
 
 .balance-icon {
-  background-color: #fdf6ec;
+  background-color: var(--theme-accent-soft);
 }
 
 .action-text {
   font-size: 22rpx;
-  color: #606266;
+  color: var(--theme-muted);
 }
 
 .schedule-section {
-  background-color: #fff;
-  border-radius: 16rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-card-radius);
   padding: 24rpx;
   margin-bottom: 20rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .section-header {
@@ -853,24 +871,24 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f7fa;
+  background-color: var(--theme-bg-soft);
   border-radius: 50%;
 }
 
 .nav-btn text {
   font-size: 28rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .section-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .section-more {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .header-right-btns {
@@ -881,17 +899,17 @@ onUnmounted(() => {
 
 .back-today-btn {
   font-size: 24rpx;
-  color: #67C23A;
+  color: var(--theme-success);
   font-weight: bold;
   padding: 8rpx 16rpx;
-  background-color: #f0f9eb;
+  background-color: var(--theme-success-soft);
   border-radius: 8rpx;
 }
 
 .empty-tip {
   text-align: center;
   padding: 32rpx 0;
-  color: #909399;
+  color: var(--theme-muted);
   font-size: 26rpx;
 }
 
@@ -905,25 +923,25 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   padding: 20rpx;
-  background-color: #f5f7fa;
-  border-radius: 12rpx;
-  border-left: 6rpx solid #409EFF;
+  background-color: var(--theme-bg-soft);
+  border-radius: 14rpx;
+  border-left: 6rpx solid var(--theme-primary);
 }
 
 .course-item:active {
-  background-color: #e8e8e8;
+  background-color: var(--theme-primary-soft);
 }
 
 .course-item.course-completed {
   opacity: 0.6;
-  border-left-color: #67C23A;
+  border-left-color: var(--theme-success);
 }
 
 .course-index {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -943,7 +961,7 @@ onUnmounted(() => {
 .time {
   font-size: 26rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .course-info {
@@ -954,20 +972,20 @@ onUnmounted(() => {
 .student-name {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: var(--theme-text);
   margin-bottom: 4rpx;
 }
 
 .course-type {
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .lesson-record-preview {
   margin-top: 8rpx;
   padding: 10rpx 12rpx;
   border-radius: 8rpx;
-  background-color: #eef6ff;
+  background-color: var(--theme-primary-soft);
 }
 
 .lesson-record-text,
@@ -978,7 +996,7 @@ onUnmounted(() => {
 }
 
 .lesson-record-text {
-  color: #303133;
+  color: var(--theme-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -986,7 +1004,7 @@ onUnmounted(() => {
 
 .lesson-record-media {
   margin-top: 2rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .course-actions {
@@ -1004,23 +1022,23 @@ onUnmounted(() => {
 }
 
 .status-normal {
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: var(--theme-primary-soft);
+  color: var(--theme-primary);
 }
 
 .status-completed {
-  background-color: #f0f9eb;
-  color: #67C23A;
+  background-color: var(--theme-success-soft);
+  color: var(--theme-success);
 }
 
 .status-cancelled {
-  background-color: #fef0f0;
-  color: #F56C6C;
+  background-color: var(--theme-danger-soft);
+  color: var(--theme-danger);
 }
 
 .btn-attend {
   padding: 10rpx 20rpx;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   color: #fff;
   font-size: 22rpx;
   border: none;
@@ -1030,35 +1048,37 @@ onUnmounted(() => {
 
 .btn-cancel-attend {
   padding: 10rpx 20rpx;
-  background-color: #fff;
-  color: #F56C6C;
+  background-color: var(--theme-card);
+  color: var(--theme-danger);
   font-size: 22rpx;
-  border: 2rpx solid #F56C6C;
+  border: 2rpx solid var(--theme-danger);
   border-radius: 6rpx;
   line-height: 1.2;
 }
 
 .btn-edit-record {
   padding: 10rpx 20rpx;
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: var(--theme-primary-soft);
+  color: var(--theme-primary);
   font-size: 22rpx;
-  border: 2rpx solid #409EFF;
+  border: 2rpx solid var(--theme-primary);
   border-radius: 6rpx;
   line-height: 1.2;
 }
 
 .arrow-icon {
   font-size: 32rpx;
-  color: #c0c4cc;
+  color: var(--theme-border);
   margin-left: 8rpx;
 }
 
 .stats-section {
-  background-color: #fff;
-  border-radius: 16rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-card-radius);
   padding: 24rpx;
   margin-bottom: 20rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .stats-grid {
@@ -1068,8 +1088,8 @@ onUnmounted(() => {
 }
 
 .stat-card {
-  background-color: #f5f7fa;
-  border-radius: 12rpx;
+  background-color: var(--theme-bg-soft);
+  border-radius: 14rpx;
   padding: 20rpx;
   text-align: center;
 }
@@ -1078,25 +1098,25 @@ onUnmounted(() => {
   display: block;
   font-size: 32rpx;
   font-weight: bold;
-  color: #409EFF;
+  color: var(--theme-primary);
   margin-bottom: 6rpx;
 }
 
 .stat-value.revenue {
-  color: #E6A23C;
+  color: var(--theme-warning);
 }
 
 .stat-value.warning {
-  color: #E6A23C;
+  color: var(--theme-warning);
 }
 
 .stat-value.success {
-  color: #67C23A;
+  color: var(--theme-success);
 }
 
 .stat-label {
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .dialog-mask {
@@ -1116,7 +1136,7 @@ onUnmounted(() => {
   width: 85%;
   max-width: 600rpx;
   max-height: 90vh;
-  background-color: #fff;
+  background-color: var(--theme-card);
   border-radius: 20rpx;
   overflow: hidden;
 }
@@ -1126,18 +1146,18 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 30rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .dialog-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--theme-text);
 }
 
 .dialog-close {
   font-size: 40rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .dialog-body {
@@ -1150,7 +1170,7 @@ onUnmounted(() => {
   text-align: center;
   margin-bottom: 30rpx;
   padding: 20rpx;
-  background-color: #f5f7fa;
+  background-color: var(--theme-bg-soft);
   border-radius: 12rpx;
 }
 
@@ -1158,21 +1178,21 @@ onUnmounted(() => {
   display: block;
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: var(--theme-text);
   margin-bottom: 8rpx;
 }
 
 .attend-course {
   display: block;
   font-size: 26rpx;
-  color: #606266;
+  color: var(--theme-muted);
   margin-bottom: 4rpx;
 }
 
 .attend-time {
   display: block;
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .form-item {
@@ -1182,7 +1202,7 @@ onUnmounted(() => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: var(--theme-text);
   margin-bottom: 12rpx;
 }
 
@@ -1199,7 +1219,7 @@ onUnmounted(() => {
 
 .form-hint {
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .form-picker {
@@ -1208,14 +1228,14 @@ onUnmounted(() => {
   align-items: center;
   height: 80rpx;
   padding: 0 20rpx;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
 }
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .content-input {
@@ -1223,7 +1243,7 @@ onUnmounted(() => {
   min-height: 160rpx;
   padding: 18rpx;
   box-sizing: border-box;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 26rpx;
   line-height: 38rpx;
@@ -1241,7 +1261,7 @@ onUnmounted(() => {
   height: 140rpx;
   border-radius: 10rpx;
   overflow: hidden;
-  background-color: #f5f7fa;
+  background-color: var(--theme-bg-soft);
 }
 
 .photo-preview {
@@ -1268,24 +1288,24 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 2rpx dashed #c0c4cc;
+  border: 2rpx dashed var(--theme-border);
 }
 
 .photo-add-icon {
   font-size: 42rpx;
   line-height: 42rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .photo-add-text {
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .voice-box {
   padding: 18rpx;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
 }
 
@@ -1295,14 +1315,14 @@ onUnmounted(() => {
   margin: 0;
   padding: 0 24rpx;
   border-radius: 8rpx;
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: var(--theme-primary-soft);
+  color: var(--theme-primary);
   font-size: 26rpx;
 }
 
 .voice-btn.recording {
-  background-color: #fef0f0;
-  color: #F56C6C;
+  background-color: var(--theme-danger-soft);
+  color: var(--theme-danger);
 }
 
 .voice-result {
@@ -1314,12 +1334,12 @@ onUnmounted(() => {
 
 .voice-info {
   font-size: 26rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .voice-remove {
   font-size: 24rpx;
-  color: #F56C6C;
+  color: var(--theme-danger);
 }
 
 .notify-row {
@@ -1337,23 +1357,23 @@ onUnmounted(() => {
   display: block;
   font-size: 22rpx;
   line-height: 32rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .dialog-footer {
   display: flex;
   gap: 20rpx;
   padding: 20rpx 30rpx 30rpx;
-  border-top: 1rpx solid #f0f0f0;
+  border-top: 1rpx solid var(--theme-border);
 }
 
 .btn-cancel {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
-  border: 2rpx solid #dcdfe6;
+  background-color: var(--theme-card);
+  color: var(--theme-muted);
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
 }
@@ -1362,7 +1382,7 @@ onUnmounted(() => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   color: #fff;
   border: none;
   border-radius: 8rpx;

@@ -1,5 +1,5 @@
 <template>
-  <view class="guardian-page">
+  <view class="guardian-page" :class="themeClass">
     <view class="profile-card">
       <text class="profile-title">学生端</text>
       <text class="profile-desc">只能查看已绑定学生的数据</text>
@@ -39,6 +39,15 @@
     </view>
 
     <view class="card">
+      <picker :value="themeIndex" :range="themeOptions" @change="onThemeChange">
+        <view class="theme-row">
+          <text class="theme-label">界面主题</text>
+          <text class="theme-value">{{ currentThemeName }}</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="card">
       <button class="logout-btn" @click="handleLogout">退出学生端</button>
     </view>
 
@@ -52,18 +61,42 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, del } from '@/utils/request'
 import { clearGuardianSession, getSelectedGuardianStudentId, requestGuardianSubscription, saveGuardianSession } from '@/utils/guardian'
+import { applyTheme, getCurrentTheme, getThemeClass, getThemeIndex, getThemeOptions, setCurrentThemeByIndex } from '@/utils/theme'
 
 const students = ref([])
 const selectedStudentId = ref('')
 const subscribing = ref(false)
+const themeOptions = getThemeOptions()
+const themeIndex = ref(getThemeIndex())
+const themeClass = ref(getThemeClass())
+const themeColors = ref(getCurrentTheme())
+
+const currentThemeName = computed(() => {
+  return themeOptions[themeIndex.value] || themeOptions[0]
+})
 
 onShow(() => {
+  refreshTheme()
   fetchStudents()
 })
+
+const refreshTheme = () => {
+  themeIndex.value = getThemeIndex()
+  themeClass.value = getThemeClass()
+  themeColors.value = applyTheme()
+}
+
+const onThemeChange = (event) => {
+  const theme = setCurrentThemeByIndex(event.detail.value)
+  themeIndex.value = getThemeIndex(theme.key)
+  themeClass.value = getThemeClass(theme.key)
+  themeColors.value = theme
+  uni.showToast({ title: `已切换为${theme.name}`, icon: 'none' })
+}
 
 const fetchStudents = async () => {
   try {
@@ -99,7 +132,7 @@ const handleUnbind = (student) => {
     title: '解除绑定',
     content: `确定从学生端删除“${student.name}”吗？不会删除学生资料和课程记录。`,
     confirmText: '解除',
-    confirmColor: '#F56C6C',
+    confirmColor: themeColors.value.danger,
     success: async (res) => {
       if (!res.confirm) return
 
@@ -166,23 +199,24 @@ const goRecords = () => {
   min-height: 100vh;
   padding: 20rpx 20rpx 120rpx;
   box-sizing: border-box;
-  background-color: #f6f7fb;
+  background: var(--theme-page-bg);
 }
 
 .profile-card,
 .card {
-  background-color: #fff;
-  border-radius: 8rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-guardian-card-radius);
   padding: 24rpx;
   margin-bottom: 18rpx;
-  box-shadow: 0 4rpx 16rpx rgba(31, 45, 61, 0.05);
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .profile-title {
   display: block;
   font-size: 38rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .profile-desc,
@@ -191,7 +225,7 @@ const goRecords = () => {
   margin-top: 8rpx;
   font-size: 24rpx;
   line-height: 34rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .card-header {
@@ -204,12 +238,12 @@ const goRecords = () => {
 .card-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .card-count {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .student-list {
@@ -223,7 +257,7 @@ const goRecords = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid var(--theme-border);
 }
 
 .student-main {
@@ -236,26 +270,26 @@ const goRecords = () => {
 }
 
 .student-row.active .student-name {
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .student-name {
   display: block;
   font-size: 30rpx;
   font-weight: bold;
-  color: #303133;
+  color: var(--theme-text);
 }
 
 .teacher-name {
   display: block;
   margin-top: 4rpx;
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .student-balance {
   font-size: 24rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .student-actions {
@@ -273,9 +307,9 @@ const goRecords = () => {
   margin: 0;
   padding: 0;
   border-radius: 8rpx;
-  border: 1rpx solid #F56C6C;
-  background-color: #fff;
-  color: #F56C6C;
+  border: 1rpx solid var(--theme-danger);
+  background-color: var(--theme-card);
+  color: var(--theme-danger);
   font-size: 24rpx;
 }
 
@@ -287,21 +321,38 @@ const goRecords = () => {
   font-size: 28rpx;
 }
 
+.theme-row {
+  min-height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.theme-label {
+  font-size: 28rpx;
+  color: var(--theme-text);
+}
+
+.theme-value {
+  font-size: 26rpx;
+  color: var(--theme-primary);
+}
+
 .primary-btn {
   color: #fff;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
 }
 
 .logout-btn {
-  color: #F56C6C;
-  background-color: #fff;
-  border: 1rpx solid #F56C6C;
+  color: var(--theme-danger);
+  background-color: var(--theme-card);
+  border: 1rpx solid var(--theme-danger);
 }
 
 .empty {
   padding: 40rpx 0;
   text-align: center;
-  color: #909399;
+  color: var(--theme-muted);
   font-size: 26rpx;
 }
 
@@ -313,8 +364,8 @@ const goRecords = () => {
   height: 96rpx;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  background-color: #fff;
-  border-top: 1rpx solid #ebeef5;
+  background-color: var(--theme-card);
+  border-top: 1rpx solid var(--theme-border);
 }
 
 .tab {
@@ -322,11 +373,11 @@ const goRecords = () => {
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .tab.active {
-  color: #409EFF;
+  color: var(--theme-primary);
   font-weight: bold;
 }
 </style>

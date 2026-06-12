@@ -1,5 +1,5 @@
 <template>
-  <view class="edit-container">
+  <view class="edit-container" :class="themeClass">
     <view class="form-section">
       <view class="form-item">
         <text class="form-label">学生</text>
@@ -124,7 +124,7 @@
       
       <view class="form-item switch-item">
         <text class="form-label">是否扣费</text>
-        <switch :checked="form.isDeducted" @change="onDeductedChange" color="#409EFF" />
+        <switch :checked="form.isDeducted" @change="onDeductedChange" :color="themeColors.primary" />
       </view>
       
       <view class="form-item">
@@ -142,7 +142,9 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { get, put, uploadFile, uploadFileData, downloadFile } from '@/utils/request'
+import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
 
 const students = ref([])
 const filteredStudents = ref([])
@@ -163,6 +165,8 @@ const newPhotoFiles = ref([])
 const newVoiceFiles = ref([])
 const recording = ref(false)
 const recordDuration = ref(0)
+const themeClass = ref(getThemeClass())
+const themeColors = ref(getCurrentTheme())
 let recorderManager = null
 let recordTimer = null
 
@@ -211,6 +215,8 @@ const courseOptions = computed(() => {
 })
 
 onMounted(async () => {
+  refreshTheme()
+
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   recordId.value = currentPage.options?.id || ''
@@ -246,6 +252,15 @@ onMounted(async () => {
 onUnmounted(() => {
   clearRecordTimer()
 })
+
+onShow(() => {
+  refreshTheme()
+})
+
+const refreshTheme = () => {
+  themeClass.value = getThemeClass()
+  themeColors.value = applyTheme()
+}
 
 const fetchRecord = async () => {
   try {
@@ -613,15 +628,17 @@ const handleSubmit = async () => {
 <style scoped>
 .edit-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background: var(--theme-page-bg);
   min-height: 100vh;
 }
 
 .form-section {
-  background-color: #fff;
-  border-radius: 16rpx;
+  background-color: var(--theme-card);
+  border-radius: var(--theme-card-radius);
   padding: 24rpx;
   margin-bottom: 20rpx;
+  box-shadow: var(--theme-card-shadow);
+  border: var(--theme-card-border);
 }
 
 .form-item {
@@ -631,7 +648,7 @@ const handleSubmit = async () => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: var(--theme-text);
   margin-bottom: 12rpx;
 }
 
@@ -648,14 +665,14 @@ const handleSubmit = async () => {
 
 .form-hint {
   font-size: 24rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .form-input {
   width: 100%;
   height: 80rpx;
   padding: 0 20rpx;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
@@ -676,21 +693,21 @@ const handleSubmit = async () => {
   align-items: center;
   height: 80rpx;
   padding: 0 20rpx;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
 }
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .form-textarea {
   width: 100%;
   height: 160rpx;
   padding: 20rpx;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
   box-sizing: border-box;
@@ -708,7 +725,7 @@ const handleSubmit = async () => {
   height: 140rpx;
   border-radius: 10rpx;
   overflow: hidden;
-  background-color: #f5f7fa;
+  background-color: var(--theme-bg-soft);
 }
 
 .photo-preview {
@@ -735,24 +752,24 @@ const handleSubmit = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 2rpx dashed #c0c4cc;
+  border: 2rpx dashed var(--theme-border);
 }
 
 .photo-add-icon {
   font-size: 42rpx;
   line-height: 42rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .photo-add-text {
   margin-top: 6rpx;
   font-size: 22rpx;
-  color: #909399;
+  color: var(--theme-muted);
 }
 
 .voice-box {
   padding: 18rpx;
-  border: 2rpx solid #dcdfe6;
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
 }
 
@@ -762,14 +779,14 @@ const handleSubmit = async () => {
   margin: 0;
   padding: 0 24rpx;
   border-radius: 8rpx;
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: var(--theme-primary-soft);
+  color: var(--theme-primary);
   font-size: 26rpx;
 }
 
 .voice-btn.recording {
-  background-color: #fef0f0;
-  color: #F56C6C;
+  background-color: var(--theme-danger-soft);
+  color: var(--theme-danger);
 }
 
 .voice-result {
@@ -785,12 +802,12 @@ const handleSubmit = async () => {
 
 .voice-info {
   font-size: 26rpx;
-  color: #409EFF;
+  color: var(--theme-primary);
 }
 
 .voice-remove {
   font-size: 24rpx;
-  color: #F56C6C;
+  color: var(--theme-danger);
 }
 
 .switch-item {
@@ -813,9 +830,9 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
-  border: 2rpx solid #dcdfe6;
+  background-color: var(--theme-card);
+  color: var(--theme-muted);
+  border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
 }
@@ -824,7 +841,7 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
+  background-color: var(--theme-primary);
   color: #fff;
   border: none;
   border-radius: 8rpx;
