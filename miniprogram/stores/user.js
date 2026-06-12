@@ -17,6 +17,7 @@ export const useUserStore = defineStore('user', () => {
   
   const setToken = (newToken) => {
     token.value = newToken
+    uni.setStorageSync('teacherToken', newToken)
     uni.setStorageSync('token', newToken)
   }
   
@@ -28,17 +29,24 @@ export const useUserStore = defineStore('user', () => {
   const login = (loginToken, info) => {
     setToken(loginToken)
     setUserInfo(info)
+    uni.setStorageSync('loginType', 'teacher')
   }
   
   const logout = () => {
     token.value = ''
     userInfo.value = null
-    uni.removeStorageSync('token')
+    uni.removeStorageSync('teacherToken')
     uni.removeStorageSync('userInfo')
+
+    if (uni.getStorageSync('loginType') !== 'guardian') {
+      uni.removeStorageSync('token')
+      uni.removeStorageSync('loginType')
+    }
   }
   
   const initFromStorage = () => {
-    const storedToken = uni.getStorageSync('token')
+    const storedToken = uni.getStorageSync('teacherToken') ||
+      (uni.getStorageSync('loginType') !== 'guardian' ? uni.getStorageSync('token') : '')
     const storedUserInfo = uni.getStorageSync('userInfo')
     
     if (storedToken) {

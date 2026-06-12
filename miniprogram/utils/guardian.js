@@ -2,15 +2,30 @@ import { post } from './request'
 
 export const GUARDIAN_SUBSCRIBE_TEMPLATE_ID = 'FPymYYMiWppMeQyUl6RwZbFfJvgCuknjdyphRkDs1Y0'
 
-export const saveGuardianSession = (session) => {
-  uni.setStorageSync('token', session.token)
-  uni.setStorageSync('loginType', 'guardian')
-  uni.setStorageSync('guardianInfo', JSON.stringify(session.guardian || {}))
-  uni.setStorageSync('guardianStudents', JSON.stringify(session.students || []))
+export const getGuardianToken = () => {
+  return uni.getStorageSync('guardianToken') ||
+    (uni.getStorageSync('loginType') === 'guardian' ? uni.getStorageSync('token') : '')
+}
+
+export const saveGuardianSession = (session = {}) => {
+  const token = session.token || getGuardianToken()
+  const students = Array.isArray(session.students) ? session.students : []
+
+  if (token) {
+    uni.setStorageSync('guardianToken', token)
+    uni.setStorageSync('token', token)
+    uni.setStorageSync('loginType', 'guardian')
+  }
+
+  if (session.guardian) {
+    uni.setStorageSync('guardianInfo', JSON.stringify(session.guardian))
+  }
+
+  uni.setStorageSync('guardianStudents', JSON.stringify(students))
 
   const currentSelectedId = uni.getStorageSync('selectedGuardianStudentId')
-  const hasCurrentStudent = (session.students || []).some(student => student._id === currentSelectedId)
-  const selectedId = hasCurrentStudent ? currentSelectedId : session.students?.[0]?._id
+  const hasCurrentStudent = students.some(student => student._id === currentSelectedId)
+  const selectedId = hasCurrentStudent ? currentSelectedId : students[0]?._id
 
   if (selectedId) {
     uni.setStorageSync('selectedGuardianStudentId', selectedId)
@@ -20,11 +35,15 @@ export const saveGuardianSession = (session) => {
 }
 
 export const clearGuardianSession = () => {
-  uni.removeStorageSync('token')
-  uni.removeStorageSync('loginType')
+  uni.removeStorageSync('guardianToken')
   uni.removeStorageSync('guardianInfo')
   uni.removeStorageSync('guardianStudents')
   uni.removeStorageSync('selectedGuardianStudentId')
+
+  if (uni.getStorageSync('loginType') === 'guardian') {
+    uni.removeStorageSync('token')
+    uni.removeStorageSync('loginType')
+  }
 }
 
 export const requestGuardianSubscription = async () => {

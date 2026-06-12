@@ -10,10 +10,180 @@ const buildUrl = (url) => {
   return BASE_URL + url
 }
 
-const request = (options) => {
+const getPathFromUrl = (url = '') => {
+  const withoutQuery = String(url).split('?')[0]
+
+  if (!/^https?:\/\//.test(withoutQuery)) {
+    return withoutQuery
+  }
+
+  const pathStart = withoutQuery.indexOf('/', withoutQuery.indexOf('://') + 3)
+  const path = pathStart >= 0 ? withoutQuery.slice(pathStart) : '/'
+  return path.startsWith('/api/') ? path.slice(4) : path
+}
+
+const isGuardianPublicPath = (path) => {
+  return path === '/guardian/login' ||
+    path === '/guardian/bind' ||
+    path === '/guardian/invites' ||
+    path.startsWith('/guardian/invites/')
+}
+
+const getAuthType = (url) => {
+  const path = getPathFromUrl(url)
+
+  if (path.startsWith('/guardian/') && !isGuardianPublicPath(path)) {
+    return 'guardian'
+  }
+
+  return 'teacher'
+}
+
+const getTeacherToken = () => {
+  return uni.getStorageSync('teacherToken') ||
+    (uni.getStorageSync('loginType') !== 'guardian' ? uni.getStorageSync('token') : '')
+}
+
+const getGuardianToken = () => {
+  return uni.getStorageSync('guardianToken') ||
+    (uni.getStorageSync('loginType') === 'guardian' ? uni.getStorageSync('token') : '')
+}
+
+const saveGuardianSessionToStorage = (session = {}) => {
+  const token = session.token || getGuardianToken()
+  const students = Array.isArray(session.students) ? session.students : null
+
+  if (token) {
+    uni.setStorageSync('guardianToken', token)
+    uni.setStorageSync('token', token)
+    uni.setStorageSync('loginType', 'guardian')
+  }
+
+  if (session.guardian) {
+    uni.setStorageSync('guardianInfo', JSON.stringify(session.guardian))
+  }
+
+  if (students) {
+    uni.setStorageSync('guardianStudents', JSON.stringify(students))
+
+    const currentSelectedId = uni.getStorageSync('selectedGuardianStudentId')
+    const hasCurrentStudent = students.some(student => student._id === currentSelectedId)
+    const selectedId = hasCurrentStudent ? currentSelectedId : students[0]?._id
+
+    if (selectedId) {
+      uni.setStorageSync('selectedGuardianStudentId', selectedId)
+    } else {
+      uni.removeStorageSync('selectedGuardianStudentId')
+    }
+  }
+}
+
+let guardianLoginPromise = null
+
+const loginGuardianSilently = () => {
+  if (guardianLoginPromise) {
+    return guardianLoginPromise
+  }
+
+  const currentPromise = new Promise((resolve, reject) => {
+    uni.login({
+      provider: 'weixin',
+      success: (loginRes) => {
+        if (!loginRes.code) {
+          reject(new Error('无法获取微信登录凭证'))
+          return
+        }
+
+        uni.request({
+          url: buildUrl('/guardian/login'),
+          method: 'POST',
+          data: { code: loginRes.code },
+          header: {
+            'Content-Type': 'application/json'
+          },
+          success: (res) => {
+            const session = res.data?.data
+
+            if (res.statusCode === 200 && session?.token) {
+              saveGuardianSessionToStorage(session)
+              resolve(session.token)
+              return
+            }
+
+            reject(new Error(res.data?.message || '学生端登录已过期，请重新登录'))
+          },
+          fail: reject
+        })
+      },
+      fail: reject
+    })
+  })
+
+  guardianLoginPromise = currentPromise
+  currentPromise.then(
+    () => {
+      if (guardianLoginPromise === currentPromise) {
+        guardianLoginPromise = null
+      }
+    },
+    () => {
+      if (guardianLoginPromise === currentPromise) {
+        guardianLoginPromise = null
+      }
+    }
+  )
+
+  return guardianLoginPromise
+}
+
+const getTokenByAuthType = async (authType) => {
+  if (authType === 'guardian') {
+    return getGuardianToken() || await loginGuardianSilently()
+  }
+
+  return getTeacherToken()
+}
+
+const clearAuthSession = (authType) => {
+  if (authType === 'guardian') {
+    uni.removeStorageSync('guardianToken')
+    uni.removeStorageSync('guardianInfo')
+    uni.removeStorageSync('guardianStudents')
+    uni.removeStorageSync('selectedGuardianStudentId')
+
+    if (uni.getStorageSync('loginType') === 'guardian') {
+      uni.removeStorageSync('token')
+      uni.removeStorageSync('loginType')
+    }
+    return
+  }
+
+  uni.removeStorageSync('teacherToken')
+  uni.removeStorageSync('userInfo')
+
+  if (uni.getStorageSync('loginType') !== 'guardian') {
+    uni.removeStorageSync('token')
+    uni.removeStorageSync('loginType')
+  }
+}
+
+const getLoginUrl = (authType) => {
+  return authType === 'guardian' ? '/pages/guardian/login' : '/pages/login/login'
+}
+
+const request = async (options) => {
+  const authType = getAuthType(options.url)
+  let token = ''
+
+  try {
+    token = await getTokenByAuthType(authType)
+  } catch (error) {
+    clearAuthSession(authType)
+    uni.reLaunch({ url: getLoginUrl(authType) })
+    throw error
+  }
+
   return new Promise((resolve, reject) => {
-    const token = uni.getStorageSync('token')
-    
     uni.request({
       url: buildUrl(options.url),
       method: options.method || 'GET',
@@ -27,15 +197,8 @@ const request = (options) => {
         if (res.statusCode === 200) {
           resolve(res.data)
         } else if (res.statusCode === 401) {
-          const loginType = uni.getStorageSync('loginType')
-          uni.removeStorageSync('token')
-          uni.removeStorageSync('userInfo')
-          uni.removeStorageSync('guardianInfo')
-          uni.removeStorageSync('guardianStudents')
-          uni.removeStorageSync('selectedGuardianStudentId')
-          uni.reLaunch({
-            url: loginType === 'guardian' ? '/pages/guardian/login' : '/pages/login/login'
-          })
+          clearAuthSession(authType)
+          uni.reLaunch({ url: getLoginUrl(authType) })
           reject(new Error('登录已过期，请重新登录'))
         } else {
           reject(new Error(res.data?.message || '请求失败'))
@@ -86,7 +249,7 @@ export const del = (url, data) => {
 
 export const uploadFile = (url, filePath, formData = {}) => {
   return new Promise((resolve, reject) => {
-    const token = uni.getStorageSync('token')
+    const token = getTeacherToken()
     const uploadUrl = buildUrl(url)
 
     uni.uploadFile({
@@ -183,7 +346,7 @@ export const uploadFileData = (url, filePath, formData = {}) => {
 
 export const downloadFile = (url) => {
   return new Promise((resolve, reject) => {
-    const token = uni.getStorageSync('token')
+    const token = getGuardianToken() || getTeacherToken()
 
     uni.downloadFile({
       url: buildUrl(url),

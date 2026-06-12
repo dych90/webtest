@@ -8,10 +8,7 @@ onLaunch(() => {
   applyTheme()
   
   const userStore = useUserStore()
-  const token = uni.getStorageSync('token')
-  if (token) {
-    userStore.setToken(token)
-  }
+  userStore.initFromStorage()
 })
 
 onShow(() => {

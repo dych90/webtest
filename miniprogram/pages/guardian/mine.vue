@@ -64,7 +64,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, del } from '@/utils/request'
-import { clearGuardianSession, getSelectedGuardianStudentId, requestGuardianSubscription, saveGuardianSession } from '@/utils/guardian'
+import { clearGuardianSession, getGuardianToken, getSelectedGuardianStudentId, requestGuardianSubscription, saveGuardianSession } from '@/utils/guardian'
 import { applyTheme, getCurrentTheme, getThemeClass, getThemeIndex, getThemeOptions, setCurrentThemeByIndex } from '@/utils/theme'
 
 const students = ref([])
@@ -103,7 +103,7 @@ const fetchStudents = async () => {
     const res = await get('/guardian/students')
     students.value = res.data || []
     saveGuardianSession({
-      token: uni.getStorageSync('token'),
+      token: getGuardianToken(),
       guardian: JSON.parse(uni.getStorageSync('guardianInfo') || '{}'),
       students: students.value
     })
@@ -139,7 +139,7 @@ const handleUnbind = (student) => {
       try {
         const result = await del(`/guardian/students/${student._id}/binding`)
         const session = result.data || {
-          token: uni.getStorageSync('token'),
+          token: getGuardianToken(),
           guardian: JSON.parse(uni.getStorageSync('guardianInfo') || '{}'),
           students: students.value.filter(item => item._id !== student._id)
         }

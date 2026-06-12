@@ -61,7 +61,7 @@
 import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get } from '@/utils/request'
-import { getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
+import { getGuardianToken, getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
 import { applyTheme, getThemeClass } from '@/utils/theme'
 
 const now = new Date()
@@ -113,7 +113,7 @@ const fetchStudents = async () => {
     const res = await get('/guardian/students')
     students.value = res.data || []
     saveGuardianSession({
-      token: uni.getStorageSync('token'),
+      token: getGuardianToken(),
       guardian: JSON.parse(uni.getStorageSync('guardianInfo') || '{}'),
       students: students.value
     })
