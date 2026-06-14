@@ -168,7 +168,7 @@ const clearAuthSession = (authType) => {
 }
 
 const getLoginUrl = (authType) => {
-  return authType === 'guardian' ? '/pages/guardian/login' : '/pages/login/login'
+  return authType === 'guardian' ? '/pages/login/login?mode=guardian' : '/pages/login/login'
 }
 
 const request = async (options) => {

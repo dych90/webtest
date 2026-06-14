@@ -135,7 +135,7 @@ const handleDelete = (payment) => {
   uni.showModal({
     title: '确认删除',
     content: `确定要删除${payment.studentId?.name || '该学生'}的缴费记录吗？`,
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -162,7 +162,7 @@ onShow(() => {
 <style scoped>
 .payments-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
   padding-bottom: 140rpx;
 }
@@ -170,7 +170,7 @@ onShow(() => {
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 12rpx;
   padding: 16rpx 20rpx;
   margin-bottom: 20rpx;
@@ -185,19 +185,19 @@ onShow(() => {
 }
 
 .search-input::placeholder {
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .search-icon {
   font-size: 32rpx;
-  color: #909399;
+  color: #8B8176;
   margin-left: 16rpx;
 }
 
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 
@@ -208,7 +208,7 @@ onShow(() => {
 }
 
 .payment-item {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
 }
@@ -230,7 +230,7 @@ onShow(() => {
 
 .remaining-lessons {
   font-size: 24rpx;
-  color: #E6A23C;
+  color: #A26B39;
   background-color: #fdf6ec;
   padding: 4rpx 12rpx;
   border-radius: 6rpx;
@@ -239,8 +239,8 @@ onShow(() => {
 .remaining-lessons.pay-per-lesson,
 .remaining-lessons.payPerLesson,
 .remaining-lessons.free {
-  color: #909399;
-  background-color: #f4f4f5;
+  color: #8B8176;
+  background-color: #F3EBDD;
 }
 
 .remaining-lessons.clickable {
@@ -254,13 +254,13 @@ onShow(() => {
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .payment-amount {
   font-size: 36rpx;
   font-weight: bold;
-  color: #F56C6C;
+  color: #A0523E;
 }
 
 .payment-body {
@@ -276,15 +276,15 @@ onShow(() => {
 }
 
 .info-label {
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-value {
-  color: #333;
+  color: #3F352B;
 }
 
 .text-success {
-  color: #67C23A;
+  color: #5F724C;
 }
 
 .payment-actions {
@@ -298,8 +298,8 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -309,10 +309,10 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #fff;
-  color: #F56C6C;
+  background-color: #FFFDF8;
+  color: #A0523E;
   font-size: 24rpx;
-  border: 2rpx solid #F56C6C;
+  border: 2rpx solid #A0523E;
   border-radius: 8rpx;
 }
 
@@ -323,7 +323,7 @@ onShow(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -331,7 +331,7 @@ onShow(() => {
 }
 
 .add-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: 300;
 }

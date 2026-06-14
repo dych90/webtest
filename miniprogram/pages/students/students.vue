@@ -216,7 +216,7 @@ onShow(() => {
 <style scoped>
 .students-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
@@ -228,7 +228,7 @@ onShow(() => {
   width: 100%;
   height: 80rpx;
   padding: 0 30rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 40rpx;
   font-size: 28rpx;
   box-sizing: border-box;
@@ -239,14 +239,14 @@ onShow(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20rpx 30rpx;
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
   border-radius: 12rpx;
   margin-bottom: 20rpx;
 }
 
 .sort-tip text {
   font-size: 26rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .sort-done {
@@ -256,7 +256,7 @@ onShow(() => {
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 
@@ -270,13 +270,13 @@ onShow(() => {
   display: flex;
   align-items: center;
   padding: 24rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
 }
 
 .student-item.sort-active {
-  background-color: #f0f9eb;
-  border: 2rpx solid #67C23A;
+  background-color: #EAF1E3;
+  border: 2rpx solid #5F724C;
 }
 
 .sort-buttons {
@@ -289,7 +289,7 @@ onShow(() => {
 .sort-btn {
   width: 40rpx;
   height: 40rpx;
-  background-color: #409EFF;
+  background-color: #5F724C;
   border-radius: 6rpx;
   display: flex;
   align-items: center;
@@ -297,13 +297,13 @@ onShow(() => {
 }
 
 .sort-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 20rpx;
   font-weight: bold;
 }
 
 .sort-btn.disabled {
-  background-color: #c0c4cc;
+  background-color: #C4AA84;
 }
 
 .sort-btn-top text,
@@ -314,7 +314,7 @@ onShow(() => {
 .student-index {
   width: 48rpx;
   height: 48rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -324,7 +324,7 @@ onShow(() => {
 
 .student-index text {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   font-weight: bold;
 }
 
@@ -332,7 +332,7 @@ onShow(() => {
   width: 80rpx;
   height: 80rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -340,7 +340,7 @@ onShow(() => {
 }
 
 .student-avatar text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 32rpx;
   font-weight: bold;
 }
@@ -358,7 +358,7 @@ onShow(() => {
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-right: 16rpx;
 }
 
@@ -369,19 +369,19 @@ onShow(() => {
 }
 
 .payment-tag.prepaid {
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
 }
 
 .payment-tag.single,
 .payment-tag.payPerLesson {
-  background-color: #f0f9eb;
-  color: #67C23A;
+  background-color: #EAF1E3;
+  color: #5F724C;
 }
 
 .payment-tag.free {
-  background-color: #f4f4f5;
-  color: #909399;
+  background-color: #F3EBDD;
+  color: #8B8176;
 }
 
 .student-detail {
@@ -392,11 +392,11 @@ onShow(() => {
 
 .detail-item {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .detail-item.price {
-  color: #E6A23C;
+  color: #A26B39;
   font-weight: bold;
 }
 
@@ -407,7 +407,7 @@ onShow(() => {
 
 .student-arrow text {
   font-size: 36rpx;
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .add-btn {
@@ -417,7 +417,7 @@ onShow(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -425,7 +425,7 @@ onShow(() => {
 }
 
 .add-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: 300;
 }

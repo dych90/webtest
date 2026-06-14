@@ -4,7 +4,7 @@
       "path": "pages/login/login",
       "style": {
         "navigationBarTitleText": "登录",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -12,7 +12,7 @@
       "path": "pages/guardian/login",
       "style": {
         "navigationBarTitleText": "学生端登录",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -20,7 +20,7 @@
       "path": "pages/guardian/home",
       "style": {
         "navigationBarTitleText": "学生端",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -28,7 +28,7 @@
       "path": "pages/guardian/schedule",
       "style": {
         "navigationBarTitleText": "学生课表",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -36,7 +36,7 @@
       "path": "pages/guardian/records",
       "style": {
         "navigationBarTitleText": "课时缴费",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -44,7 +44,7 @@
       "path": "pages/guardian/mine",
       "style": {
         "navigationBarTitleText": "我的",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -52,7 +52,7 @@
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "首页",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -60,7 +60,7 @@
       "path": "pages/students/students",
       "style": {
         "navigationBarTitleText": "学生管理",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -68,7 +68,7 @@
       "path": "pages/students/add",
       "style": {
         "navigationBarTitleText": "添加学生",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -76,7 +76,7 @@
       "path": "pages/students/detail",
       "style": {
         "navigationBarTitleText": "学生详情",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -84,7 +84,7 @@
       "path": "pages/students/edit",
       "style": {
         "navigationBarTitleText": "编辑学生",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -92,7 +92,7 @@
       "path": "pages/schedule/schedule",
       "style": {
         "navigationBarTitleText": "排课管理",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -100,7 +100,7 @@
       "path": "pages/schedule/add",
       "style": {
         "navigationBarTitleText": "添加课程",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -108,7 +108,7 @@
       "path": "pages/schedule/detail",
       "style": {
         "navigationBarTitleText": "课程详情",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -116,7 +116,7 @@
       "path": "pages/schedule/batch-add",
       "style": {
         "navigationBarTitleText": "批量添加课程",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -124,7 +124,7 @@
       "path": "pages/lessons/lessons",
       "style": {
         "navigationBarTitleText": "消课管理",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -132,7 +132,7 @@
       "path": "pages/lessons/add",
       "style": {
         "navigationBarTitleText": "添加消课",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -140,7 +140,7 @@
       "path": "pages/lessons/edit",
       "style": {
         "navigationBarTitleText": "编辑消课",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -148,7 +148,7 @@
       "path": "pages/payments/payments",
       "style": {
         "navigationBarTitleText": "缴费管理",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -156,7 +156,7 @@
       "path": "pages/payments/add",
       "style": {
         "navigationBarTitleText": "添加缴费",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -164,7 +164,7 @@
       "path": "pages/payments/detail",
       "style": {
         "navigationBarTitleText": "缴费详情",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -172,7 +172,7 @@
       "path": "pages/payments/edit",
       "style": {
         "navigationBarTitleText": "编辑缴费",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -180,7 +180,7 @@
       "path": "pages/statistics/statistics",
       "style": {
         "navigationBarTitleText": "数据统计",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -188,7 +188,7 @@
       "path": "pages/course-types/course-types",
       "style": {
         "navigationBarTitleText": "课程类型",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -196,7 +196,7 @@
       "path": "pages/fee-standards/fee-standards",
       "style": {
         "navigationBarTitleText": "收费标准",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -204,7 +204,7 @@
       "path": "pages/balance/balance",
       "style": {
         "navigationBarTitleText": "剩余课费",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -212,7 +212,7 @@
       "path": "pages/mine/mine",
       "style": {
         "navigationBarTitleText": "我的",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -220,7 +220,7 @@
       "path": "pages/agreement/user-agreement",
       "style": {
         "navigationBarTitleText": "用户服务协议",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     },
@@ -228,7 +228,7 @@
       "path": "pages/agreement/privacy-policy",
       "style": {
         "navigationBarTitleText": "隐私政策",
-        "navigationBarBackgroundColor": "#409EFF",
+        "navigationBarBackgroundColor": "#B8793E",
         "navigationBarTextStyle": "white"
       }
     }
@@ -236,14 +236,14 @@
   "globalStyle": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "钢琴工作室",
-    "navigationBarBackgroundColor": "#409EFF",
-    "backgroundColor": "#F8F8F8"
+    "navigationBarBackgroundColor": "#B8793E",
+    "backgroundColor": "#F7EFE3"
   },
   "tabBar": {
-    "color": "#999999",
-    "selectedColor": "#409EFF",
-    "borderStyle": "black",
-    "backgroundColor": "#ffffff",
+    "color": "#8B8176",
+    "selectedColor": "#5F724C",
+    "borderStyle": "white",
+    "backgroundColor": "#FFFDF8",
     "list": [
       {
         "pagePath": "pages/index/index",

@@ -8,25 +8,25 @@ export const THEME_KEYS = {
 export const themes = {
   [THEME_KEYS.classic]: {
     key: THEME_KEYS.classic,
-    name: '默认蓝色',
-    navigationBarBackgroundColor: '#409EFF',
-    backgroundColor: '#F8F8F8',
-    tabBarColor: '#999999',
-    tabBarSelectedColor: '#409EFF',
-    tabBarBackgroundColor: '#ffffff',
-    primary: '#409EFF',
-    danger: '#F56C6C'
+    name: '松绿琴房',
+    navigationBarBackgroundColor: '#5F724C',
+    backgroundColor: '#F7EFE3',
+    tabBarColor: '#8B8176',
+    tabBarSelectedColor: '#5F724C',
+    tabBarBackgroundColor: '#FFFDF8',
+    primary: '#5F724C',
+    danger: '#A0523E'
   },
   [THEME_KEYS.dawn]: {
     key: THEME_KEYS.dawn,
     name: '晨光琴房',
     navigationBarBackgroundColor: '#B8793E',
-    backgroundColor: '#F7F2EA',
+    backgroundColor: '#F7EFE3',
     tabBarColor: '#8B8176',
     tabBarSelectedColor: '#B8793E',
     tabBarBackgroundColor: '#FFFDF8',
     primary: '#B8793E',
-    danger: '#C95745'
+    danger: '#A0523E'
   }
 }
 
@@ -77,7 +77,7 @@ export const applyTheme = (key = getCurrentThemeKey()) => {
       color: theme.tabBarColor,
       selectedColor: theme.tabBarSelectedColor,
       backgroundColor: theme.tabBarBackgroundColor,
-      borderStyle: theme.key === THEME_KEYS.dawn ? 'white' : 'black',
+      borderStyle: 'white',
       fail: () => {}
     })
   }

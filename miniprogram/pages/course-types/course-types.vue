@@ -176,7 +176,7 @@ const handleDelete = (type) => {
   uni.showModal({
     title: '确认删除',
     content: `确定要删除课程类型"${type.name}"吗？`,
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -246,7 +246,7 @@ onShow(() => {
 <style scoped>
 .course-types-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
   padding-bottom: 140rpx;
 }
@@ -256,14 +256,14 @@ onShow(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20rpx 30rpx;
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
   border-radius: 12rpx;
   margin-bottom: 20rpx;
 }
 
 .sort-tip text {
   font-size: 26rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .sort-done {
@@ -273,7 +273,7 @@ onShow(() => {
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 
@@ -284,7 +284,7 @@ onShow(() => {
 }
 
 .type-item {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   display: flex;
@@ -292,8 +292,8 @@ onShow(() => {
 }
 
 .type-item.sort-active {
-  background-color: #f0f9eb;
-  border: 2rpx solid #67C23A;
+  background-color: #EAF1E3;
+  border: 2rpx solid #5F724C;
 }
 
 .sort-buttons {
@@ -306,7 +306,7 @@ onShow(() => {
 .sort-btn {
   width: 48rpx;
   height: 48rpx;
-  background-color: #409EFF;
+  background-color: #5F724C;
   border-radius: 8rpx;
   display: flex;
   align-items: center;
@@ -314,19 +314,19 @@ onShow(() => {
 }
 
 .sort-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 24rpx;
   font-weight: bold;
 }
 
 .sort-btn.disabled {
-  background-color: #c0c4cc;
+  background-color: #C4AA84;
 }
 
 .type-index {
   width: 48rpx;
   height: 48rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -336,7 +336,7 @@ onShow(() => {
 
 .type-index text {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   font-weight: bold;
 }
 
@@ -356,7 +356,7 @@ onShow(() => {
 .type-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .type-name-row {
@@ -367,16 +367,16 @@ onShow(() => {
 
 .default-tag {
   font-size: 20rpx;
-  color: #fff;
-  background-color: #67C23A;
+  color: #FFFDF8;
+  background-color: #5F724C;
   padding: 4rpx 12rpx;
   border-radius: 4rpx;
 }
 
 .type-duration {
   font-size: 26rpx;
-  color: #409EFF;
-  background-color: #ecf5ff;
+  color: #5F724C;
+  background-color: #E7EFE3;
   padding: 6rpx 16rpx;
   border-radius: 8rpx;
 }
@@ -390,8 +390,8 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #67C23A;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -401,8 +401,8 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -412,10 +412,10 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #fff;
-  color: #F56C6C;
+  background-color: #FFFDF8;
+  color: #A0523E;
   font-size: 24rpx;
-  border: 2rpx solid #F56C6C;
+  border: 2rpx solid #A0523E;
   border-radius: 8rpx;
 }
 
@@ -426,7 +426,7 @@ onShow(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -434,7 +434,7 @@ onShow(() => {
 }
 
 .add-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: 300;
 }
@@ -455,7 +455,7 @@ onShow(() => {
 .dialog-content {
   width: 90%;
   max-width: 600rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 20rpx;
   overflow: hidden;
 }
@@ -471,12 +471,12 @@ onShow(() => {
 .dialog-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .dialog-close {
   font-size: 40rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .dialog-body {
@@ -490,7 +490,7 @@ onShow(() => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -514,8 +514,8 @@ onShow(() => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -525,8 +525,8 @@ onShow(() => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;

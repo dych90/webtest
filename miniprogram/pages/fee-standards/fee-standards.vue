@@ -205,7 +205,7 @@ const handleDelete = (standard) => {
   uni.showModal({
     title: '确认删除',
     content: '确定要删除这条收费标准吗？',
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -290,7 +290,7 @@ onShow(() => {
 <style scoped>
 .fee-standards-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
   padding-bottom: 140rpx;
 }
@@ -298,7 +298,7 @@ onShow(() => {
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 12rpx;
   padding: 16rpx 20rpx;
   margin-bottom: 20rpx;
@@ -313,19 +313,19 @@ onShow(() => {
 }
 
 .search-input::placeholder {
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .search-icon {
   font-size: 32rpx;
-  color: #909399;
+  color: #8B8176;
   margin-left: 16rpx;
 }
 
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 
@@ -336,7 +336,7 @@ onShow(() => {
 }
 
 .standard-item {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
 }
@@ -353,13 +353,13 @@ onShow(() => {
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .price {
   font-size: 36rpx;
   font-weight: bold;
-  color: #F56C6C;
+  color: #A0523E;
 }
 
 .standard-body {
@@ -375,11 +375,11 @@ onShow(() => {
 }
 
 .info-label {
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-value {
-  color: #333;
+  color: #3F352B;
 }
 
 .standard-actions {
@@ -393,8 +393,8 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -404,10 +404,10 @@ onShow(() => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #fff;
-  color: #F56C6C;
+  background-color: #FFFDF8;
+  color: #A0523E;
   font-size: 24rpx;
-  border: 2rpx solid #F56C6C;
+  border: 2rpx solid #A0523E;
   border-radius: 8rpx;
 }
 
@@ -418,7 +418,7 @@ onShow(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -426,7 +426,7 @@ onShow(() => {
 }
 
 .add-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: 300;
 }
@@ -448,7 +448,7 @@ onShow(() => {
   width: 90%;
   max-width: 600rpx;
   max-height: 80vh;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 20rpx;
   overflow: hidden;
 }
@@ -464,12 +464,12 @@ onShow(() => {
 .dialog-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .dialog-close {
   font-size: 40rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .dialog-body {
@@ -485,7 +485,7 @@ onShow(() => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -512,7 +512,7 @@ onShow(() => {
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .dialog-footer {
@@ -525,8 +525,8 @@ onShow(() => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -536,8 +536,8 @@ onShow(() => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;

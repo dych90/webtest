@@ -743,7 +743,7 @@ const handleSubmit = async () => {
   text-align: center;
   border-radius: 50%;
   background-color: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: #FFFDF8;
   font-size: 28rpx;
 }
 
@@ -842,7 +842,7 @@ const handleSubmit = async () => {
   height: 80rpx;
   line-height: 80rpx;
   background-color: var(--theme-primary);
-  color: #fff;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;

@@ -288,7 +288,7 @@ onShow(() => {
 }
 
 .user-avatar text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: bold;
 }

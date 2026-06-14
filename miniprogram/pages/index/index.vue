@@ -1,11 +1,22 @@
 <template>
   <view class="index-container" :class="themeClass">
+    <view class="paper-grain"></view>
+    <view class="side-label">
+      <text>PIANO STUDIO</text>
+    </view>
+
+    <view class="home-content">
     <view class="header-section">
       <view class="header-left">
+        <text class="header-kicker">LESSON LOG</text>
         <text class="greeting">{{ greeting }}，{{ userStore.userInfo?.name || '老师' }}</text>
-      </view>
-      <view class="header-right">
         <text class="date">{{ currentDate }}</text>
+      </view>
+      <view class="header-art">
+        <view class="mini-staff staff-a"></view>
+        <view class="mini-staff staff-b"></view>
+        <view class="mini-staff staff-c"></view>
+        <image class="header-piano" src="../../image/pianoimage-transparent.png" mode="widthFix"></image>
       </view>
     </view>
     
@@ -131,6 +142,7 @@
           <text class="stat-label">本月上课数</text>
         </view>
       </view>
+    </view>
     </view>
     
     <view class="dialog-mask" v-if="attendDialogVisible" @click="closeAttendDialog">
@@ -950,7 +962,7 @@ onUnmounted(() => {
 
 .course-index text {
   font-size: 22rpx;
-  color: #fff;
+  color: #FFFDF8;
   font-weight: bold;
 }
 
@@ -1039,7 +1051,7 @@ onUnmounted(() => {
 .btn-attend {
   padding: 10rpx 20rpx;
   background-color: var(--theme-primary);
-  color: #fff;
+  color: #FFFDF8;
   font-size: 22rpx;
   border: none;
   border-radius: 6rpx;
@@ -1279,7 +1291,7 @@ onUnmounted(() => {
   text-align: center;
   border-radius: 50%;
   background-color: rgba(0, 0, 0, 0.55);
-  color: #fff;
+  color: #FFFDF8;
   font-size: 28rpx;
 }
 
@@ -1383,9 +1395,603 @@ onUnmounted(() => {
   height: 80rpx;
   line-height: 80rpx;
   background-color: var(--theme-primary);
-  color: #fff;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
+}
+
+.index-container {
+  position: relative;
+  min-height: 100vh;
+  padding: 0;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(236, 214, 175, 0.52) 0, rgba(236, 214, 175, 0) 42%),
+    linear-gradient(180deg, #f7efe3 0%, #efe3d1 100%);
+  color: #3f352b;
+}
+
+.paper-grain {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(104, 87, 70, 0.05) 0, rgba(104, 87, 70, 0.05) 1rpx, transparent 1rpx, transparent 12rpx),
+    repeating-linear-gradient(90deg, rgba(104, 87, 70, 0.04) 0, rgba(104, 87, 70, 0.04) 1rpx, transparent 1rpx, transparent 14rpx);
+  pointer-events: none;
+}
+
+.side-label {
+  position: absolute;
+  left: 20rpx;
+  top: 88rpx;
+  bottom: 88rpx;
+  width: 34rpx;
+  border-left: 2rpx dashed rgba(85, 71, 58, 0.42);
+  z-index: 1;
+}
+
+.side-label text {
+  position: absolute;
+  left: -12rpx;
+  top: 260rpx;
+  width: 280rpx;
+  transform: rotate(90deg);
+  transform-origin: left top;
+  font-size: 20rpx;
+  color: rgba(63, 53, 43, 0.62);
+}
+
+.home-content {
+  position: relative;
+  z-index: 2;
+  padding: 54rpx 34rpx 48rpx 70rpx;
+  box-sizing: border-box;
+}
+
+.header-section {
+  position: relative;
+  min-height: 228rpx;
+  align-items: stretch;
+  padding: 34rpx 30rpx;
+  margin-bottom: 30rpx;
+  border-radius: 34rpx 34rpx 26rpx 26rpx;
+  background:
+    linear-gradient(180deg, rgba(224, 214, 191, 0.94) 0%, rgba(212, 202, 178, 0.88) 100%);
+  border: 4rpx solid rgba(118, 95, 75, 0.72);
+  box-shadow: 14rpx 18rpx 0 rgba(118, 95, 75, 0.14);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.header-section::after {
+  content: "";
+  position: absolute;
+  left: 58rpx;
+  right: 54rpx;
+  bottom: 22rpx;
+  height: 72rpx;
+  border: 5rpx solid rgba(255, 249, 234, 0.52);
+  border-top-color: transparent;
+  border-radius: 50%;
+  transform: rotate(-8deg);
+}
+
+.header-left {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  min-width: 0;
+  padding-right: 18rpx;
+}
+
+.header-kicker,
+.greeting,
+.date {
+  display: block;
+}
+
+.header-kicker {
+  margin-bottom: 18rpx;
+  font-size: 20rpx;
+  color: rgba(63, 53, 43, 0.5);
+  font-family: Georgia, serif;
+}
+
+.greeting {
+  font-size: 38rpx;
+  line-height: 48rpx;
+  font-weight: 700;
+  color: #3e3328;
+}
+
+.date {
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  color: rgba(63, 53, 43, 0.68);
+}
+
+.header-art {
+  position: relative;
+  z-index: 2;
+  width: 214rpx;
+  min-height: 172rpx;
+  flex-shrink: 0;
+}
+
+.mini-staff {
+  position: absolute;
+  left: 6rpx;
+  right: 0;
+  height: 3rpx;
+  background: rgba(77, 68, 53, 0.18);
+}
+
+.staff-a {
+  top: 38rpx;
+}
+
+.staff-b {
+  top: 64rpx;
+}
+
+.staff-c {
+  top: 90rpx;
+}
+
+.header-piano {
+  position: absolute;
+  left: -6rpx;
+  top: 8rpx;
+  width: 218rpx;
+  opacity: 0.9;
+  transform: rotate(-2deg);
+}
+
+.quick-actions {
+  margin: 0 0 28rpx;
+  padding: 24rpx 8rpx 18rpx;
+  border-top: 3rpx dashed rgba(85, 71, 58, 0.34);
+  border-bottom: 3rpx dashed rgba(85, 71, 58, 0.34);
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.action-grid {
+  gap: 12rpx;
+}
+
+.action-item {
+  min-height: 132rpx;
+  padding: 14rpx 8rpx;
+  border: 3rpx solid rgba(85, 68, 53, 0.2);
+  border-radius: 24rpx;
+  background: rgba(255, 248, 235, 0.64);
+  box-shadow: 8rpx 9rpx 0 rgba(112, 95, 66, 0.08);
+  box-sizing: border-box;
+}
+
+.action-item:active {
+  transform: translateY(2rpx);
+  box-shadow: 5rpx 6rpx 0 rgba(112, 95, 66, 0.08);
+}
+
+.action-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  margin-bottom: 10rpx;
+  border: 3rpx solid rgba(85, 68, 53, 0.26);
+  background: rgba(255, 253, 244, 0.78);
+  font-size: 34rpx;
+  box-sizing: border-box;
+}
+
+.student-icon {
+  background-color: rgba(95, 114, 76, 0.18);
+}
+
+.schedule-icon {
+  background-color: rgba(217, 155, 82, 0.2);
+}
+
+.payment-icon {
+  background-color: rgba(160, 82, 62, 0.14);
+}
+
+.balance-icon {
+  background-color: rgba(118, 95, 75, 0.16);
+}
+
+.action-text {
+  max-width: 100%;
+  font-size: 22rpx;
+  line-height: 28rpx;
+  color: rgba(63, 53, 43, 0.72);
+  text-align: center;
+}
+
+.schedule-section,
+.stats-section {
+  position: relative;
+  padding: 28rpx 26rpx;
+  margin-bottom: 28rpx;
+  border: 4rpx solid rgba(85, 68, 53, 0.58);
+  border-radius: 30rpx;
+  background: rgba(255, 248, 235, 0.86);
+  box-shadow: 14rpx 14rpx 0 rgba(112, 95, 66, 0.12);
+  box-sizing: border-box;
+}
+
+.schedule-section::before,
+.stats-section::before {
+  content: "";
+  position: absolute;
+  right: 34rpx;
+  top: -17rpx;
+  width: 92rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  background: rgba(217, 155, 82, 0.3);
+  transform: rotate(-8deg);
+}
+
+.stats-section::before {
+  background: rgba(95, 114, 76, 0.22);
+}
+
+.section-header {
+  margin-bottom: 24rpx;
+  gap: 16rpx;
+}
+
+.date-nav {
+  min-width: 0;
+  gap: 12rpx;
+}
+
+.nav-btn {
+  width: 54rpx;
+  height: 54rpx;
+  border: 3rpx solid rgba(85, 68, 53, 0.3);
+  background: rgba(255, 253, 244, 0.8);
+  box-sizing: border-box;
+}
+
+.nav-btn text {
+  font-size: 34rpx;
+  color: #5f724c;
+}
+
+.section-title {
+  font-size: 32rpx;
+  line-height: 42rpx;
+  font-weight: 700;
+  color: #3f352b;
+}
+
+.header-right-btns {
+  flex-shrink: 0;
+  gap: 12rpx;
+}
+
+.section-more,
+.back-today-btn {
+  padding: 8rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  line-height: 28rpx;
+  font-weight: 600;
+}
+
+.section-more {
+  color: #5f724c;
+  background: rgba(95, 114, 76, 0.14);
+}
+
+.back-today-btn {
+  color: #a26b39;
+  background: rgba(217, 155, 82, 0.16);
+}
+
+.empty-tip {
+  padding: 46rpx 0;
+  border: 3rpx dashed rgba(85, 68, 53, 0.22);
+  border-radius: 22rpx;
+  color: rgba(63, 53, 43, 0.56);
+  background: rgba(255, 253, 244, 0.54);
+}
+
+.course-list {
+  gap: 16rpx;
+}
+
+.course-item {
+  align-items: center;
+  padding: 18rpx;
+  border: 3rpx solid rgba(85, 68, 53, 0.18);
+  border-left: 8rpx solid #5f724c;
+  border-radius: 22rpx;
+  background: rgba(255, 253, 244, 0.78);
+  box-shadow: 8rpx 8rpx 0 rgba(112, 95, 66, 0.08);
+  box-sizing: border-box;
+}
+
+.course-item:active {
+  background: rgba(247, 241, 225, 0.92);
+}
+
+.course-item.course-completed {
+  opacity: 0.72;
+  border-left-color: #a26b39;
+}
+
+.course-index {
+  width: 42rpx;
+  height: 42rpx;
+  margin-right: 14rpx;
+  background: #5f724c;
+  box-shadow: 3rpx 4rpx 0 rgba(95, 114, 76, 0.18);
+}
+
+.course-time {
+  width: 84rpx;
+  flex-shrink: 0;
+}
+
+.time {
+  font-size: 26rpx;
+  color: #3f352b;
+}
+
+.course-info {
+  min-width: 0;
+  padding: 0 12rpx;
+}
+
+.student-name {
+  font-size: 28rpx;
+  line-height: 36rpx;
+  font-weight: 700;
+  color: #3f352b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-type {
+  display: block;
+  font-size: 22rpx;
+  line-height: 30rpx;
+  color: rgba(63, 53, 43, 0.58);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-record-preview {
+  margin-top: 10rpx;
+  padding: 10rpx 12rpx;
+  border: 2rpx solid rgba(95, 114, 76, 0.18);
+  border-radius: 14rpx;
+  background: rgba(95, 114, 76, 0.09);
+}
+
+.lesson-record-text,
+.lesson-record-media {
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.lesson-record-text {
+  color: rgba(63, 53, 43, 0.78);
+}
+
+.lesson-record-media {
+  color: #5f724c;
+}
+
+.course-actions {
+  width: 132rpx;
+  flex-shrink: 0;
+  gap: 8rpx;
+}
+
+.status-tag {
+  min-width: 88rpx;
+  padding: 6rpx 10rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  line-height: 26rpx;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.status-normal {
+  background: rgba(95, 114, 76, 0.14);
+  color: #5f724c;
+}
+
+.status-completed {
+  background: rgba(217, 155, 82, 0.18);
+  color: #a26b39;
+}
+
+.status-cancelled {
+  background: rgba(160, 82, 62, 0.14);
+  color: #a0523e;
+}
+
+.btn-attend,
+.btn-cancel-attend,
+.btn-edit-record {
+  width: 122rpx;
+  min-height: 50rpx;
+  padding: 0 10rpx;
+  border-radius: 16rpx;
+  font-size: 21rpx;
+  line-height: 50rpx;
+  box-sizing: border-box;
+}
+
+.btn-attend {
+  background: #5f724c;
+  color: #FFFDF8df4;
+  box-shadow: 5rpx 6rpx 0 rgba(95, 114, 76, 0.18);
+}
+
+.btn-cancel-attend {
+  border: 2rpx solid rgba(160, 82, 62, 0.58);
+  background: rgba(255, 253, 244, 0.82);
+  color: #a0523e;
+}
+
+.btn-edit-record {
+  border: 2rpx solid rgba(95, 114, 76, 0.44);
+  background: rgba(95, 114, 76, 0.12);
+  color: #5f724c;
+}
+
+.arrow-icon {
+  display: none;
+}
+
+.stats-grid {
+  gap: 16rpx;
+}
+
+.stat-card {
+  min-height: 142rpx;
+  padding: 22rpx 14rpx;
+  border: 3rpx solid rgba(85, 68, 53, 0.16);
+  border-radius: 22rpx;
+  background: rgba(255, 253, 244, 0.74);
+  box-sizing: border-box;
+}
+
+.stat-value {
+  margin-bottom: 8rpx;
+  font-size: 34rpx;
+  line-height: 42rpx;
+  color: #5f724c;
+}
+
+.stat-value.warning {
+  color: #a26b39;
+}
+
+.stat-value.success {
+  color: #5f724c;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  line-height: 30rpx;
+  color: rgba(63, 53, 43, 0.62);
+}
+
+.dialog-mask {
+  background-color: rgba(63, 53, 43, 0.36);
+  z-index: 999;
+}
+
+.dialog-content {
+  width: 88%;
+  max-width: 640rpx;
+  border: 4rpx solid rgba(85, 68, 53, 0.58);
+  border-radius: 30rpx;
+  background: rgba(255, 248, 235, 0.98);
+  box-shadow: 14rpx 14rpx 0 rgba(63, 53, 43, 0.16);
+}
+
+.dialog-header {
+  padding: 28rpx 30rpx;
+  border-bottom: 3rpx dashed rgba(85, 71, 58, 0.28);
+}
+
+.dialog-title {
+  color: #3f352b;
+}
+
+.dialog-close {
+  color: rgba(63, 53, 43, 0.58);
+}
+
+.attend-info,
+.form-picker,
+.content-input,
+.voice-box {
+  border: 3rpx solid rgba(85, 68, 53, 0.24);
+  border-radius: 20rpx;
+  background: rgba(255, 253, 244, 0.76);
+}
+
+.form-label,
+.attend-student {
+  color: #3f352b;
+}
+
+.attend-course,
+.attend-time,
+.form-hint,
+.notify-tip,
+.picker-arrow {
+  color: rgba(63, 53, 43, 0.58);
+}
+
+.photo-item,
+.photo-add {
+  border-radius: 16rpx;
+  background: rgba(255, 253, 244, 0.76);
+}
+
+.photo-add {
+  border: 3rpx dashed rgba(85, 68, 53, 0.28);
+}
+
+.voice-btn {
+  border-radius: 16rpx;
+  background: rgba(95, 114, 76, 0.14);
+  color: #5f724c;
+}
+
+.voice-btn.recording {
+  background: rgba(160, 82, 62, 0.14);
+  color: #a0523e;
+}
+
+.voice-info {
+  color: #5f724c;
+}
+
+.voice-remove {
+  color: #a0523e;
+}
+
+.dialog-footer {
+  border-top: 3rpx dashed rgba(85, 71, 58, 0.28);
+}
+
+.btn-cancel,
+.btn-confirm {
+  border-radius: 18rpx;
+}
+
+.btn-cancel {
+  border: 2rpx solid rgba(85, 68, 53, 0.32);
+  background: rgba(255, 253, 244, 0.82);
+  color: rgba(63, 53, 43, 0.62);
+}
+
+.btn-confirm {
+  background: #5f724c;
+  color: #FFFDF8df4;
 }
 </style>

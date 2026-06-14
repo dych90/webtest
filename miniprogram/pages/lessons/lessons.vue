@@ -516,7 +516,7 @@ const refreshTheme = () => {
   height: 60rpx;
   line-height: 60rpx;
   background-color: var(--theme-primary);
-  color: #fff;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -538,7 +538,7 @@ const refreshTheme = () => {
   height: 60rpx;
   line-height: 60rpx;
   background-color: var(--theme-success);
-  color: #fff;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -559,7 +559,7 @@ const refreshTheme = () => {
 }
 
 .add-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: 300;
 }

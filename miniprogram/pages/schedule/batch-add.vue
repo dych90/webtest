@@ -362,12 +362,12 @@ const handleSubmit = async () => {
 <style scoped>
 .batch-add-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .form-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -380,7 +380,7 @@ const handleSubmit = async () => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -396,12 +396,12 @@ const handleSubmit = async () => {
 }
 
 .placeholder {
-  color: #909399;
+  color: #8B8176;
 }
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .default-duration-check {
@@ -420,23 +420,23 @@ const handleSubmit = async () => {
   justify-content: center;
   margin-right: 12rpx;
   font-size: 24rpx;
-  color: #fff;
-  background: #fff;
+  color: #FFFDF8;
+  background: #FFFDF8;
   transition: all 0.2s;
 }
 
 .checkbox.checked {
-  background: #409EFF;
-  border-color: #409EFF;
+  background: #5F724C;
+  border-color: #5F724C;
 }
 
 .checkbox-label {
   font-size: 26rpx;
-  color: #606266;
+  color: #6F6254;
 }
 
 .course-list-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -452,12 +452,12 @@ const handleSubmit = async () => {
 .section-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .course-count {
   font-size: 26rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .course-list {
@@ -474,7 +474,7 @@ const handleSubmit = async () => {
 .row-index {
   width: 50rpx;
   font-size: 26rpx;
-  color: #909399;
+  color: #8B8176;
   text-align: center;
 }
 
@@ -497,12 +497,12 @@ const handleSubmit = async () => {
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 26rpx;
-  background-color: #fafafa;
+  background-color: #FFFDF8;
 }
 
 .picker-arrow-small {
   font-size: 18rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .row-actions {
@@ -517,8 +517,8 @@ const handleSubmit = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #fef0f0;
-  color: #F56C6C;
+  background-color: #F8E4DD;
+  color: #A0523E;
   border-radius: 50%;
   font-size: 24rpx;
 }
@@ -527,9 +527,9 @@ const handleSubmit = async () => {
   width: 100%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #ecf5ff;
-  color: #409EFF;
-  border: 2rpx dashed #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
+  border: 2rpx dashed #5F724C;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
@@ -544,8 +544,8 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -555,8 +555,8 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -578,7 +578,7 @@ const handleSubmit = async () => {
 .student-picker-dialog {
   width: 90%;
   max-width: 600rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 24rpx;
   max-height: 70vh;
   display: flex;
@@ -596,12 +596,12 @@ const handleSubmit = async () => {
 .picker-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .picker-close {
   font-size: 40rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .picker-search {
@@ -613,7 +613,7 @@ const handleSubmit = async () => {
   width: 100%;
   height: 70rpx;
   padding: 0 20rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 35rpx;
   font-size: 28rpx;
   box-sizing: border-box;
@@ -634,7 +634,7 @@ const handleSubmit = async () => {
 }
 
 .picker-item.selected {
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
 }
 
 .student-item-content {
@@ -646,7 +646,7 @@ const handleSubmit = async () => {
   width: 60rpx;
   height: 60rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -654,7 +654,7 @@ const handleSubmit = async () => {
 }
 
 .student-avatar-small text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 26rpx;
   font-weight: bold;
 }
@@ -666,24 +666,24 @@ const handleSubmit = async () => {
 
 .student-item-name {
   font-size: 30rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .student-item-phone {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   margin-top: 4rpx;
 }
 
 .check-icon {
-  color: #409EFF;
+  color: #5F724C;
   font-size: 32rpx;
 }
 
 .empty-student {
   text-align: center;
   padding: 60rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 </style>

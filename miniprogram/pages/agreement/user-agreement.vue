@@ -72,7 +72,7 @@
 <style scoped>
 .agreement-container {
   padding: 20rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   min-height: 100vh;
 }
 
@@ -88,7 +88,7 @@
   display: block;
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 20rpx;
 }
 

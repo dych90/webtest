@@ -59,7 +59,7 @@
       
       <view class="form-item switch-item" @click.stop>
         <text class="form-label">是否重复</text>
-        <switch :checked="form.isRecurring" @change="onRecurringChange" color="#409EFF" />
+        <switch :checked="form.isRecurring" @change="onRecurringChange" color="#5F724C" />
       </view>
       
       <view v-if="form.isRecurring" class="recurring-section" @click.stop>
@@ -466,12 +466,12 @@ const handleSubmit = async () => {
 <style scoped>
 .add-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .form-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -484,7 +484,7 @@ const handleSubmit = async () => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -510,12 +510,12 @@ const handleSubmit = async () => {
 }
 
 .placeholder {
-  color: #909399;
+  color: #8B8176;
 }
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .form-textarea {
@@ -546,18 +546,18 @@ const handleSubmit = async () => {
 }
 
 .checkbox.checked {
-  background-color: #409EFF;
-  border-color: #409EFF;
+  background-color: #5F724C;
+  border-color: #5F724C;
 }
 
 .checkbox text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 24rpx;
 }
 
 .checkbox-label {
   font-size: 26rpx;
-  color: #606266;
+  color: #6F6254;
 }
 
 .switch-item {
@@ -571,7 +571,7 @@ const handleSubmit = async () => {
 }
 
 .recurring-section {
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 30rpx;
@@ -583,18 +583,18 @@ const handleSubmit = async () => {
 
 .recurring-tip {
   font-size: 26rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .recurring-preview {
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid #e4e7ed;
+  border-top: 1rpx solid #E7D8C7;
 }
 
 .preview-title {
   font-size: 26rpx;
-  color: #333;
+  color: #3F352B;
   font-weight: bold;
   display: block;
   margin-bottom: 12rpx;
@@ -608,15 +608,15 @@ const handleSubmit = async () => {
 
 .preview-date {
   font-size: 24rpx;
-  color: #606266;
-  background-color: #fff;
+  color: #6F6254;
+  background-color: #FFFDF8;
   padding: 6rpx 12rpx;
   border-radius: 6rpx;
 }
 
 .preview-more {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .form-actions {
@@ -629,8 +629,8 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -640,8 +640,8 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -664,7 +664,7 @@ const handleSubmit = async () => {
 .student-picker-dialog {
   width: 90%;
   max-width: 600rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 24rpx;
   max-height: 70vh;
   display: flex;
@@ -682,12 +682,12 @@ const handleSubmit = async () => {
 .picker-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .picker-close {
   font-size: 40rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .picker-search {
@@ -699,7 +699,7 @@ const handleSubmit = async () => {
   width: 100%;
   height: 70rpx;
   padding: 0 20rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 35rpx;
   font-size: 28rpx;
   box-sizing: border-box;
@@ -720,7 +720,7 @@ const handleSubmit = async () => {
 }
 
 .picker-item.selected {
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
 }
 
 .student-item-content {
@@ -732,7 +732,7 @@ const handleSubmit = async () => {
   width: 60rpx;
   height: 60rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -740,7 +740,7 @@ const handleSubmit = async () => {
 }
 
 .student-avatar-small text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 26rpx;
   font-weight: bold;
 }
@@ -752,24 +752,24 @@ const handleSubmit = async () => {
 
 .student-item-name {
   font-size: 30rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .student-item-phone {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   margin-top: 4rpx;
 }
 
 .check-icon {
-  color: #409EFF;
+  color: #5F724C;
   font-size: 32rpx;
 }
 
 .empty-student {
   text-align: center;
   padding: 60rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 </style>

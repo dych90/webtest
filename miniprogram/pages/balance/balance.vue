@@ -418,7 +418,7 @@ const saveReportImage = () => {
   ctx.setTextAlign('center')
   ctx.fillText(`「${reportForm.studentName}」· 上课情况报告`, width / 2, 40)
   
-  ctx.setFillStyle('#909399')
+  ctx.setFillStyle('#8B8176')
   ctx.setFontSize(12)
   ctx.fillText(`时间范围：${formatDate(reportForm.startDate)} 至 ${formatDate(reportForm.endDate)}`, width / 2, 65)
   
@@ -428,20 +428,20 @@ const saveReportImage = () => {
   roundRect(ctx, 20, summaryY, summaryWidth - 10, 80, 8, '#2C3E50')
   roundRect(ctx, summaryWidth + 30, summaryY, summaryWidth - 10, 80, 8, '#2C3E50')
   
-  ctx.setFillStyle('#fff')
+  ctx.setFillStyle('#FFFDF8')
   ctx.setFontSize(12)
   ctx.setTextAlign('center')
   ctx.fillText('已上课', 20 + (summaryWidth - 10) / 2, summaryY + 30)
   ctx.setFontSize(28)
-  ctx.setFillStyle('#67C23A')
+  ctx.setFillStyle('#5F724C')
   ctx.fillText(String(reportData.attendedLessons), 20 + (summaryWidth - 10) / 2, summaryY + 60)
   
   if (reportData.paymentType === 'prepaid') {
-    ctx.setFillStyle('#fff')
+    ctx.setFillStyle('#FFFDF8')
     ctx.setFontSize(12)
     ctx.fillText('剩余课时', summaryWidth + 30 + (summaryWidth - 10) / 2, summaryY + 30)
     ctx.setFontSize(28)
-    ctx.setFillStyle('#E6A23C')
+    ctx.setFillStyle('#A26B39')
     ctx.fillText(String(reportData.remainingLessons), summaryWidth + 30 + (summaryWidth - 10) / 2, summaryY + 60)
   }
   
@@ -454,19 +454,19 @@ const saveReportImage = () => {
   reportData.lessonDetails.forEach((lesson, index) => {
     if (y > height - 50) return
     
-    ctx.setFillStyle('#f5f7fa')
-    roundRect(ctx, 20, y, width - 40, 35, 6, '#f5f7fa')
+    ctx.setFillStyle('#FBF6EE')
+    roundRect(ctx, 20, y, width - 40, 35, 6, '#FBF6EE')
     
-    ctx.setFillStyle('#409EFF')
+    ctx.setFillStyle('#5F724C')
     ctx.setFontSize(10)
     ctx.fillText(`${index + 1}.`, 30, y + 22)
     
-    ctx.setFillStyle('#333')
+    ctx.setFillStyle('#3F352B')
     ctx.setFontSize(12)
     ctx.fillText(`${formatDate(lesson.date)} ${getWeekDay(lesson.date)} ${formatTime(lesson.startTime)}`, 50, y + 22)
     
     const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
-    const statusColor = lesson.isGiftLesson ? '#9b59b6' : (lesson.status === 'attended' ? '#67C23A' : '#F56C6C')
+    const statusColor = lesson.isGiftLesson ? '#B8793E' : (lesson.status === 'attended' ? '#5F724C' : '#A0523E')
     ctx.setFillStyle(statusColor)
     ctx.setTextAlign('right')
     ctx.fillText(statusText, width - 30, y + 22)
@@ -569,14 +569,14 @@ onLoad((options) => {
 <style scoped>
 .balance-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .search-bar {
   display: flex;
   align-items: center;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 12rpx;
   padding: 16rpx 20rpx;
   margin-bottom: 20rpx;
@@ -591,19 +591,19 @@ onLoad((options) => {
 }
 
 .search-input::placeholder {
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .search-icon {
   font-size: 32rpx;
-  color: #909399;
+  color: #8B8176;
   margin-left: 16rpx;
 }
 
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 
@@ -614,7 +614,7 @@ onLoad((options) => {
 }
 
 .balance-item {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
 }
@@ -637,7 +637,7 @@ onLoad((options) => {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -646,14 +646,14 @@ onLoad((options) => {
 
 .student-index text {
   font-size: 22rpx;
-  color: #fff;
+  color: #FFFDF8;
   font-weight: bold;
 }
 
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .payment-type {
@@ -663,18 +663,18 @@ onLoad((options) => {
 }
 
 .payment-type.prepaid {
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
 }
 
 .payment-type.payPerLesson {
-  background-color: #f0f9eb;
-  color: #67C23A;
+  background-color: #EAF1E3;
+  color: #5F724C;
 }
 
 .payment-type.free {
-  background-color: #f4f4f5;
-  color: #909399;
+  background-color: #F3EBDD;
+  color: #8B8176;
 }
 
 .balance-body {
@@ -691,17 +691,17 @@ onLoad((options) => {
 
 .info-label {
   font-size: 26rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-value {
   font-size: 26rpx;
-  color: #333;
+  color: #3F352B;
   font-weight: bold;
 }
 
 .info-value.warning {
-  color: #E6A23C;
+  color: #A26B39;
 }
 
 .balance-actions {
@@ -715,8 +715,8 @@ onLoad((options) => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #67C23A;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
@@ -726,15 +726,15 @@ onLoad((options) => {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
 }
 
 .btn-update[disabled] {
-  background-color: #c0c4cc;
+  background-color: #C4AA84;
 }
 
 .dialog-mask {
@@ -753,7 +753,7 @@ onLoad((options) => {
 .dialog-content {
   width: 90%;
   max-width: 600rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 20rpx;
   overflow: hidden;
 }
@@ -779,12 +779,12 @@ onLoad((options) => {
 .dialog-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .dialog-close {
   font-size: 40rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .dialog-body {
@@ -798,13 +798,13 @@ onLoad((options) => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
 .form-value {
   font-size: 28rpx;
-  color: #606266;
+  color: #6F6254;
 }
 
 .form-picker {
@@ -820,7 +820,7 @@ onLoad((options) => {
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .number-input {
@@ -832,7 +832,7 @@ onLoad((options) => {
   width: 100rpx;
   height: 80rpx;
   font-size: 28rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   display: flex;
@@ -845,13 +845,13 @@ onLoad((options) => {
   height: 80rpx;
   font-size: 36rpx;
   font-weight: bold;
-  background-color: #e6f7ff;
+  background-color: #E7EFE3;
   border: 2rpx solid #91d5ff;
   border-radius: 8rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #1890ff;
+  color: #5F724C;
 }
 
 .number-field {
@@ -876,8 +876,8 @@ onLoad((options) => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -887,8 +887,8 @@ onLoad((options) => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -898,8 +898,8 @@ onLoad((options) => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #67C23A;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -922,13 +922,13 @@ onLoad((options) => {
   display: block;
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
 .report-subtitle {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .report-summary {
@@ -956,15 +956,15 @@ onLoad((options) => {
   display: block;
   font-size: 48rpx;
   font-weight: bold;
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .summary-value.attended {
-  color: #67C23A;
+  color: #5F724C;
 }
 
 .summary-value.remaining {
-  color: #E6A23C;
+  color: #A26B39;
 }
 
 .report-details {
@@ -975,7 +975,7 @@ onLoad((options) => {
   display: block;
   font-size: 28rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 20rpx;
 }
 
@@ -990,16 +990,16 @@ onLoad((options) => {
   justify-content: space-between;
   align-items: center;
   padding: 16rpx 20rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 8rpx;
-  border-left: 4rpx solid #409EFF;
+  border-left: 4rpx solid #5F724C;
 }
 
 .lesson-index {
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1009,7 +1009,7 @@ onLoad((options) => {
 
 .lesson-index text {
   font-size: 20rpx;
-  color: #fff;
+  color: #FFFDF8;
   font-weight: bold;
 }
 
@@ -1021,31 +1021,31 @@ onLoad((options) => {
 
 .lesson-date {
   font-size: 26rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .lesson-time {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .status-tag {
   font-size: 22rpx;
   padding: 6rpx 12rpx;
   border-radius: 4rpx;
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .status-tag.attended {
-  background-color: #67C23A;
+  background-color: #5F724C;
 }
 
 .status-tag.absent {
-  background-color: #F56C6C;
+  background-color: #A0523E;
 }
 
 .status-tag.gift {
-  background-color: #9b59b6;
+  background-color: #B8793E;
 }
 
 .share-canvas {

@@ -140,7 +140,7 @@
           </view>
           <view class="form-item switch-item" @click.stop>
             <text class="form-label">是否重复</text>
-            <switch :checked="editForm.isRecurring" @change="onRecurringChange" color="#409EFF" />
+            <switch :checked="editForm.isRecurring" @change="onRecurringChange" color="#5F724C" />
           </view>
           <view v-if="editForm.isRecurring" class="recurring-section" @click.stop>
             <view class="recurring-info">
@@ -873,7 +873,7 @@ const handleDelete = async () => {
   uni.showModal({
     title: '确认删除',
     content: '确定要删除这个课程吗？',
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -897,7 +897,7 @@ const handleDeleteGroup = async () => {
   uni.showModal({
     title: '批量删除确认',
     content: `确定要删除同组的${count}节课程吗？此操作不可恢复！`,
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -918,12 +918,12 @@ const handleDeleteGroup = async () => {
 <style scoped>
 .detail-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .info-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -941,7 +941,7 @@ const handleDeleteGroup = async () => {
 .info-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .info-status {
@@ -951,18 +951,18 @@ const handleDeleteGroup = async () => {
 }
 
 .status-normal {
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
 }
 
 .status-completed {
-  background-color: #f0f9eb;
-  color: #67C23A;
+  background-color: #EAF1E3;
+  color: #5F724C;
 }
 
 .status-cancelled {
-  background-color: #fef0f0;
-  color: #F56C6C;
+  background-color: #F8E4DD;
+  color: #A0523E;
 }
 
 .info-list {
@@ -978,12 +978,12 @@ const handleDeleteGroup = async () => {
 
 .info-label {
   font-size: 28rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .action-section {
@@ -998,8 +998,8 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -1010,8 +1010,8 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #67C23A;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -1022,8 +1022,8 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #E6A23C;
-  color: #fff;
+  background-color: #A26B39;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -1034,9 +1034,9 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #F56C6C;
-  border: 2rpx solid #F56C6C;
+  background-color: #FFFDF8;
+  color: #A0523E;
+  border: 2rpx solid #A0523E;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
@@ -1046,8 +1046,8 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #909399;
+  background-color: #FFFDF8;
+  color: #8B8176;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -1058,9 +1058,9 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #E6A23C;
-  border: 2rpx solid #E6A23C;
+  background-color: #FFFDF8;
+  color: #A26B39;
+  border: 2rpx solid #A26B39;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
@@ -1070,8 +1070,8 @@ const handleDeleteGroup = async () => {
   min-width: 45%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -1093,7 +1093,7 @@ const handleDeleteGroup = async () => {
 .dialog-content {
   width: 90%;
   max-width: 600rpx;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 20rpx;
   overflow: hidden;
   max-height: 80vh;
@@ -1112,12 +1112,12 @@ const handleDeleteGroup = async () => {
 .dialog-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .dialog-close {
   font-size: 40rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .dialog-body {
@@ -1133,7 +1133,7 @@ const handleDeleteGroup = async () => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -1149,17 +1149,17 @@ const handleDeleteGroup = async () => {
 }
 
 .form-picker.readonly {
-  background-color: #f5f7fa;
-  color: #606266;
+  background-color: #FBF6EE;
+  color: #6F6254;
 }
 
 .readonly-value {
-  color: #606266;
+  color: #6F6254;
 }
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .switch-item {
@@ -1183,17 +1183,17 @@ const handleDeleteGroup = async () => {
 }
 
 .checkbox.checked {
-  background-color: #E6A23C;
-  border-color: #E6A23C;
+  background-color: #A26B39;
+  border-color: #A26B39;
 }
 
 .checkbox text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 24rpx;
 }
 
 .recurring-section {
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 24rpx;
@@ -1205,18 +1205,18 @@ const handleDeleteGroup = async () => {
 
 .recurring-tip {
   font-size: 26rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .recurring-preview {
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid #e4e7ed;
+  border-top: 1rpx solid #E7D8C7;
 }
 
 .preview-title {
   font-size: 26rpx;
-  color: #333;
+  color: #3F352B;
   font-weight: bold;
   display: block;
   margin-bottom: 12rpx;
@@ -1230,19 +1230,19 @@ const handleDeleteGroup = async () => {
 
 .preview-date {
   font-size: 24rpx;
-  color: #606266;
-  background-color: #fff;
+  color: #6F6254;
+  background-color: #FFFDF8;
   padding: 6rpx 12rpx;
   border-radius: 6rpx;
 }
 
 .preview-more {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .batch-operation-section {
-  background-color: #fff7e6;
+  background-color: #F6E8C9;
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 24rpx;
@@ -1258,7 +1258,7 @@ const handleDeleteGroup = async () => {
 .batch-operation-label {
   flex: 1;
   font-size: 26rpx;
-  color: #E6A23C;
+  color: #A26B39;
   margin-left: 12rpx;
 }
 
@@ -1266,34 +1266,34 @@ const handleDeleteGroup = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
 
 .reschedule-info {
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
   border-radius: 12rpx;
   padding: 20rpx;
   margin-bottom: 24rpx;
 }
 
 .reschedule-info .reschedule-tip {
-  color: #409EFF;
+  color: #5F724C;
   font-size: 26rpx;
 }
 
 .reschedule-preview {
   margin-top: 20rpx;
   padding-top: 20rpx;
-  border-top: 1rpx solid #e4e7ed;
+  border-top: 1rpx solid #E7D8C7;
 }
 
 .weekday-tag {
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   padding: 6rpx 16rpx;
   border-radius: 6rpx;
   font-size: 26rpx;
@@ -1301,7 +1301,7 @@ const handleDeleteGroup = async () => {
 
 .weekday-tip {
   margin-left: 16rpx;
-  color: #909399;
+  color: #8B8176;
   font-size: 24rpx;
 }
 
@@ -1316,8 +1316,8 @@ const handleDeleteGroup = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -1327,7 +1327,7 @@ const handleDeleteGroup = async () => {
   text-align: center;
   margin-bottom: 30rpx;
   padding: 20rpx;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 12rpx;
 }
 
@@ -1335,20 +1335,20 @@ const handleDeleteGroup = async () => {
   display: block;
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 8rpx;
 }
 
 .attend-course {
   display: block;
   font-size: 26rpx;
-  color: #606266;
+  color: #6F6254;
   margin-bottom: 4rpx;
 }
 
 .attend-time {
   display: block;
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 </style>

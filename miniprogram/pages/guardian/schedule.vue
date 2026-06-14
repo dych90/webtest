@@ -1,5 +1,22 @@
 <template>
   <view class="guardian-page" :class="themeClass">
+    <view class="guardian-music-hero">
+      <view class="guardian-hero-copy">
+        <text class="guardian-hero-kicker">COURSE CALENDAR</text>
+        <text class="guardian-hero-title">本月上课节奏</text>
+        <text class="guardian-hero-subtitle">把每一次课程安排看清楚</text>
+      </view>
+      <view class="guardian-hero-art">
+        <view class="guardian-staff-line line-one"></view>
+        <view class="guardian-staff-line line-two"></view>
+        <view class="guardian-staff-line line-three"></view>
+        <image class="guardian-hero-piano" src="../../image/pianoimage-transparent.png" mode="aspectFit"></image>
+        <text class="guardian-note note-one">♪</text>
+        <text class="guardian-note note-two">♫</text>
+        <text class="guardian-note note-three">♩</text>
+      </view>
+    </view>
+
     <view class="top-card">
       <picker :range="students" range-key="name" :value="studentIndex" @change="onStudentChange">
         <view class="student-picker">
@@ -49,10 +66,22 @@
     </scroll-view>
 
     <view class="guardian-tabbar">
-      <view class="tab" @click="goHome">首页</view>
-      <view class="tab active">课表</view>
-      <view class="tab" @click="goRecords">记录</view>
-      <view class="tab" @click="goMine">我的</view>
+      <view class="tab" @click="goHome">
+        <image class="guardian-tab-icon" src="../../static/tabbar/home.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">首页</text>
+      </view>
+      <view class="tab active">
+        <image class="guardian-tab-icon" src="../../static/tabbar/course-active.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">课表</text>
+      </view>
+      <view class="tab" @click="goRecords">
+        <image class="guardian-tab-icon" src="../../static/tabbar/student.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">记录</text>
+      </view>
+      <view class="tab" @click="goMine">
+        <image class="guardian-tab-icon" src="../../static/tabbar/mine.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">我的</text>
+      </view>
     </view>
   </view>
 </template>

@@ -350,7 +350,7 @@ const drawPrepaidChart = () => {
       const data = chartData.value
       console.log('Prepaid chart data:', data.labels, data.prepaidRevenue)
       if (!data.labels || data.labels.length === 0) {
-        ctx.fillStyle = '#909399'
+        ctx.fillStyle = '#8B8176'
         ctx.font = '12px sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('暂无数据', width / 2, height / 2)
@@ -394,7 +394,7 @@ const drawPrepaidChart = () => {
         if (prepaidVal > 0) {
           ctx.font = '10px sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillStyle = '#409EFF'
+          ctx.fillStyle = '#5F724C'
 
           const text = formatMoney(prepaidVal)
           const labelY = barY - 16
@@ -438,7 +438,7 @@ const drawActualChart = () => {
       const data = chartData.value
       console.log('Actual chart data:', data.labels, data.actualRevenue)
       if (!data.labels || data.labels.length === 0) {
-        ctx.fillStyle = '#909399'
+        ctx.fillStyle = '#8B8176'
         ctx.font = '12px sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('暂无数据', width / 2, height / 2)
@@ -482,7 +482,7 @@ const drawActualChart = () => {
         if (actualVal > 0) {
           ctx.font = '10px sans-serif'
           ctx.textAlign = 'center'
-          ctx.fillStyle = '#67C23A'
+          ctx.fillStyle = '#5F724C'
 
           const text = formatMoney(actualVal)
           const labelY = barY - 16
@@ -573,7 +573,7 @@ const drawLessonChart = () => {
           const x = padding.left + stepX * i
           const y = padding.top + chartHeight - (value / maxValue) * chartHeight
 
-          ctx.fillStyle = '#fff'
+          ctx.fillStyle = '#FFFDF8'
           ctx.beginPath()
           ctx.arc(x, y, 3, 0, Math.PI * 2)
           ctx.fill()
@@ -604,8 +604,8 @@ const drawLessonChart = () => {
         })
       }
       
-      drawLine(data.lessonsConsumed, '#E6A23C', false)
-      drawLine(data.lessonsAttended, '#67C23A', true)
+      drawLine(data.lessonsConsumed, '#A26B39', false)
+      drawLine(data.lessonsAttended, '#5F724C', true)
     })
 }
 
@@ -623,17 +623,17 @@ onShow(() => {
 <style scoped>
 .statistics-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .section-title {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 20rpx;
   padding-left: 10rpx;
-  border-left: 6rpx solid #409EFF;
+  border-left: 6rpx solid #5F724C;
 }
 
 .section-header {
@@ -655,13 +655,13 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
   border-radius: 50%;
 }
 
 .nav-btn text {
   font-size: 32rpx;
-  color: #409EFF;
+  color: #5F724C;
   font-weight: bold;
 }
 
@@ -670,12 +670,12 @@ onShow(() => {
 }
 
 .nav-disabled text {
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .month-text {
   font-size: 28rpx;
-  color: #409EFF;
+  color: #5F724C;
   font-weight: bold;
   min-width: 160rpx;
   text-align: center;
@@ -689,7 +689,7 @@ onShow(() => {
 }
 
 .stat-card {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 30rpx;
   text-align: center;
@@ -699,25 +699,25 @@ onShow(() => {
   display: block;
   font-size: 36rpx;
   font-weight: bold;
-  color: #409EFF;
+  color: #5F724C;
   margin-bottom: 12rpx;
 }
 
 .stat-value.revenue {
-  color: #E6A23C;
+  color: #A26B39;
 }
 
 .stat-value.success {
-  color: #67C23A;
+  color: #5F724C;
 }
 
 .stat-value.warning {
-  color: #E6A23C;
+  color: #A26B39;
 }
 
 .stat-label {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .chart-section {
@@ -733,7 +733,7 @@ onShow(() => {
 
 .chart-tabs {
   display: flex;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 12rpx;
   overflow: hidden;
 }
@@ -741,17 +741,17 @@ onShow(() => {
 .chart-tab {
   padding: 16rpx 32rpx;
   font-size: 26rpx;
-  color: #606266;
-  background-color: #fff;
+  color: #6F6254;
+  background-color: #FFFDF8;
 }
 
 .chart-tab.active {
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
 }
 
 .year-selector {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 12rpx;
   padding: 12rpx 20rpx;
 }
@@ -761,16 +761,16 @@ onShow(() => {
   align-items: center;
   gap: 8rpx;
   font-size: 26rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .picker-arrow {
   font-size: 18rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .chart-card {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 20rpx;
   margin-bottom: 16rpx;
@@ -779,7 +779,7 @@ onShow(() => {
 .chart-title {
   font-size: 26rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -808,7 +808,7 @@ onShow(() => {
 
 .legend-item text {
   font-size: 20rpx;
-  color: #606266;
+  color: #6F6254;
 }
 
 .legend-color {
@@ -826,15 +826,15 @@ onShow(() => {
 }
 
 .legend-color.lessons {
-  background-color: #E6A23C;
+  background-color: #A26B39;
 }
 
 .legend-color.attended {
-  background-color: #67C23A;
+  background-color: #5F724C;
 }
 
 .data-table {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   margin-bottom: 30rpx;
   overflow: hidden;
@@ -850,7 +850,7 @@ onShow(() => {
 }
 
 .table-header {
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
 }
 
 .table-cell {
@@ -858,7 +858,7 @@ onShow(() => {
   padding: 20rpx 16rpx;
   text-align: center;
   font-size: 24rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .table-header .table-cell {
@@ -868,17 +868,17 @@ onShow(() => {
 }
 
 .table-cell.blue {
-  color: #409EFF;
+  color: #5F724C;
   font-weight: bold;
 }
 
 .table-cell.green {
-  color: #67C23A;
+  color: #5F724C;
   font-weight: bold;
 }
 
 .table-cell.orange {
-  color: #E6A23C;
+  color: #A26B39;
   font-weight: bold;
 }
 </style>

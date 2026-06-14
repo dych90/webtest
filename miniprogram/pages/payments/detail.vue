@@ -85,7 +85,7 @@ const handleDelete = () => {
   uni.showModal({
     title: '确认删除',
     content: '确定要删除这条缴费记录吗？',
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -106,12 +106,12 @@ const handleDelete = () => {
 <style scoped>
 .detail-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .info-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -129,13 +129,13 @@ const handleDelete = () => {
 .student-name {
   font-size: 36rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .payment-amount {
   font-size: 40rpx;
   font-weight: bold;
-  color: #F56C6C;
+  color: #A0523E;
 }
 
 .info-list {
@@ -151,16 +151,16 @@ const handleDelete = () => {
 
 .info-label {
   font-size: 28rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .text-success {
-  color: #67C23A;
+  color: #5F724C;
 }
 
 .action-section {
@@ -173,8 +173,8 @@ const handleDelete = () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -184,9 +184,9 @@ const handleDelete = () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #F56C6C;
-  border: 2rpx solid #F56C6C;
+  background-color: #FFFDF8;
+  color: #A0523E;
+  border: 2rpx solid #A0523E;
   border-radius: 8rpx;
   font-size: 28rpx;
 }

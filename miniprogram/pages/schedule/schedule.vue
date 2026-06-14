@@ -647,13 +647,13 @@ onShow(() => {
 
 <style scoped>
 .schedule-container {
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .view-tabs {
   display: flex;
-  background-color: #fff;
+  background-color: #FFFDF8;
   padding: 16rpx 20rpx;
   gap: 16rpx;
 }
@@ -663,14 +663,14 @@ onShow(() => {
   text-align: center;
   padding: 16rpx 0;
   font-size: 28rpx;
-  color: #606266;
-  background-color: #f5f7fa;
+  color: #6F6254;
+  background-color: #FBF6EE;
   border-radius: 8rpx;
 }
 
 .tab-item.active {
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
 }
 
 .date-nav {
@@ -678,8 +678,8 @@ onShow(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20rpx;
-  background-color: #fff;
-  border-bottom: 1rpx solid #ebeef5;
+  background-color: #FFFDF8;
+  border-bottom: 1rpx solid #E7D8C7;
 }
 
 .nav-btn {
@@ -692,25 +692,25 @@ onShow(() => {
 
 .nav-btn text {
   font-size: 36rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .current-period {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .today-btn {
   padding: 8rpx 20rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   font-size: 24rpx;
   border-radius: 6rpx;
 }
 
 .month-view {
-  background-color: #fff;
+  background-color: #FFFDF8;
   padding: 20rpx;
 }
 
@@ -723,7 +723,7 @@ onShow(() => {
 .month-day-name {
   text-align: center;
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   padding: 8rpx 0;
 }
 
@@ -744,24 +744,24 @@ onShow(() => {
 }
 
 .month-day.other-month .day-number {
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .month-day.is-today {
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
 }
 
 .month-day.is-selected {
-  background-color: #409EFF;
+  background-color: #5F724C;
 }
 
 .month-day.is-selected .day-number {
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .day-number {
   font-size: 26rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .course-count {
@@ -773,25 +773,25 @@ onShow(() => {
   padding: 0 6rpx;
   border-radius: 4rpx;
   box-sizing: border-box;
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
   font-size: 18rpx;
   text-align: center;
   white-space: nowrap;
 }
 
 .month-day.other-month .course-count {
-  background-color: #f4f4f5;
+  background-color: #F3EBDD;
   color: #a8abb2;
 }
 
 .month-day.is-selected .course-count {
   background-color: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .year-view {
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   height: calc(100vh - 200rpx);
 }
 
@@ -800,7 +800,7 @@ onShow(() => {
 }
 
 .year-month-card {
-  background-color: #fff;
+  background-color: #FFFDF8;
   margin: 20rpx;
   padding: 20rpx;
   border-radius: 16rpx;
@@ -818,12 +818,12 @@ onShow(() => {
 .year-month-title {
   font-size: 28rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .year-month-count {
   font-size: 24rpx;
-  color: #409EFF;
+  color: #5F724C;
 }
 
 .year-month-grid {
@@ -835,7 +835,7 @@ onShow(() => {
 .year-day-name {
   text-align: center;
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
   padding: 4rpx 0;
 }
 
@@ -851,19 +851,19 @@ onShow(() => {
 
 .year-day-number {
   font-size: 20rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .year-day.other-month .year-day-number {
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .year-day.is-today {
-  background-color: #409EFF;
+  background-color: #5F724C;
 }
 
 .year-day.is-today .year-day-number {
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .year-day.has-courses .year-day-number {
@@ -874,17 +874,17 @@ onShow(() => {
   width: 6rpx;
   height: 6rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   position: absolute;
   bottom: 4rpx;
 }
 
 .year-day.is-today .year-dot {
-  background-color: #fff;
+  background-color: #FFFDF8;
 }
 
 .week-calendar-view {
-  background-color: #fff;
+  background-color: #FFFDF8;
   display: flex;
   flex-direction: column;
   height: calc(100vh - 200rpx);
@@ -894,18 +894,18 @@ onShow(() => {
   display: grid;
   grid-template-columns: 64rpx repeat(7, minmax(0, 1fr));
   min-height: 88rpx;
-  border-bottom: 1rpx solid #ebeef5;
-  background-color: #f5f7fa;
+  border-bottom: 1rpx solid #E7D8C7;
+  background-color: #FBF6EE;
 }
 
 .week-time-header {
-  border-right: 1rpx solid #ebeef5;
+  border-right: 1rpx solid #E7D8C7;
 }
 
 .week-day-header {
   min-width: 0;
   height: 88rpx;
-  border-right: 1rpx solid #ebeef5;
+  border-right: 1rpx solid #E7D8C7;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -919,24 +919,24 @@ onShow(() => {
 }
 
 .week-day-header.is-today {
-  background-color: #ecf5ff;
+  background-color: #E7EFE3;
 }
 
 .week-day-header.is-selected {
-  background-color: #409EFF;
+  background-color: #5F724C;
 }
 
 .week-header-name {
   font-size: 20rpx;
   line-height: 22rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .week-header-date {
   font-size: 26rpx;
   line-height: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .week-header-count {
@@ -946,20 +946,20 @@ onShow(() => {
   padding: 0 5rpx;
   border-radius: 11rpx;
   box-sizing: border-box;
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
   font-size: 18rpx;
   text-align: center;
 }
 
 .week-day-header.is-selected .week-header-name,
 .week-day-header.is-selected .week-header-date {
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .week-day-header.is-selected .week-header-count {
   background-color: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  color: #FFFDF8;
 }
 
 .week-calendar-scroll {
@@ -968,7 +968,7 @@ onShow(() => {
 }
 
 .week-calendar-grid {
-  background-color: #fff;
+  background-color: #FFFDF8;
 }
 
 .week-time-row {
@@ -982,9 +982,9 @@ onShow(() => {
   min-width: 0;
   padding-top: 12rpx;
   box-sizing: border-box;
-  border-right: 1rpx solid #ebeef5;
-  background-color: #fafafa;
-  color: #909399;
+  border-right: 1rpx solid #E7D8C7;
+  background-color: #FFFDF8;
+  color: #8B8176;
   font-size: 18rpx;
   line-height: 22rpx;
   text-align: center;
@@ -1006,7 +1006,7 @@ onShow(() => {
 }
 
 .week-time-cell.is-today {
-  background-color: #fbfdff;
+  background-color: #FFFDF8;
 }
 
 .week-calendar-course {
@@ -1015,18 +1015,18 @@ onShow(() => {
   padding: 5rpx 4rpx;
   border-radius: 6rpx;
   box-sizing: border-box;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .week-calendar-course.completed {
-  background-color: #67C23A;
+  background-color: #5F724C;
 }
 
 .week-calendar-course.cancelled {
-  background-color: #909399;
+  background-color: #8B8176;
 }
 
 .week-calendar-time {
@@ -1040,7 +1040,7 @@ onShow(() => {
   min-width: 0;
   font-size: 20rpx;
   line-height: 24rpx;
-  color: #fff;
+  color: #FFFDF8;
   font-weight: bold;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1048,7 +1048,7 @@ onShow(() => {
 }
 
 .day-header {
-  background-color: #fff;
+  background-color: #FFFDF8;
   padding: 20rpx;
   text-align: center;
 }
@@ -1056,7 +1056,7 @@ onShow(() => {
 .day-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .course-list {
@@ -1066,7 +1066,7 @@ onShow(() => {
 .empty-tip {
   text-align: center;
   padding: 100rpx 0;
-  color: #909399;
+  color: #8B8176;
   font-size: 28rpx;
 }
 
@@ -1093,7 +1093,7 @@ onShow(() => {
   width: 40rpx;
   height: 40rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   margin-right: 20rpx;
   margin-top: 10rpx;
   flex-shrink: 0;
@@ -1104,16 +1104,16 @@ onShow(() => {
 
 .dot-number {
   font-size: 22rpx;
-  color: #fff;
+  color: #FFFDF8;
   font-weight: bold;
 }
 
 .course-item.completed .timeline-dot {
-  background-color: #67C23A;
+  background-color: #5F724C;
 }
 
 .course-item.cancelled .timeline-dot {
-  background-color: #F56C6C;
+  background-color: #A0523E;
 }
 
 .timeline-line {
@@ -1122,19 +1122,19 @@ onShow(() => {
   top: 50rpx;
   bottom: 0;
   width: 2rpx;
-  background-color: #e4e7ed;
+  background-color: #E7D8C7;
 }
 
 .course-content {
   flex: 1;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
 }
 
 .course-time {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   margin-bottom: 12rpx;
 }
 
@@ -1148,12 +1148,12 @@ onShow(() => {
 .student-name {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .course-type {
   font-size: 26rpx;
-  color: #606266;
+  color: #6F6254;
 }
 
 .course-status {
@@ -1168,18 +1168,18 @@ onShow(() => {
 }
 
 .status-normal {
-  background-color: #ecf5ff;
-  color: #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
 }
 
 .status-completed {
-  background-color: #f0f9eb;
-  color: #67C23A;
+  background-color: #EAF1E3;
+  color: #5F724C;
 }
 
 .status-cancelled {
-  background-color: #fef0f0;
-  color: #F56C6C;
+  background-color: #F8E4DD;
+  color: #A0523E;
 }
 
 .add-btn {
@@ -1189,7 +1189,7 @@ onShow(() => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1197,7 +1197,7 @@ onShow(() => {
 }
 
 .add-btn text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 48rpx;
   font-weight: 300;
 }
@@ -1217,7 +1217,7 @@ onShow(() => {
 
 .menu-content {
   width: 100%;
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 24rpx 24rpx 0 0;
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -1234,7 +1234,7 @@ onShow(() => {
 }
 
 .menu-item:active {
-  background-color: #f5f7fa;
+  background-color: #FBF6EE;
 }
 
 .menu-icon {
@@ -1244,6 +1244,6 @@ onShow(() => {
 
 .menu-text {
   font-size: 32rpx;
-  color: #333;
+  color: #3F352B;
 }
 </style>

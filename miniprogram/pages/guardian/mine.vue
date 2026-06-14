@@ -1,5 +1,22 @@
 <template>
   <view class="guardian-page" :class="themeClass">
+    <view class="guardian-music-hero">
+      <view class="guardian-hero-copy">
+        <text class="guardian-hero-kicker">MY PIANO ROOM</text>
+        <text class="guardian-hero-title">学生端设置</text>
+        <text class="guardian-hero-subtitle">绑定学生、订阅提醒和切换主题</text>
+      </view>
+      <view class="guardian-hero-art">
+        <view class="guardian-staff-line line-one"></view>
+        <view class="guardian-staff-line line-two"></view>
+        <view class="guardian-staff-line line-three"></view>
+        <image class="guardian-hero-piano" src="../../image/pianoimage-transparent.png" mode="aspectFit"></image>
+        <text class="guardian-note note-one">♪</text>
+        <text class="guardian-note note-two">♫</text>
+        <text class="guardian-note note-three">♩</text>
+      </view>
+    </view>
+
     <view class="profile-card">
       <text class="profile-title">学生端</text>
       <text class="profile-desc">只能查看已绑定学生的数据</text>
@@ -52,10 +69,22 @@
     </view>
 
     <view class="guardian-tabbar">
-      <view class="tab" @click="goHome">首页</view>
-      <view class="tab" @click="goSchedule">课表</view>
-      <view class="tab" @click="goRecords">记录</view>
-      <view class="tab active">我的</view>
+      <view class="tab" @click="goHome">
+        <image class="guardian-tab-icon" src="../../static/tabbar/home.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">首页</text>
+      </view>
+      <view class="tab" @click="goSchedule">
+        <image class="guardian-tab-icon" src="../../static/tabbar/course.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">课表</text>
+      </view>
+      <view class="tab" @click="goRecords">
+        <image class="guardian-tab-icon" src="../../static/tabbar/student.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">记录</text>
+      </view>
+      <view class="tab active">
+        <image class="guardian-tab-icon" src="../../static/tabbar/mine-active.png" mode="aspectFit"></image>
+        <text class="guardian-tab-label">我的</text>
+      </view>
     </view>
   </view>
 </template>
@@ -176,7 +205,7 @@ const handleLogout = () => {
       if (!res.confirm) return
 
       clearGuardianSession()
-      uni.reLaunch({ url: '/pages/guardian/login' })
+      uni.reLaunch({ url: '/pages/login/login?mode=guardian' })
     }
   })
 }
@@ -339,7 +368,7 @@ const goRecords = () => {
 }
 
 .primary-btn {
-  color: #fff;
+  color: #FFFDF8;
   background-color: var(--theme-primary);
 }
 

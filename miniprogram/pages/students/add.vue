@@ -238,12 +238,12 @@ const handleSubmit = async () => {
 <style scoped>
 .add-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .form-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -256,7 +256,7 @@ const handleSubmit = async () => {
 .form-label {
   display: block;
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 12rpx;
 }
 
@@ -283,7 +283,7 @@ const handleSubmit = async () => {
 
 .picker-arrow {
   font-size: 20rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .form-textarea {
@@ -311,7 +311,7 @@ const handleSubmit = async () => {
 
 .price-unit {
   font-size: 28rpx;
-  color: #909399;
+  color: #8B8176;
   padding: 0 10rpx;
 }
 
@@ -325,8 +325,8 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #606266;
+  background-color: #FFFDF8;
+  color: #6F6254;
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -336,8 +336,8 @@ const handleSubmit = async () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;

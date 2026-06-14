@@ -200,7 +200,7 @@ const handleDelete = () => {
   uni.showModal({
     title: '确认删除',
     content: `确定要删除学生"${student.value.name}"吗？`,
-    confirmColor: '#F56C6C',
+    confirmColor: '#A0523E',
     success: async (res) => {
       if (res.confirm) {
         try {
@@ -221,12 +221,12 @@ const handleDelete = () => {
 <style scoped>
 .detail-container {
   padding: 20rpx;
-  background-color: #f8f8f8;
+  background-color: #F7EFE3;
   min-height: 100vh;
 }
 
 .info-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -244,7 +244,7 @@ const handleDelete = () => {
   width: 100rpx;
   height: 100rpx;
   border-radius: 50%;
-  background-color: #409EFF;
+  background-color: #5F724C;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,7 +252,7 @@ const handleDelete = () => {
 }
 
 .student-avatar text {
-  color: #fff;
+  color: #FFFDF8;
   font-size: 40rpx;
   font-weight: bold;
 }
@@ -261,13 +261,13 @@ const handleDelete = () => {
   display: block;
   font-size: 36rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
   margin-bottom: 8rpx;
 }
 
 .student-type {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-list {
@@ -283,21 +283,21 @@ const handleDelete = () => {
 
 .info-label {
   font-size: 28rpx;
-  color: #909399;
+  color: #8B8176;
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #333;
+  color: #3F352B;
 }
 
 .text-primary {
-  color: #409EFF;
+  color: #5F724C;
   font-weight: bold;
 }
 
 .text-price {
-  color: #E6A23C;
+  color: #A26B39;
   font-weight: bold;
 }
 
@@ -308,17 +308,17 @@ const handleDelete = () => {
 .section-title {
   font-size: 30rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .section-content {
   font-size: 28rpx;
-  color: #606266;
+  color: #6F6254;
   line-height: 1.6;
 }
 
 .price-history-section {
-  background-color: #fff;
+  background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
@@ -347,7 +347,7 @@ const handleDelete = () => {
   top: 24rpx;
   bottom: 0;
   width: 2rpx;
-  background-color: #e4e7ed;
+  background-color: #E7D8C7;
 }
 
 .timeline-item:last-child::before {
@@ -365,7 +365,7 @@ const handleDelete = () => {
 }
 
 .timeline-dot.is-latest {
-  background-color: #409EFF;
+  background-color: #5F724C;
 }
 
 .timeline-content {
@@ -381,19 +381,19 @@ const handleDelete = () => {
 .price-value {
   font-size: 32rpx;
   font-weight: bold;
-  color: #333;
+  color: #3F352B;
 }
 
 .price-unit {
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   margin-left: 4rpx;
 }
 
 .current-tag {
   font-size: 20rpx;
-  color: #fff;
-  background-color: #67C23A;
+  color: #FFFDF8;
+  background-color: #5F724C;
   padding: 2rpx 10rpx;
   border-radius: 4rpx;
   margin-left: 12rpx;
@@ -402,14 +402,14 @@ const handleDelete = () => {
 .timeline-date {
   display: block;
   font-size: 24rpx;
-  color: #909399;
+  color: #8B8176;
   margin-bottom: 4rpx;
 }
 
 .timeline-course {
   display: block;
   font-size: 22rpx;
-  color: #c0c4cc;
+  color: #C4AA84;
 }
 
 .action-section {
@@ -423,9 +423,9 @@ const handleDelete = () => {
   width: 100%;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #ecf5ff;
-  color: #409EFF;
-  border: 2rpx solid #409EFF;
+  background-color: #E7EFE3;
+  color: #5F724C;
+  border: 2rpx solid #5F724C;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
@@ -434,8 +434,8 @@ const handleDelete = () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #409EFF;
-  color: #fff;
+  background-color: #5F724C;
+  color: #FFFDF8;
   border: none;
   border-radius: 8rpx;
   font-size: 28rpx;
@@ -445,9 +445,9 @@ const handleDelete = () => {
   flex: 1;
   height: 80rpx;
   line-height: 80rpx;
-  background-color: #fff;
-  color: #F56C6C;
-  border: 2rpx solid #F56C6C;
+  background-color: #FFFDF8;
+  color: #A0523E;
+  border: 2rpx solid #A0523E;
   border-radius: 8rpx;
   font-size: 28rpx;
 }
