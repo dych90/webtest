@@ -97,7 +97,7 @@ const syncAccountFeeStandard = async ({ student, teacherId, paymentType, current
   })
 }
 
-const resolvePracticeTeacherAssignment = async (studentData) => {
+const resolvePracticeTeacherAssignment = async (studentData, ownerTeacherId) => {
   if (!studentData) return studentData
 
   const updateData = { ...studentData }
@@ -111,6 +111,12 @@ const resolvePracticeTeacherAssignment = async (studentData) => {
   const practiceTeacherName = hasPracticeTeacherName ? (updateData.practiceTeacher || '').toString().trim() : ''
 
   if (rawPracticeTeacherId) {
+    if (ownerTeacherId && isSameId(rawPracticeTeacherId, ownerTeacherId)) {
+      const error = new Error('陪练老师不能选择任课老师自己')
+      error.status = 400
+      throw error
+    }
+
     const teacher = await User.findOne({ _id: rawPracticeTeacherId, role: 'teacher' })
       .select('name username')
 
@@ -136,6 +142,7 @@ const resolvePracticeTeacherAssignment = async (studentData) => {
   if (practiceTeacherName) {
     const matchedTeachers = await User.find({
       role: 'teacher',
+      ...(ownerTeacherId ? { _id: { $ne: ownerTeacherId } } : {}),
       $or: [
         { name: practiceTeacherName },
         { username: practiceTeacherName }
@@ -231,7 +238,7 @@ const createStudent = async (req, res) => {
       ...req.body,
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
     }
-    studentData = await resolvePracticeTeacherAssignment(studentData)
+    studentData = await resolvePracticeTeacherAssignment(studentData, studentData.teacherId)
 
     if (studentData.paymentType === 'free') {
       studentData.currentPrice = 0
@@ -345,7 +352,7 @@ const importStudents = async (req, res) => {
           }
         }
         
-        studentData = await resolvePracticeTeacherAssignment(studentData)
+        studentData = await resolvePracticeTeacherAssignment(studentData, req.userId)
 
         const existingStudent = await Student.findOne({ 
           name: studentData.name,
@@ -455,7 +462,8 @@ const updateStudent = async (req, res) => {
       })
     }
 
-    const updateData = await resolvePracticeTeacherAssignment(req.body)
+    const nextOwnerTeacherId = user.role === 'admin' && req.body.teacherId ? req.body.teacherId : student.teacherId
+    const updateData = await resolvePracticeTeacherAssignment(req.body, nextOwnerTeacherId)
     const feeTeacherId = student.teacherId
     const currentTeacherFeeFilter = {
       studentId: id,

@@ -79,7 +79,7 @@
           <view class="course-info">
             <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
             <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
-            <text v-if="course.teacherId?.name" class="course-teacher">老师：{{ course.teacherId.name }}</text>
+            <text v-if="shouldShowCourseTeacher(course)" class="course-teacher">老师：{{ course.teacherId.name }}</text>
             <view v-if="course.lessonRecord" class="lesson-record-preview">
               <text v-if="course.lessonRecord.lessonContent" class="lesson-record-text">{{ course.lessonRecord.lessonContent }}</text>
               <text v-if="getMediaSummary(course.lessonRecord)" class="lesson-record-media">{{ getMediaSummary(course.lessonRecord) }}</text>
@@ -423,6 +423,10 @@ const fetchStatistics = async () => {
 }
 
 const canManageCourse = (course) => course?.canManageCourse !== false
+
+const shouldShowCourseTeacher = (course) => {
+  return Boolean(course?.teacherId?.name && !canManageCourse(course))
+}
 
 const handleAttendCourse = async (course) => {
   if (!canManageCourse(course)) {

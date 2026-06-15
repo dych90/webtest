@@ -111,7 +111,7 @@ const deleteUser = async (req, res) => {
 
 const getTeachers = async (req, res) => {
   try {
-    const teachers = await User.find({ role: 'teacher' })
+    const teachers = await User.find({ role: 'teacher', _id: { $ne: req.userId } })
       .select('-password')
       .sort({ name: 1 })
     

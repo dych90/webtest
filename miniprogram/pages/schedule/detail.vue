@@ -15,7 +15,7 @@
           <text class="info-label">课程类型</text>
           <text class="info-value">{{ course.courseTypeId?.name || '未设置' }}</text>
         </view>
-        <view class="info-item" v-if="course.teacherId?.name">
+        <view class="info-item" v-if="showCourseTeacher">
           <text class="info-label">老师</text>
           <text class="info-value">{{ course.teacherId.name }}</text>
         </view>
@@ -381,6 +381,7 @@ const statusClass = computed(() => {
 })
 
 const canManageCourse = computed(() => Boolean(course.value?._id) && course.value.canManageCourse !== false)
+const showCourseTeacher = computed(() => Boolean(course.value?.teacherId?.name && !canManageCourse.value))
 
 const ensureCanManageCourse = () => {
   if (canManageCourse.value) return true

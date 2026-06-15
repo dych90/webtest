@@ -127,8 +127,10 @@
 import { computed, ref, reactive, onMounted } from 'vue'
 import { get, post } from '@/utils/request'
 import { PAYMENT_TYPE_OPTIONS, getPaymentTypeValue } from '@/utils/paymentType'
+import { useUserStore } from '@/stores/user'
 
 const genders = ['未设置', '男', '女']
+const userStore = useUserStore()
 const genderIndex = ref(0)
 const paymentTypes = PAYMENT_TYPE_OPTIONS.map(item => item.label)
 const paymentTypeIndex = ref(0)
@@ -138,6 +140,7 @@ const teachers = ref([])
 const practiceTeacherIndex = ref(0)
 const loading = ref(false)
 const practiceTeacherOptions = computed(() => ['不关联系统内老师', ...teachers.value.map(teacher => teacher.name || teacher.username || '未命名老师')])
+const currentTeacherId = computed(() => userStore.userInfo?._id || userStore.userInfo?.id || '')
 
 const form = reactive({
   name: '',
@@ -209,7 +212,10 @@ const onPaymentTypeChange = (e) => {
 const fetchTeachers = async () => {
   try {
     const res = await get('/teachers')
-    teachers.value = res.data || []
+    teachers.value = (res.data || []).filter(teacher => {
+      const teacherId = teacher._id || teacher.id
+      return !teacherId || teacherId.toString() !== currentTeacherId.value.toString()
+    })
   } catch (error) {
     console.error('获取老师列表失败', error)
   }
