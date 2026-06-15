@@ -6,21 +6,82 @@ const LessonBalance = require('../models/LessonBalance')
 const User = require('../models/User')
 const { getTeacherStudentAccessFilter, isSameId } = require('../utils/studentAccess')
 const { getTeacherAccountFilter } = require('../utils/teacherAccount')
-const { getEffectivePaymentType } = require('../utils/studentAccount')
+const { findApplicableFeeStandard } = require('../utils/feeStandard')
+const { getEffectivePaymentType, getEffectiveStudentAccount } = require('../utils/studentAccount')
 
-const getPrepaidStudentIdSet = async (students, accountTeacherId) => {
-  if (!accountTeacherId) {
-    return new Set(students
-      .filter(student => student.paymentType === 'prepaid')
-      .map(student => student._id.toString()))
-  }
+const BILLABLE_COURSE_STATUSES = new Set(['normal', 'completed'])
 
-  const prepaidIds = await Promise.all(students.map(async (student) => {
-    const paymentType = await getEffectivePaymentType(student, accountTeacherId)
-    return paymentType === 'prepaid' ? student._id.toString() : null
+const toNumber = (value) => Number(value) || 0
+
+const getDocId = (doc) => doc?._id || doc
+
+const isBillableScheduledCourse = (course) => {
+  return Boolean(course && BILLABLE_COURSE_STATUSES.has(course.status || 'normal') && !course.isGiftLesson)
+}
+
+const getScheduledCourses = (courses = []) => {
+  return courses.filter(isBillableScheduledCourse)
+}
+
+const getScheduledCoursePrice = async (course) => {
+  const student = course.studentId
+  const studentId = getDocId(student)
+  const teacherId = getDocId(course.teacherId)
+  const courseTypeId = getDocId(course.courseTypeId)
+
+  if (!studentId || !teacherId) return 0
+
+  const account = await getEffectiveStudentAccount(student, teacherId)
+  if (account.paymentType === 'free') return 0
+
+  const feeStandard = courseTypeId
+    ? await findApplicableFeeStandard({
+      studentId,
+      courseTypeId,
+      teacherId,
+      at: course.startTime ? new Date(course.startTime) : new Date()
+    })
+    : null
+
+  return toNumber(feeStandard?.price ?? account.currentPrice)
+}
+
+const calculateScheduledRevenue = async (courses = []) => {
+  const scheduledCourses = getScheduledCourses(courses)
+  const prices = await Promise.all(scheduledCourses.map(getScheduledCoursePrice))
+  return prices.reduce((sum, price) => sum + price, 0)
+}
+
+const buildStudentMap = (students = []) => {
+  const map = new Map()
+  students.forEach((student) => {
+    const studentId = getDocId(student)?.toString()
+    if (studentId) {
+      map.set(studentId, student)
+    }
+  })
+  return map
+}
+
+const getPrepaidLessonRecords = async (records = [], students = [], accountTeacherId = '') => {
+  const studentMap = buildStudentMap(students)
+  const paymentTypeCache = new Map()
+
+  const prepaidFlags = await Promise.all(records.map(async (record) => {
+    const studentId = getDocId(record.studentId)?.toString()
+    const student = studentId ? studentMap.get(studentId) : null
+    const teacherId = accountTeacherId || getDocId(record.teacherId) || getDocId(student?.teacherId)
+    if (!student || !teacherId) return false
+
+    const cacheKey = `${studentId}:${teacherId.toString()}`
+    if (!paymentTypeCache.has(cacheKey)) {
+      paymentTypeCache.set(cacheKey, await getEffectivePaymentType(student, teacherId))
+    }
+
+    return paymentTypeCache.get(cacheKey) === 'prepaid'
   }))
 
-  return new Set(prepaidIds.filter(Boolean))
+  return records.filter((record, index) => prepaidFlags[index])
 }
 
 const getStatistics = async (req, res) => {
@@ -60,11 +121,13 @@ const getStatistics = async (req, res) => {
       })
     }
     
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0)
-    const totalLessonsSold = payments.reduce((sum, p) => sum + p.totalLessons, 0)
+    const totalRevenue = payments.reduce((sum, p) => sum + toNumber(p.amount), 0)
+    const totalLessonsSold = payments.reduce((sum, p) => sum + toNumber(p.totalLessons), 0)
     
     const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
     const courses = await Course.find(courseQuery)
+      .populate('studentId', 'teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId')
+      .populate('courseTypeId', 'name duration')
     const totalCourses = courses.length
     
     const lessonRecordQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
@@ -80,12 +143,12 @@ const getStatistics = async (req, res) => {
       })
     }
     
-    const totalLessonsConsumed = lessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
+    const totalLessonsConsumed = lessonRecords.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0)
     const totalLessonsAttended = lessonRecords.length
     
     const balanceQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const balances = await LessonBalance.find(balanceQuery)
-    const totalRemainingLessons = balances.reduce((sum, b) => sum + b.remainingLessons, 0)
+    const totalRemainingLessons = balances.reduce((sum, b) => sum + toNumber(b.remainingLessons), 0)
     
     let startOfMonth, endOfMonth
     if (month) {
@@ -104,21 +167,6 @@ const getStatistics = async (req, res) => {
       start: startOfMonth.toISOString(),
       end: endOfMonth.toISOString()
     })
-    
-    const monthlyPayments = payments.filter(p => {
-      if (!p.paymentDate) return false
-      const paymentDate = new Date(p.paymentDate)
-      if (isNaN(paymentDate.getTime())) {
-        console.warn('无效的缴费日期:', p.paymentDate, '记录ID:', p._id)
-        return false
-      }
-      const isInMonth = paymentDate >= startOfMonth && paymentDate < endOfMonth
-      return isInMonth
-    })
-    console.log(`筛选后的月度缴费记录数: ${monthlyPayments.length}`)
-    
-    const monthlyPrepaidRevenue = monthlyPayments.reduce((sum, p) => sum + p.amount, 0)
-    console.log('月度预收入:', monthlyPrepaidRevenue)
     
     const monthlyLessonRecords = lessonRecords.filter(r => {
       let dateToCheck
@@ -142,10 +190,10 @@ const getStatistics = async (req, res) => {
     
     const monthlyActualRevenue = monthlyLessonRecords.reduce((sum, r) => {
       if (r.isGiftLesson) return sum
-      return sum + (r.unitPrice || 0) * r.lessonsConsumed
+      return sum + toNumber(r.unitPrice) * toNumber(r.lessonsConsumed)
     }, 0)
     
-    const monthlyLessonsConsumed = monthlyLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
+    const monthlyLessonsConsumed = monthlyLessonRecords.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0)
     const monthlyLessonsAttended = monthlyLessonRecords.length
     
     const monthlyCourses = courses.filter(c => {
@@ -154,24 +202,20 @@ const getStatistics = async (req, res) => {
       if (isNaN(courseDate.getTime())) return false
       return courseDate >= startOfMonth && courseDate < endOfMonth
     })
-    const monthlyScheduledLessons = monthlyCourses.length
+    const monthlyScheduledCourses = getScheduledCourses(monthlyCourses)
+    const monthlyScheduledLessons = monthlyScheduledCourses.length
+    const monthlyPrepaidRevenue = await calculateScheduledRevenue(monthlyCourses)
     
     console.log('========== 月度统计数据 ==========')
     console.log('月度实际收入:', monthlyActualRevenue)
     console.log('月度消课数:', monthlyLessonsConsumed)
     console.log('月度上课数:', monthlyLessonsAttended)
     
-    const prepaidStudentIdSet = await getPrepaidStudentIdSet(students, accountTeacherId)
+    const prepaidLessonRecords = await getPrepaidLessonRecords(lessonRecords, students, accountTeacherId)
+    const prepaidLessonsConsumed = prepaidLessonRecords.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0)
     
-    const prepaidLessonRecords = lessonRecords.filter(r => 
-      prepaidStudentIdSet.has(r.studentId.toString())
-    )
-    const prepaidLessonsConsumed = prepaidLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
-    
-    const monthlyPrepaidLessons = monthlyLessonRecords.filter(r => 
-      prepaidStudentIdSet.has(r.studentId.toString())
-    )
-    const monthlyPrepaidLessonsConsumed = monthlyPrepaidLessons.reduce((sum, r) => sum + r.lessonsConsumed, 0)
+    const monthlyPrepaidLessons = await getPrepaidLessonRecords(monthlyLessonRecords, students, accountTeacherId)
+    const monthlyPrepaidLessonsConsumed = monthlyPrepaidLessons.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0)
     
     const responseData = {
       studentCount,
@@ -227,14 +271,13 @@ const getChartStatistics = async (req, res) => {
       : []
     const accountFilter = accountTeacherId ? getTeacherAccountFilter(accountTeacherId, ownedStudentIds) : null
     
-    const paymentQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
-    const payments = await Payment.find(paymentQuery)
-
     const lessonRecordQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
 
     const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
     const courses = await Course.find(courseQuery)
+      .populate('studentId', 'teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId')
+      .populate('courseTypeId', 'name duration')
     
     const now = new Date()
     const currentYear = year ? parseInt(year) : now.getFullYear()
@@ -253,12 +296,6 @@ const getChartStatistics = async (req, res) => {
         const startOfMonth = new Date(currentYear, m, 1)
         const endOfMonth = new Date(currentYear, m + 1, 1)
         
-        const monthPayments = payments.filter(p => {
-          const paymentDate = new Date(p.paymentDate)
-          return paymentDate >= startOfMonth && paymentDate < endOfMonth
-        })
-        prepaidRevenueData.push(monthPayments.reduce((sum, p) => sum + p.amount, 0))
-        
         const monthLessonRecords = lessonRecords.filter(r => {
           const courseStartTime = r.courseStartTime ? new Date(r.courseStartTime) : new Date(r.recordDate)
           return courseStartTime >= startOfMonth && courseStartTime < endOfMonth
@@ -266,7 +303,7 @@ const getChartStatistics = async (req, res) => {
         
         const actualRevenue = monthLessonRecords.reduce((sum, r) => {
           if (r.isGiftLesson) return sum
-          return sum + (r.unitPrice || 0) * r.lessonsConsumed
+          return sum + toNumber(r.unitPrice) * toNumber(r.lessonsConsumed)
         }, 0)
         actualRevenueData.push(actualRevenue)
         
@@ -276,10 +313,11 @@ const getChartStatistics = async (req, res) => {
           const courseDate = new Date(c.startTime)
           return courseDate >= startOfMonth && courseDate < endOfMonth
         })
-        lessonsConsumedData.push(monthCourses.length)
+        prepaidRevenueData.push(await calculateScheduledRevenue(monthCourses))
+        lessonsConsumedData.push(getScheduledCourses(monthCourses).length)
         
         // 实消课数: 实际完成的消课数量
-        lessonsAttendedData.push(monthLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0))
+        lessonsAttendedData.push(monthLessonRecords.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0))
       }
     } else {
       for (let y = currentYear - 4; y <= currentYear; y++) {
@@ -288,12 +326,6 @@ const getChartStatistics = async (req, res) => {
         const startOfYear = new Date(y, 0, 1)
         const endOfYear = new Date(y + 1, 0, 1)
         
-        const yearPayments = payments.filter(p => {
-          const paymentDate = new Date(p.paymentDate)
-          return paymentDate >= startOfYear && paymentDate < endOfYear
-        })
-        prepaidRevenueData.push(yearPayments.reduce((sum, p) => sum + p.amount, 0))
-        
         const yearLessonRecords = lessonRecords.filter(r => {
           const courseStartTime = r.courseStartTime ? new Date(r.courseStartTime) : new Date(r.recordDate)
           return courseStartTime >= startOfYear && courseStartTime < endOfYear
@@ -301,7 +333,7 @@ const getChartStatistics = async (req, res) => {
         
         const actualRevenue = yearLessonRecords.reduce((sum, r) => {
           if (r.isGiftLesson) return sum
-          return sum + (r.unitPrice || 0) * r.lessonsConsumed
+          return sum + toNumber(r.unitPrice) * toNumber(r.lessonsConsumed)
         }, 0)
         actualRevenueData.push(actualRevenue)
         
@@ -311,10 +343,11 @@ const getChartStatistics = async (req, res) => {
           const courseDate = new Date(c.startTime)
           return courseDate >= startOfYear && courseDate < endOfYear
         })
-        lessonsConsumedData.push(yearCourses.length)
+        prepaidRevenueData.push(await calculateScheduledRevenue(yearCourses))
+        lessonsConsumedData.push(getScheduledCourses(yearCourses).length)
         
         // 实消课数: 实际完成的消课数量
-        lessonsAttendedData.push(yearLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0))
+        lessonsAttendedData.push(yearLessonRecords.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0))
       }
     }
     

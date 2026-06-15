@@ -161,8 +161,14 @@ const statistics = ref({
 })
 
 const chartType = ref('month')
+const buildYearOptions = () => {
+  const startYear = 2022
+  const endYear = Math.max(new Date().getFullYear(), startYear)
+  return Array.from({ length: endYear - startYear + 1 }, (_, index) => `${startYear + index}年`)
+}
+
 const currentYear = ref(new Date().getFullYear().toString())
-const yearOptions = ref(['2022年', '2023年', '2024年', '2025年', '2026年'])
+const yearOptions = ref(buildYearOptions())
 
 const now = new Date()
 const selectedYear = ref(now.getFullYear())
