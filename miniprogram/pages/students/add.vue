@@ -30,7 +30,7 @@
         <text class="form-label">身份证号</text>
         <input class="form-input" v-model="form.idCard" placeholder="请输入身份证号" />
       </view>
-      
+
       <view class="form-item">
         <text class="form-label">联系人姓名</text>
         <input class="form-input" v-model="form.parentName" placeholder="请输入联系人姓名" />
@@ -96,8 +96,18 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">陪练老师</text>
-        <input class="form-input" v-model="form.practiceTeacher" placeholder="请输入陪练老师姓名" />
+        <text class="form-label">系统内陪练老师</text>
+        <picker :value="practiceTeacherIndex" :range="practiceTeacherOptions" @change="onPracticeTeacherChange">
+          <view class="form-picker">
+            <text>{{ practiceTeacherOptions[practiceTeacherIndex] }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">陪练老师姓名</text>
+        <input class="form-input" v-model="form.practiceTeacher" placeholder="系统外陪练只填写姓名" />
       </view>
       
       <view class="form-item">
@@ -114,7 +124,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, ref, reactive, onMounted } from 'vue'
 import { get, post } from '@/utils/request'
 import { PAYMENT_TYPE_OPTIONS, getPaymentTypeValue } from '@/utils/paymentType'
 
@@ -124,7 +134,10 @@ const paymentTypes = PAYMENT_TYPE_OPTIONS.map(item => item.label)
 const paymentTypeIndex = ref(0)
 const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
 const courseTypeIndex = ref(0)
+const teachers = ref([])
+const practiceTeacherIndex = ref(0)
 const loading = ref(false)
+const practiceTeacherOptions = computed(() => ['不关联系统内老师', ...teachers.value.map(teacher => teacher.name || teacher.username || '未命名老师')])
 
 const form = reactive({
   name: '',
@@ -141,11 +154,13 @@ const form = reactive({
   learningProgress: '',
   learningPlan: '',
   practiceTeacher: '',
+  practiceTeacherId: '',
   notes: ''
 })
 
 onMounted(() => {
   fetchCourseTypes()
+  fetchTeachers()
 })
 
 const fetchCourseTypes = async () => {
@@ -191,8 +206,31 @@ const onPaymentTypeChange = (e) => {
   }
 }
 
+const fetchTeachers = async () => {
+  try {
+    const res = await get('/teachers')
+    teachers.value = res.data || []
+  } catch (error) {
+    console.error('获取老师列表失败', error)
+  }
+}
+
 const onPianoStartDateChange = (e) => {
   form.pianoStartDate = e.detail.value
+}
+
+const onPracticeTeacherChange = (e) => {
+  const index = Number(e.detail.value)
+  practiceTeacherIndex.value = index
+
+  if (index <= 0) {
+    form.practiceTeacherId = ''
+    return
+  }
+
+  const teacher = teachers.value[index - 1]
+  form.practiceTeacherId = teacher?._id || ''
+  form.practiceTeacher = teacher?.name || teacher?.username || form.practiceTeacher
 }
 
 const handleCancel = () => {

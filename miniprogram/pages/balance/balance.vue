@@ -326,7 +326,8 @@ const onEndDateChange = (e) => {
 const handleGenerateReportData = async () => {
   try {
     const res = await get('/lesson-records', {
-      studentId: reportForm.studentId
+      studentId: reportForm.studentId,
+      accountOnly: true
     })
     
     const startDate = new Date(reportForm.startDate)

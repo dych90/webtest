@@ -112,7 +112,10 @@
                 <text>{{ student.name.charAt(0) }}</text>
               </view>
               <view class="student-item-info">
-                <text class="student-item-name">{{ formatStudentName(student.name) }}</text>
+                <view class="student-item-name-row">
+                  <text class="student-item-name">{{ formatStudentName(student.name) }}</text>
+                  <text v-if="student.studentRelationType === 'practice'" class="student-relation-tag">陪练</text>
+                </view>
                 <text class="student-item-phone" v-if="student.phone">{{ student.phone }}</text>
               </view>
             </view>
@@ -231,17 +234,25 @@ const formatStudentName = (name) => {
   return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
-const selectStudent = (student) => {
-  form.studentId = student._id
-  
-  if (student && student.defaultCourseTypeId) {
-    const courseTypeId = student.defaultCourseTypeId._id || student.defaultCourseTypeId
-    const idx = courseTypes.value.findIndex(t => t._id === courseTypeId)
+const applyStudentCourseType = (student) => {
+  if (!student) return
+
+  const targetCourseTypeId = student.studentRelationType === 'practice'
+    ? courseTypes.value.find(t => t.name === '陪练课')?._id
+    : (student.defaultCourseTypeId?._id || student.defaultCourseTypeId)
+
+  if (targetCourseTypeId) {
+    const idx = courseTypes.value.findIndex(t => t._id === targetCourseTypeId)
     if (idx >= 0) {
       courseTypeIndex.value = idx
       form.courseTypeId = courseTypes.value[idx]._id
     }
   }
+}
+
+const selectStudent = (student) => {
+  form.studentId = student._id
+  applyStudentCourseType(student)
   
   showStudentPicker.value = false
 }
@@ -664,9 +675,23 @@ const handleSubmit = async () => {
   flex-direction: column;
 }
 
+.student-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
 .student-item-name {
   font-size: 30rpx;
   color: #3F352B;
+}
+
+.student-relation-tag {
+  font-size: 20rpx;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  background-color: #F8E4DD;
+  color: #A0523E;
 }
 
 .student-item-phone {

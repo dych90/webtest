@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 
 const paymentSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   paymentType: { type: String, required: true },
   amount: { type: Number, required: true },
   bonusLessons: { type: Number, default: 0 },

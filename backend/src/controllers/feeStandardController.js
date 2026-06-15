@@ -2,6 +2,11 @@ const FeeStandard = require('../models/FeeStandard')
 const Student = require('../models/Student')
 const CourseType = require('../models/CourseType')
 const User = require('../models/User')
+const {
+  canViewStudent,
+  getTeacherStudentAccessFilter,
+  isSameId
+} = require('../utils/studentAccess')
 const xlsx = require('xlsx')
 const fs = require('fs')
 
@@ -15,9 +20,9 @@ const getFeeStandards = async (req, res) => {
     if (studentId) {
       filter.studentId = studentId
     }
-    
+
     if (isTeacher) {
-      const students = await Student.find({ teacherId: req.userId })
+      const students = await Student.find(getTeacherStudentAccessFilter(req.userId))
       const studentIds = students.map(s => s._id)
       if (studentId) {
         if (studentIds.some(id => id.toString() === studentId)) {
@@ -28,12 +33,22 @@ const getFeeStandards = async (req, res) => {
       } else {
         filter.studentId = { $in: studentIds }
       }
+
+      const ownedStudentIds = students
+        .filter(student => isSameId(student.teacherId, req.userId))
+        .map(student => student._id)
+      filter.$or = [
+        { teacherId: req.userId },
+        { teacherId: { $exists: false }, studentId: { $in: ownedStudentIds } },
+        { teacherId: null, studentId: { $in: ownedStudentIds } }
+      ]
     }
     
     const feeStandards = await FeeStandard.find(filter)
       .sort({ effectiveDate: -1 })
       .populate('studentId', 'name phone')
       .populate('courseTypeId', 'name duration')
+      .populate('teacherId', 'name username')
     
     res.json({
       message: '获取成功',
@@ -47,7 +62,19 @@ const getFeeStandards = async (req, res) => {
 
 const createFeeStandard = async (req, res) => {
   try {
-    const feeStandard = await FeeStandard.create(req.body)
+    const user = await User.findById(req.userId)
+    const student = req.body.studentId ? await Student.findById(req.body.studentId) : null
+
+    if (user.role !== 'admin') {
+      if (!student || !canViewStudent(student, user)) {
+        return res.status(403).json({ message: '无权限为此学生创建收费标准' })
+      }
+    }
+
+    const feeStandard = await FeeStandard.create({
+      ...req.body,
+      teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
+    })
     
     res.json({
       message: '创建成功',
@@ -62,7 +89,36 @@ const createFeeStandard = async (req, res) => {
 const updateFeeStandard = async (req, res) => {
   try {
     const { id } = req.params
-    const feeStandard = await FeeStandard.findByIdAndUpdate(id, req.body, { new: true })
+    const user = await User.findById(req.userId)
+    const oldFeeStandard = await FeeStandard.findById(id)
+
+    if (!oldFeeStandard) {
+      return res.status(404).json({ message: '收费标准不存在' })
+    }
+
+    const studentId = req.body.studentId || oldFeeStandard.studentId
+    const student = studentId ? await Student.findById(studentId) : null
+
+    if (user.role !== 'admin') {
+      if (!student || !canViewStudent(student, user)) {
+        return res.status(403).json({ message: '无权限修改此收费标准' })
+      }
+
+      const standardTeacherId = oldFeeStandard.teacherId?.toString()
+      if (standardTeacherId && standardTeacherId !== req.userId.toString()) {
+        return res.status(403).json({ message: '无权限修改其他老师的收费标准' })
+      }
+      if (!standardTeacherId && !isSameId(student.teacherId, req.userId)) {
+        return res.status(403).json({ message: '无权限修改其他老师的历史收费标准' })
+      }
+    }
+
+    const updateData = {
+      ...req.body,
+      teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : (oldFeeStandard.teacherId || req.userId)
+    }
+
+    const feeStandard = await FeeStandard.findByIdAndUpdate(id, updateData, { new: true })
     
     if (!feeStandard) {
       return res.status(404).json({ message: '收费标准不存在' })
@@ -81,6 +137,28 @@ const updateFeeStandard = async (req, res) => {
 const deleteFeeStandard = async (req, res) => {
   try {
     const { id } = req.params
+    const user = await User.findById(req.userId)
+    const feeStandard = await FeeStandard.findById(id)
+
+    if (!feeStandard) {
+      return res.status(404).json({ message: '收费标准不存在' })
+    }
+
+    if (user.role !== 'admin') {
+      const student = feeStandard.studentId ? await Student.findById(feeStandard.studentId) : null
+      if (!student || !canViewStudent(student, user)) {
+        return res.status(403).json({ message: '无权限删除此收费标准' })
+      }
+
+      const standardTeacherId = feeStandard.teacherId?.toString()
+      if (standardTeacherId && standardTeacherId !== req.userId.toString()) {
+        return res.status(403).json({ message: '无权限删除其他老师的收费标准' })
+      }
+      if (!standardTeacherId && !isSameId(student.teacherId, req.userId)) {
+        return res.status(403).json({ message: '无权限删除其他老师的历史收费标准' })
+      }
+    }
+
     await FeeStandard.findByIdAndDelete(id)
     
     res.json({ message: '删除成功' })
@@ -124,6 +202,8 @@ const importFeeStandards = async (req, res) => {
       return res.status(400).json({ message: '请上传文件' })
     }
 
+    const user = await User.findById(req.userId)
+    const feeTeacherId = user?.role === 'admin' ? null : req.userId
     const workbook = xlsx.readFile(req.file.path)
     const sheetName = workbook.SheetNames[0]
     const worksheet = workbook.Sheets[sheetName]
@@ -172,6 +252,12 @@ const importFeeStandards = async (req, res) => {
           failCount++
           continue
         }
+
+        if (feeTeacherId && !canViewStudent(student, user)) {
+          errors.push(`第 ${i + 2} 行：无权限为学生"${row['学生姓名']}"导入收费标准`)
+          failCount++
+          continue
+        }
         
         let courseTypeId = row['课程类型ID'] || null
         if (!courseTypeId && row['课程类型']) {
@@ -191,23 +277,37 @@ const importFeeStandards = async (req, res) => {
           continue
         }
         
+        const teacherFilters = []
+        if (feeTeacherId) {
+          teacherFilters.push({ teacherId: feeTeacherId })
+          if (isSameId(student.teacherId, feeTeacherId)) {
+            teacherFilters.push(
+              { teacherId: { $exists: false } },
+              { teacherId: null }
+            )
+          }
+        }
+
         const existingStandard = await FeeStandard.findOne({
           studentId: student._id,
-          courseTypeId: courseTypeId
+          courseTypeId: courseTypeId,
+          ...(teacherFilters.length ? { $or: teacherFilters } : {})
         })
         
         if (existingStandard) {
           await FeeStandard.findByIdAndUpdate(existingStandard._id, {
             price: feeStandardData.price,
             effectiveDate: feeStandardData.effectiveDate,
-            expireDate: feeStandardData.expireDate
+            expireDate: feeStandardData.expireDate,
+            ...(feeTeacherId ? { teacherId: feeTeacherId } : {})
           })
           successCount++
         } else {
           await FeeStandard.create({
             ...feeStandardData,
             studentId: student._id,
-            courseTypeId: courseTypeId
+            courseTypeId: courseTypeId,
+            ...(feeTeacherId ? { teacherId: feeTeacherId } : {})
           })
           successCount++
         }

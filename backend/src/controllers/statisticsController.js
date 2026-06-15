@@ -4,6 +4,24 @@ const Course = require('../models/Course')
 const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
 const User = require('../models/User')
+const { getTeacherStudentAccessFilter, isSameId } = require('../utils/studentAccess')
+const { getTeacherAccountFilter } = require('../utils/teacherAccount')
+const { getEffectivePaymentType } = require('../utils/studentAccount')
+
+const getPrepaidStudentIdSet = async (students, accountTeacherId) => {
+  if (!accountTeacherId) {
+    return new Set(students
+      .filter(student => student.paymentType === 'prepaid')
+      .map(student => student._id.toString()))
+  }
+
+  const prepaidIds = await Promise.all(students.map(async (student) => {
+    const paymentType = await getEffectivePaymentType(student, accountTeacherId)
+    return paymentType === 'prepaid' ? student._id.toString() : null
+  }))
+
+  return new Set(prepaidIds.filter(Boolean))
+}
 
 const getStatistics = async (req, res) => {
   try {
@@ -15,19 +33,22 @@ const getStatistics = async (req, res) => {
     console.log('请求参数 - teacherId:', teacherId, 'month:', month)
     console.log('用户角色:', isTeacher ? '教师' : '管理员')
     
+    const accountTeacherId = isTeacher ? req.userId : teacherId
     let studentQuery = {}
-    if (isTeacher) {
-      studentQuery.teacherId = req.userId
-    } else if (teacherId) {
-      studentQuery.teacherId = teacherId
+    if (accountTeacherId) {
+      Object.assign(studentQuery, getTeacherStudentAccessFilter(accountTeacherId))
     }
     
     const studentCount = await Student.countDocuments(studentQuery)
     
     const students = await Student.find(studentQuery)
     const studentIds = students.map(s => s._id)
+    const ownedStudentIds = accountTeacherId
+      ? students.filter(student => isSameId(student.teacherId, accountTeacherId)).map(student => student._id)
+      : []
+    const accountFilter = accountTeacherId ? getTeacherAccountFilter(accountTeacherId, ownedStudentIds) : null
     
-    const paymentQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
+    const paymentQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const payments = await Payment.find(paymentQuery)
     console.log('总缴费记录数:', payments.length)
     
@@ -42,11 +63,11 @@ const getStatistics = async (req, res) => {
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0)
     const totalLessonsSold = payments.reduce((sum, p) => sum + p.totalLessons, 0)
     
-    const courseQuery = (isTeacher || teacherId) ? { teacherId: teacherId || req.userId } : {}
+    const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
     const courses = await Course.find(courseQuery)
     const totalCourses = courses.length
     
-    const lessonRecordQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
+    const lessonRecordQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
     console.log('总消课记录数:', lessonRecords.length)
     
@@ -62,7 +83,7 @@ const getStatistics = async (req, res) => {
     const totalLessonsConsumed = lessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
     const totalLessonsAttended = lessonRecords.length
     
-    const balanceQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
+    const balanceQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const balances = await LessonBalance.find(balanceQuery)
     const totalRemainingLessons = balances.reduce((sum, b) => sum + b.remainingLessons, 0)
     
@@ -140,16 +161,15 @@ const getStatistics = async (req, res) => {
     console.log('月度消课数:', monthlyLessonsConsumed)
     console.log('月度上课数:', monthlyLessonsAttended)
     
-    const prepaidStudentsFiltered = students.filter(s => s.paymentType === 'prepaid')
-    const prepaidStudentIds = prepaidStudentsFiltered.map(s => s._id.toString())
+    const prepaidStudentIdSet = await getPrepaidStudentIdSet(students, accountTeacherId)
     
     const prepaidLessonRecords = lessonRecords.filter(r => 
-      prepaidStudentIds.includes(r.studentId.toString())
+      prepaidStudentIdSet.has(r.studentId.toString())
     )
     const prepaidLessonsConsumed = prepaidLessonRecords.reduce((sum, r) => sum + r.lessonsConsumed, 0)
     
     const monthlyPrepaidLessons = monthlyLessonRecords.filter(r => 
-      prepaidStudentIds.includes(r.studentId.toString())
+      prepaidStudentIdSet.has(r.studentId.toString())
     )
     const monthlyPrepaidLessonsConsumed = monthlyPrepaidLessons.reduce((sum, r) => sum + r.lessonsConsumed, 0)
     
@@ -194,27 +214,27 @@ const getChartStatistics = async (req, res) => {
     const isTeacher = user && user.role !== 'admin'
     const { teacherId, type = 'month', year, month } = req.query
     
+    const accountTeacherId = isTeacher ? req.userId : teacherId
     let studentQuery = {}
-    if (isTeacher) {
-      studentQuery.teacherId = req.userId
-    } else if (teacherId) {
-      studentQuery.teacherId = teacherId
+    if (accountTeacherId) {
+      Object.assign(studentQuery, getTeacherStudentAccessFilter(accountTeacherId))
     }
     
     const students = await Student.find(studentQuery)
     const studentIds = students.map(s => s._id)
+    const ownedStudentIds = accountTeacherId
+      ? students.filter(student => isSameId(student.teacherId, accountTeacherId)).map(student => student._id)
+      : []
+    const accountFilter = accountTeacherId ? getTeacherAccountFilter(accountTeacherId, ownedStudentIds) : null
     
-    const paymentQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
+    const paymentQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const payments = await Payment.find(paymentQuery)
 
-    const lessonRecordQuery = (isTeacher || teacherId) ? { studentId: { $in: studentIds } } : {}
+    const lessonRecordQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
 
-    const courseQuery = (isTeacher || teacherId) ? { teacherId: teacherId || req.userId } : {}
+    const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
     const courses = await Course.find(courseQuery)
-    
-    const prepaidStudentsFiltered = students.filter(s => s.paymentType === 'prepaid')
-    const prepaidStudentIds = prepaidStudentsFiltered.map(s => s._id.toString())
     
     const now = new Date()
     const currentYear = year ? parseInt(year) : now.getFullYear()

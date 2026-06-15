@@ -16,6 +16,7 @@ const lessonRecordSchema = new mongoose.Schema({
   courseTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseType' },
   courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   lessonsConsumed: { type: Number, required: true },
   lessonContent: String,
   mediaItems: { type: [mediaItemSchema], default: [] },

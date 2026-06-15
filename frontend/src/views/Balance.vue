@@ -283,7 +283,8 @@ const handleGenerateReport = async () => {
     
     const response = await request.get('/lesson-records', {
       params: {
-        studentId: reportForm.value.studentId
+        studentId: reportForm.value.studentId,
+        accountOnly: true
       }
     })
     

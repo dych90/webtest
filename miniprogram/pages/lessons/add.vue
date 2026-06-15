@@ -198,9 +198,26 @@ const fetchCourseTypes = async () => {
   }
 }
 
+const applyStudentCourseType = (student) => {
+  if (!student) return
+
+  const targetCourseTypeId = student.studentRelationType === 'practice'
+    ? courseTypes.value.find(t => t.name === '陪练课')?._id
+    : (student.defaultCourseTypeId?._id || student.defaultCourseTypeId)
+
+  if (targetCourseTypeId) {
+    const idx = courseTypes.value.findIndex(t => t._id === targetCourseTypeId)
+    if (idx >= 0) {
+      courseTypeIndex.value = idx
+      form.courseTypeId = courseTypes.value[idx]._id
+    }
+  }
+}
+
 const onStudentChange = (e) => {
   studentIndex.value = e.detail.value
   form.studentId = filteredStudents.value[e.detail.value]?._id || ''
+  applyStudentCourseType(filteredStudents.value[e.detail.value])
 }
 
 const onCourseChange = (e) => {

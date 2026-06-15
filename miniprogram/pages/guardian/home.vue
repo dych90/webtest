@@ -23,6 +23,7 @@
           <view>
             <text class="student-name">{{ currentStudent?.name || '选择学生' }}</text>
             <text class="student-teacher">老师：{{ currentStudent?.teacher?.name || '未设置' }}</text>
+            <text class="student-teacher" v-if="getPracticeTeacherName(currentStudent)">陪练：{{ getPracticeTeacherName(currentStudent) }}</text>
           </view>
           <text class="switch-text">切换</text>
         </view>
@@ -33,6 +34,9 @@
       <view class="summary-card">
         <text class="summary-label">剩余课时</text>
         <text class="summary-value">{{ getBalanceText() }}</text>
+        <text v-for="account in getBalanceAccounts()" :key="account.teacherId" class="summary-subvalue">
+          {{ getBalanceAccountText(account) }}
+        </text>
       </view>
       <view class="summary-card">
         <text class="summary-label">今日课程</text>
@@ -48,6 +52,9 @@
       <view v-if="overview.nextCourse" class="next-course">
         <text class="course-time">{{ formatDateTime(overview.nextCourse.startTime) }}</text>
         <text class="course-name">{{ overview.nextCourse.courseTypeId?.name || '课程' }}</text>
+        <text class="course-meta">
+          老师：{{ getCourseTeacherName(overview.nextCourse) }}{{ getCourseFeeText(overview.nextCourse) }}
+        </text>
       </view>
       <view v-else class="empty">暂无后续课程</view>
     </view>
@@ -67,6 +74,7 @@
           <text class="course-time">{{ formatTimeRange(course) }}</text>
           <view class="course-main">
             <text class="course-name">{{ course.courseTypeId?.name || '课程' }}</text>
+            <text class="course-meta">老师：{{ getCourseTeacherName(course) }}{{ getCourseFeeText(course) }}</text>
             <text v-if="course.lessonRecord" class="record-summary">{{ getRecordSummary(course.lessonRecord) }}</text>
           </view>
           <view class="course-side">
@@ -141,11 +149,51 @@ const currentStudent = computed(() => {
 })
 
 const getBalanceText = () => {
-  if (currentStudent.value?.paymentType === 'free') {
-    return '免费'
+  const accounts = getBalanceAccounts()
+  if (accounts.length) {
+    const prepaidAccounts = accounts.filter(account => account.paymentType === 'prepaid')
+    if (prepaidAccounts.length) {
+      return prepaidAccounts.reduce((sum, account) => sum + (account.remainingLessons || 0), 0)
+    }
+    if (accounts.every(account => account.paymentType === 'free')) {
+      return '免费'
+    }
+    return '单次付费'
   }
 
-  return overview.value.balance?.remainingLessons || 0
+  return currentStudent.value?.paymentType === 'free' ? '免费' : (overview.value.balance?.remainingLessons || 0)
+}
+
+const getBalanceAccounts = () => {
+  return overview.value.balances || currentStudent.value?.balanceAccounts || []
+}
+
+const getBalanceAccountText = (account) => {
+  const label = account.relation === 'practice' ? '陪练' : '任课'
+  const teacherName = account.teacher?.name || account.teacher?.username || ''
+  const prefix = `${label}${teacherName ? ` · ${teacherName}` : ''}`
+  if (account.paymentType === 'free') {
+    return `${prefix}：免费`
+  }
+  if (account.paymentType === 'payPerLesson') {
+    return `${prefix}：单次付费`
+  }
+  return `${prefix}：${account.remainingLessons || 0}课时`
+}
+
+const getPracticeTeacherName = (student) => {
+  if (!student) return ''
+  return student.practiceTeacherId?.name || student.practiceTeacher || ''
+}
+
+const getCourseTeacherName = (course) => {
+  return course?.teacherId?.name || '未设置'
+}
+
+const getCourseFeeText = (course) => {
+  const price = course?.feeStandard?.price
+  if (price === undefined || price === null || price === '') return ''
+  return ` · 课费：¥${price}`
 }
 
 onShow(() => {
@@ -342,6 +390,14 @@ const goMine = () => {
   color: var(--theme-primary);
 }
 
+.summary-subvalue {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 21rpx;
+  line-height: 28rpx;
+  color: var(--theme-muted);
+}
+
 .card {
   padding: 24rpx;
   margin-bottom: 18rpx;
@@ -418,6 +474,13 @@ const goMine = () => {
   font-size: 28rpx;
   color: var(--theme-text);
   font-weight: bold;
+}
+
+.course-meta {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--theme-muted);
 }
 
 .record-date {

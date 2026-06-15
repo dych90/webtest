@@ -4,9 +4,14 @@ const GuardianInvite = require('../models/GuardianInvite')
 const Student = require('../models/Student')
 const User = require('../models/User')
 const Course = require('../models/Course')
+const CourseType = require('../models/CourseType')
 const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
 const Payment = require('../models/Payment')
+const { findApplicableFeeStandard } = require('../utils/feeStandard')
+const { toIdString } = require('../utils/studentAccess')
+const { getScopedBalanceKey } = require('../utils/teacherAccount')
+const { getEffectiveStudentAccount } = require('../utils/studentAccount')
 const { generateGuardianToken } = require('../utils/jwt')
 const { getOpenIdByCode } = require('../utils/wechat')
 
@@ -27,7 +32,7 @@ const getShanghaiDayRange = (dayOffset = 0, baseDate = new Date()) => {
 }
 
 const getStudentSelect = () => {
-  return 'name gender birthday phone parentName parentPhone paymentType defaultCourseTypeId currentPrice pianoStartDate learningProgress learningPlan practiceTeacher teacherId'
+  return 'name gender birthday phone parentName parentPhone paymentType defaultCourseTypeId currentPrice pianoStartDate learningProgress learningPlan practiceTeacher practiceTeacherId teacherId'
 }
 
 const getActiveGuardianBindings = async (openId) => {
@@ -35,24 +40,117 @@ const getActiveGuardianBindings = async (openId) => {
     .populate({
       path: 'studentId',
       select: getStudentSelect(),
-      populate: { path: 'defaultCourseTypeId', select: 'name duration' }
+      populate: [
+        { path: 'defaultCourseTypeId', select: 'name duration' },
+        { path: 'practiceTeacherId', select: 'name phone username' }
+      ]
     })
     .populate('teacherId', 'name phone username')
     .sort({ createdAt: 1 })
 }
 
-const formatBindingStudent = (binding, balanceMap = {}) => {
+const buildBalanceAccounts = async (student, teacher, balanceMap = {}) => {
+  const accounts = []
+  const studentId = student?._id
+  const mainTeacher = teacher || student?.teacherId
+  const practiceTeacher = student?.practiceTeacherId
+
+  if (mainTeacher) {
+    const teacherId = toIdString(mainTeacher)
+    const account = await getEffectiveStudentAccount(student, teacherId)
+    accounts.push({
+      relation: 'teacher',
+      teacher: mainTeacher,
+      teacherId,
+      paymentType: account.paymentType,
+      currentPrice: account.currentPrice,
+      remainingLessons: balanceMap[getScopedBalanceKey(studentId, teacherId)] || 0
+    })
+  }
+
+  if (practiceTeacher) {
+    const teacherId = toIdString(practiceTeacher)
+    const account = await getEffectiveStudentAccount(student, teacherId)
+    accounts.push({
+      relation: 'practice',
+      teacher: practiceTeacher,
+      teacherId,
+      paymentType: account.paymentType,
+      currentPrice: account.currentPrice,
+      remainingLessons: balanceMap[getScopedBalanceKey(studentId, teacherId)] || 0
+    })
+  }
+
+  return accounts
+}
+
+const buildPriceAccounts = async (student, teacher, practiceCourseType = null) => {
+  const accounts = []
+  const studentId = student?._id
+  const mainTeacher = teacher || student?.teacherId
+  const practiceTeacher = student?.practiceTeacherId
+  const defaultCourseType = student?.defaultCourseTypeId
+
+  if (mainTeacher) {
+    const teacherId = toIdString(mainTeacher)
+    const account = await getEffectiveStudentAccount(student, teacherId)
+    const feeStandard = await findApplicableFeeStandard({
+      studentId,
+      courseTypeId: toIdString(defaultCourseType),
+      teacherId,
+      at: new Date()
+    })
+    accounts.push({
+      relation: 'teacher',
+      teacher: mainTeacher,
+      teacherId,
+      paymentType: account.paymentType,
+      courseType: defaultCourseType || null,
+      price: feeStandard?.price ?? account.currentPrice ?? student?.currentPrice ?? null
+    })
+  }
+
+  if (practiceTeacher) {
+    const teacherId = toIdString(practiceTeacher)
+    const account = await getEffectiveStudentAccount(student, teacherId)
+    const courseType = practiceCourseType || defaultCourseType || null
+    const feeStandard = await findApplicableFeeStandard({
+      studentId,
+      courseTypeId: toIdString(courseType),
+      teacherId,
+      at: new Date()
+    })
+    accounts.push({
+      relation: 'practice',
+      teacher: practiceTeacher,
+      teacherId,
+      paymentType: account.paymentType,
+      courseType,
+      price: feeStandard?.price ?? account.currentPrice ?? null
+    })
+  }
+
+  return accounts
+}
+
+const formatBindingStudent = async (binding, balanceMap = {}, practiceCourseType = null) => {
   const student = binding.studentId?.toObject ? binding.studentId.toObject() : binding.studentId
   const teacher = binding.teacherId?.toObject ? binding.teacherId.toObject() : binding.teacherId
 
   if (!student) return null
+  const balanceAccounts = await buildBalanceAccounts(student, teacher, balanceMap)
+  const priceAccounts = await buildPriceAccounts(student, teacher, practiceCourseType)
 
   return {
     ...student,
     teacher,
     bindingId: binding._id,
     relation: binding.relation,
-    remainingLessons: balanceMap[student._id.toString()] || 0
+    balanceAccounts,
+    priceAccounts,
+    remainingLessons: balanceAccounts
+      .filter(account => account.paymentType === 'prepaid')
+      .reduce((sum, account) => sum + (account.remainingLessons || 0), 0)
   }
 }
 
@@ -61,13 +159,22 @@ const buildGuardianSession = async (openId) => {
   const studentIds = bindings.map(binding => binding.studentId?._id).filter(Boolean)
   const balances = await LessonBalance.find({ studentId: { $in: studentIds } })
   const balanceMap = {}
+  const studentMainTeacherMap = {}
+  bindings.forEach(binding => {
+    if (binding.studentId?._id && binding.teacherId?._id) {
+      studentMainTeacherMap[binding.studentId._id.toString()] = binding.teacherId._id
+    }
+  })
   balances.forEach(balance => {
-    balanceMap[balance.studentId.toString()] = balance.remainingLessons
+    const studentId = balance.studentId.toString()
+    const teacherId = balance.teacherId || studentMainTeacherMap[studentId]
+    balanceMap[getScopedBalanceKey(studentId, teacherId)] = balance.remainingLessons
   })
 
-  const students = bindings
-    .map(binding => formatBindingStudent(binding, balanceMap))
-    .filter(Boolean)
+  const practiceCourseType = await CourseType.findOne({ name: '陪练课' }).select('name duration')
+  const students = (await Promise.all(
+    bindings.map(binding => formatBindingStudent(binding, balanceMap, practiceCourseType))
+  )).filter(Boolean)
 
   return {
     token: generateGuardianToken(openId),
@@ -128,6 +235,35 @@ const attachLessonRecordsToCourses = async (courses = []) => {
       lessonRecord: courseId ? recordMap[courseId] || null : null
     }
   })
+}
+
+const attachFeeStandardsToCourses = async (courses = []) => {
+  if (!courses.length) return []
+
+  return Promise.all(courses.map(async (course) => {
+    const plainCourse = toPlainObject(course)
+    const studentId = toIdString(plainCourse.studentId)
+    const courseTypeId = toIdString(plainCourse.courseTypeId)
+    const teacherId = toIdString(plainCourse.teacherId)
+
+    const feeStandard = await findApplicableFeeStandard({
+      studentId,
+      courseTypeId,
+      teacherId,
+      at: plainCourse.startTime ? new Date(plainCourse.startTime) : new Date()
+    })
+
+    return {
+      ...plainCourse,
+      feeStandard: feeStandard ? {
+        _id: feeStandard._id,
+        price: feeStandard.price,
+        effectiveDate: feeStandard.effectiveDate,
+        expireDate: feeStandard.expireDate,
+        teacherId: feeStandard.teacherId
+      } : null
+    }
+  }))
 }
 
 const createInvite = async (req, res) => {
@@ -301,8 +437,18 @@ const getOverview = async (req, res) => {
       .select(getStudentSelect())
       .populate('defaultCourseTypeId', 'name duration')
       .populate('teacherId', 'name phone username')
+      .populate('practiceTeacherId', 'name phone username')
 
-    const balance = await LessonBalance.findOne({ studentId: binding.studentId })
+    const accountBalances = await LessonBalance.find({ studentId: binding.studentId })
+    const balanceMap = {}
+    accountBalances.forEach(balance => {
+      const teacherId = balance.teacherId || student.teacherId
+      balanceMap[getScopedBalanceKey(binding.studentId, teacherId)] = balance.remainingLessons
+    })
+    const balanceAccounts = await buildBalanceAccounts(student, student.teacherId, balanceMap)
+    const totalRemainingLessons = balanceAccounts
+      .filter(account => account.paymentType === 'prepaid')
+      .reduce((sum, account) => sum + (account.remainingLessons || 0), 0)
     const now = new Date()
     const { start: todayStart, end: todayEnd } = getShanghaiDayRange(0, now)
 
@@ -321,21 +467,26 @@ const getOverview = async (req, res) => {
         .limit(5)
         .select('-notes')
         .populate('courseTypeId', 'name duration')
-        .populate('courseId', 'startTime endTime status'),
+        .populate('courseId', 'startTime endTime status')
+        .populate('teacherId', 'name username phone'),
       Payment.find({ studentId: binding.studentId })
         .sort({ paymentDate: -1 })
         .select('-notes')
+        .populate('teacherId', 'name username phone')
         .limit(5)
     ])
+    const nextCoursesWithFees = await attachFeeStandardsToCourses(nextCourse ? [nextCourse] : [])
     const todayCoursesWithRecords = await attachLessonRecordsToCourses(todayCourses)
+    const todayCoursesWithFees = await attachFeeStandardsToCourses(todayCoursesWithRecords)
 
     res.json({
       message: '获取成功',
       data: {
         student,
-        balance: balance || { remainingLessons: 0 },
-        nextCourse,
-        todayCourses: todayCoursesWithRecords,
+        balance: { studentId: binding.studentId, remainingLessons: totalRemainingLessons },
+        balances: balanceAccounts,
+        nextCourse: nextCoursesWithFees[0] || null,
+        todayCourses: todayCoursesWithFees,
         recentLessonRecords,
         recentPayments
       }
@@ -367,10 +518,11 @@ const getCourses = async (req, res) => {
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name phone username')
     const coursesWithRecords = await attachLessonRecordsToCourses(courses)
+    const coursesWithFees = await attachFeeStandardsToCourses(coursesWithRecords)
 
     res.json({
       message: '获取成功',
-      data: coursesWithRecords
+      data: coursesWithFees
     })
   } catch (error) {
     console.error('获取学生端课程失败:', error)
@@ -388,6 +540,7 @@ const getLessonRecords = async (req, res) => {
       .select('-notes')
       .populate('courseTypeId', 'name duration')
       .populate('courseId', 'startTime endTime status')
+      .populate('teacherId', 'name username phone')
 
     res.json({
       message: '获取成功',
@@ -407,6 +560,7 @@ const getPayments = async (req, res) => {
     const payments = await Payment.find({ studentId: binding.studentId })
       .sort({ paymentDate: -1 })
       .select('-notes')
+      .populate('teacherId', 'name username phone')
 
     res.json({
       message: '获取成功',
@@ -423,11 +577,28 @@ const getBalance = async (req, res) => {
     const binding = await requireGuardianStudent(req, res)
     if (!binding) return
 
-    const balance = await LessonBalance.findOne({ studentId: binding.studentId })
+    const student = await Student.findById(binding.studentId)
+      .select(getStudentSelect())
+      .populate('teacherId', 'name phone username')
+      .populate('practiceTeacherId', 'name phone username')
+    const accountBalances = await LessonBalance.find({ studentId: binding.studentId })
+    const balanceMap = {}
+    accountBalances.forEach(balance => {
+      const teacherId = balance.teacherId || student.teacherId
+      balanceMap[getScopedBalanceKey(binding.studentId, teacherId)] = balance.remainingLessons
+    })
+    const balanceAccounts = await buildBalanceAccounts(student, student.teacherId, balanceMap)
+    const totalRemainingLessons = balanceAccounts
+      .filter(account => account.paymentType === 'prepaid')
+      .reduce((sum, account) => sum + (account.remainingLessons || 0), 0)
 
     res.json({
       message: '获取成功',
-      data: balance || { studentId: binding.studentId, remainingLessons: 0 }
+      data: {
+        studentId: binding.studentId,
+        remainingLessons: totalRemainingLessons,
+        accounts: balanceAccounts
+      }
     })
   } catch (error) {
     console.error('获取学生端课时余额失败:', error)

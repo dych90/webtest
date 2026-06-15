@@ -39,9 +39,11 @@
           <view class="student-main">
             <text class="student-name">{{ student.name }}</text>
             <text class="teacher-name">老师：{{ student.teacher?.name || '未设置' }}</text>
+            <text class="teacher-name" v-if="getPracticeTeacherName(student)">陪练：{{ getPracticeTeacherName(student) }}</text>
+            <text class="teacher-name" v-if="getStudentPriceText(student)">{{ getStudentPriceText(student) }}</text>
           </view>
           <view class="student-actions">
-            <text class="student-balance">{{ getStudentBalanceText(student) }}</text>
+            <text class="student-balance">{{ getStudentAccountBalanceText(student) }}</text>
             <button class="unbind-btn" @click.stop="handleUnbind(student)">解除</button>
           </view>
         </view>
@@ -149,11 +151,68 @@ const selectStudent = (student) => {
 }
 
 const getStudentBalanceText = (student) => {
-  if (student.paymentType === 'free') {
-    return '免费'
+  const accounts = student.balanceAccounts || []
+  if (accounts.length) {
+    const prepaidAccounts = accounts.filter(account => account.paymentType === 'prepaid')
+    if (prepaidAccounts.length) {
+      const total = prepaidAccounts.reduce((sum, account) => sum + (account.remainingLessons || 0), 0)
+      return `${total}课时`
+    }
+    if (accounts.every(account => account.paymentType === 'free')) {
+      return '免费'
+    }
+    return '单次付费'
   }
 
-  return `${student.remainingLessons || 0}课时`
+  return student.paymentType === 'free' ? '免费' : `${student.remainingLessons || 0}课时`
+}
+
+const getStudentAccountBalanceText = (student) => {
+  const accounts = student.balanceAccounts || []
+  if (accounts.length) {
+    return accounts.map(account => {
+      const label = account.relation === 'practice' ? '陪练' : '任课'
+      if (account.paymentType === 'free') {
+        return `${label}免费`
+      }
+      if (account.paymentType === 'payPerLesson') {
+        return `${label}单次`
+      }
+      return `${label}${account.remainingLessons || 0}`
+    }).join(' / ')
+  }
+
+  return getStudentBalanceText(student)
+}
+
+const getPracticeTeacherName = (student) => {
+  return student.practiceTeacherId?.name || student.practiceTeacher || ''
+}
+
+const getStudentPriceText = (student) => {
+  if (!student) {
+    return ''
+  }
+
+  const accounts = (student.priceAccounts || []).filter(account => {
+    if (account.paymentType === 'free') return true
+    return account.price !== undefined && account.price !== null && account.price !== ''
+  })
+  if (accounts.length) {
+    return accounts.map(account => {
+      const label = account.relation === 'practice' ? '陪练' : '任课'
+      if (account.paymentType === 'free') {
+        return `${label}课费：免费`
+      }
+      return `${label}课费：¥${account.price}/课时`
+    }).join(' / ')
+  }
+
+  if (student.paymentType === 'free') {
+    return ''
+  }
+
+  return `默认课费：¥${student.currentPrice || 0}/课时`
 }
 
 const handleUnbind = (student) => {

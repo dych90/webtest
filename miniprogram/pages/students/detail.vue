@@ -54,7 +54,7 @@
         </view>
         <view class="info-item">
           <text class="info-label">陪练老师</text>
-          <text class="info-value">{{ student.practiceTeacher || '未设置' }}</text>
+          <text class="info-value">{{ getPracticeTeacherName(student) }}</text>
         </view>
       </view>
     </view>
@@ -112,15 +112,15 @@
     </view>
     
     <view class="action-section">
-      <button class="btn-guardian" @click="handleCreateGuardianInvite">学生端绑定码</button>
-      <button class="btn-edit" @click="handleEdit">编辑学生</button>
-      <button class="btn-delete" @click="handleDelete">删除学生</button>
+      <button class="btn-guardian" v-if="canManageStudent" @click="handleCreateGuardianInvite">学生端绑定码</button>
+      <button class="btn-edit" v-if="canEditStudent" @click="handleEdit">{{ canManageStudent ? '编辑学生' : '编辑账户' }}</button>
+      <button class="btn-delete" v-if="canManageStudent" @click="handleDelete">删除学生</button>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
@@ -128,6 +128,8 @@ import { getPaymentTypeText } from '@/utils/paymentType'
 const student = ref({})
 const studentId = ref('')
 const priceHistory = ref([])
+const canEditStudent = computed(() => Boolean(student.value?._id))
+const canManageStudent = computed(() => student.value.studentRelationType !== 'practice')
 
 onMounted(() => {
   const pages = getCurrentPages()
@@ -168,6 +170,10 @@ const formatDate = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const getPracticeTeacherName = (student) => {
+  return student.practiceTeacherId?.name || student.practiceTeacher || '未设置'
 }
 
 const handleEdit = () => {

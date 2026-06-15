@@ -4,6 +4,38 @@ const CourseType = require('../models/CourseType')
 const User = require('../models/User')
 const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
+const { canViewStudent, getStudentRelationType } = require('../utils/studentAccess')
+const { getEffectivePaymentType } = require('../utils/studentAccount')
+
+const PRACTICE_COURSE_TYPE_NAME = '陪练课'
+
+const getOrCreatePracticeCourseType = async () => {
+  return CourseType.findOneAndUpdate(
+    { name: PRACTICE_COURSE_TYPE_NAME },
+    {
+      $setOnInsert: {
+        name: PRACTICE_COURSE_TYPE_NAME,
+        duration: 60,
+        isDefault: false,
+        sortOrder: 999
+      }
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  )
+}
+
+const resolveCourseTypeForTeacher = async (student, user, requestedCourseTypeId) => {
+  if (user?.role === 'admin') {
+    return requestedCourseTypeId
+  }
+
+  if (getStudentRelationType(student, user) === 'practice') {
+    const practiceCourseType = await getOrCreatePracticeCourseType()
+    return practiceCourseType._id
+  }
+
+  return requestedCourseTypeId
+}
 
 const toPlainObject = (doc) => {
   return doc?.toObject ? doc.toObject() : doc
@@ -120,9 +152,21 @@ const getCourseById = async (req, res) => {
 const createCourse = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
+    const student = await Student.findById(req.body.studentId)
+
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+
+    if (user.role !== 'admin' && !canViewStudent(student, user)) {
+      return res.status(403).json({ message: '无权限为此学生创建课程' })
+    }
+
+    const courseTypeId = await resolveCourseTypeForTeacher(student, user, req.body.courseTypeId)
     
     const courseData = {
       ...req.body,
+      courseTypeId,
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId,
       groupId: req.body.groupId || null
     }
@@ -158,6 +202,18 @@ const updateCourse = async (req, res) => {
     console.log('更新课程数据:', req.body)
     
     const updateData = { ...req.body }
+    const nextStudentId = updateData.studentId || course.studentId
+    const student = await Student.findById(nextStudentId)
+
+    if (!student) {
+      return res.status(404).json({ message: '学生不存在' })
+    }
+
+    if (user.role !== 'admin' && !canViewStudent(student, user)) {
+      return res.status(403).json({ message: '无权限将课程分配给此学生' })
+    }
+
+    updateData.courseTypeId = await resolveCourseTypeForTeacher(student, user, updateData.courseTypeId || course.courseTypeId)
     
     if (req.body.startTime && new Date(req.body.startTime).getTime() !== new Date(course.startTime).getTime()) {
       updateData.reminderSent = false
@@ -197,14 +253,18 @@ const deleteCourse = async (req, res) => {
     if (lessonRecord) {
       const student = await Student.findById(lessonRecord.studentId)
       
-      if (student && student.paymentType === 'prepaid' && lessonRecord.isDeducted) {
+      const recordTeacherId = lessonRecord.teacherId || course.teacherId
+      const accountPaymentType = student ? await getEffectivePaymentType(student, recordTeacherId) : ''
+
+      if (student && accountPaymentType === 'prepaid' && lessonRecord.isDeducted) {
         const studentIdStr = lessonRecord.studentId.toString()
         await LessonBalance.findOneAndUpdate(
-          { studentId: studentIdStr },
+          { studentId: studentIdStr, teacherId: recordTeacherId },
           { 
             $inc: { remainingLessons: lessonRecord.lessonsConsumed },
             $set: { lastUpdated: new Date() }
-          }
+          },
+          { upsert: true, setDefaultsOnInsert: true }
         )
         console.log('删除课程时返还课时:', lessonRecord.lessonsConsumed)
       }
@@ -282,14 +342,19 @@ const deleteCoursesByGroup = async (req, res) => {
     for (const record of lessonRecords) {
       const student = await Student.findById(record.studentId)
       
-      if (student && student.paymentType === 'prepaid' && record.isDeducted) {
+      const course = courses.find(item => item._id.toString() === record.courseId.toString())
+      const recordTeacherId = record.teacherId || course?.teacherId
+      const accountPaymentType = student ? await getEffectivePaymentType(student, recordTeacherId) : ''
+
+      if (student && accountPaymentType === 'prepaid' && record.isDeducted) {
         const studentIdStr = record.studentId.toString()
         await LessonBalance.findOneAndUpdate(
-          { studentId: studentIdStr },
+          { studentId: studentIdStr, teacherId: recordTeacherId },
           { 
             $inc: { remainingLessons: record.lessonsConsumed },
             $set: { lastUpdated: new Date() }
-          }
+          },
+          { upsert: true, setDefaultsOnInsert: true }
         )
       }
     }

@@ -56,6 +56,9 @@
             >
               {{ getPaymentTypeText(student.paymentType) }}
             </text>
+            <text v-if="student.studentRelationType === 'practice'" class="relation-tag practice">
+              陪练
+            </text>
           </view>
           <view class="student-detail">
             <text class="detail-item price" v-if="student.currentPrice">
@@ -382,6 +385,18 @@ onShow(() => {
 .payment-tag.free {
   background-color: #F3EBDD;
   color: #8B8176;
+}
+
+.relation-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  margin-left: 8rpx;
+}
+
+.relation-tag.practice {
+  background-color: #F8E4DD;
+  color: #A0523E;
 }
 
 .student-detail {

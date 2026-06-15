@@ -1,14 +1,155 @@
 const Student = require('../models/Student')
 const User = require('../models/User')
 const FeeStandard = require('../models/FeeStandard')
-const CourseType = require('../models/CourseType')
 const LessonBalance = require('../models/LessonBalance')
+const CourseType = require('../models/CourseType')
+const {
+  attachStudentRelationType,
+  canManageStudent,
+  canViewStudent,
+  getTeacherStudentAccessFilter,
+  isSameId
+} = require('../utils/studentAccess')
+const {
+  canAccessTeacherAccount,
+  getTeacherAccountFilter,
+  getTeacherAccountId
+} = require('../utils/teacherAccount')
+const {
+  attachAccountBillingToStudent,
+  saveStudentAccountSettings
+} = require('../utils/studentAccount')
 const xlsx = require('xlsx')
 const fs = require('fs')
-const path = require('path')
 
 const LEGACY_PARENT_NAME_COLUMN = '\u5bb6\u957f\u59d3\u540d'
 const LEGACY_PARENT_PHONE_COLUMN = '\u5bb6\u957f\u7535\u8bdd'
+const PRACTICE_COURSE_TYPE_NAME = '陪练课'
+const ACCOUNT_UPDATE_FIELDS = ['paymentType', 'currentPrice', 'priceEffectiveDate']
+
+const getOrCreatePracticeCourseType = async () => {
+  return CourseType.findOneAndUpdate(
+    { name: PRACTICE_COURSE_TYPE_NAME },
+    {
+      $setOnInsert: {
+        name: PRACTICE_COURSE_TYPE_NAME,
+        duration: 60,
+        isDefault: false,
+        sortOrder: 999
+      }
+    },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  )
+}
+
+const pickAccountUpdateData = (body = {}) => {
+  return ACCOUNT_UPDATE_FIELDS.reduce((result, field) => {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      result[field] = body[field]
+    }
+    return result
+  }, {})
+}
+
+const hasAccountUpdateData = (data = {}) => {
+  return ACCOUNT_UPDATE_FIELDS.some(field => Object.prototype.hasOwnProperty.call(data, field))
+}
+
+const getAccountCourseTypeId = async (student, teacherId, requestedCourseTypeId) => {
+  const isPracticeAccount = isSameId(student.practiceTeacherId, teacherId) && !isSameId(student.teacherId, teacherId)
+  if (isPracticeAccount) {
+    const practiceCourseType = await getOrCreatePracticeCourseType()
+    return practiceCourseType._id
+  }
+
+  return requestedCourseTypeId || student.defaultCourseTypeId
+}
+
+const syncAccountFeeStandard = async ({ student, teacherId, paymentType, currentPrice, priceEffectiveDate, courseTypeId }) => {
+  if (!student || !teacherId) return
+
+  const currentFeeFilter = {
+    studentId: student._id,
+    teacherId,
+    expireDate: { $exists: false }
+  }
+
+  if (paymentType === 'free') {
+    await FeeStandard.updateMany(currentFeeFilter, { expireDate: new Date() })
+    return
+  }
+
+  if (currentPrice === undefined) return
+
+  const newPrice = Number(currentPrice) || 0
+  if (newPrice <= 0) return
+
+  const effectiveCourseTypeId = await getAccountCourseTypeId(student, teacherId, courseTypeId)
+  if (!effectiveCourseTypeId) return
+
+  await FeeStandard.updateMany(currentFeeFilter, { expireDate: new Date() })
+  await FeeStandard.create({
+    studentId: student._id,
+    teacherId,
+    courseTypeId: effectiveCourseTypeId,
+    price: newPrice,
+    effectiveDate: priceEffectiveDate || new Date()
+  })
+}
+
+const resolvePracticeTeacherAssignment = async (studentData) => {
+  if (!studentData) return studentData
+
+  const updateData = { ...studentData }
+  const hasPracticeTeacherId = Object.prototype.hasOwnProperty.call(updateData, 'practiceTeacherId')
+  const hasPracticeTeacherName = Object.prototype.hasOwnProperty.call(updateData, 'practiceTeacher')
+  if (!hasPracticeTeacherId && !hasPracticeTeacherName) {
+    return updateData
+  }
+
+  const rawPracticeTeacherId = updateData.practiceTeacherId
+  const practiceTeacherName = hasPracticeTeacherName ? (updateData.practiceTeacher || '').toString().trim() : ''
+
+  if (rawPracticeTeacherId) {
+    const teacher = await User.findOne({ _id: rawPracticeTeacherId, role: 'teacher' })
+      .select('name username')
+
+    if (!teacher) {
+      const error = new Error('陪练老师不存在')
+      error.status = 400
+      throw error
+    }
+
+    updateData.practiceTeacherId = teacher._id
+    updateData.practiceTeacher = practiceTeacherName || teacher.name || teacher.username || ''
+    return updateData
+  }
+
+  if (hasPracticeTeacherId) {
+    updateData.practiceTeacherId = null
+  }
+
+  if (hasPracticeTeacherName || hasPracticeTeacherId) {
+    updateData.practiceTeacher = practiceTeacherName
+  }
+
+  if (practiceTeacherName) {
+    const matchedTeachers = await User.find({
+      role: 'teacher',
+      $or: [
+        { name: practiceTeacherName },
+        { username: practiceTeacherName }
+      ]
+    }).select('name username').limit(2)
+
+    if (matchedTeachers.length === 1) {
+      updateData.practiceTeacherId = matchedTeachers[0]._id
+      updateData.practiceTeacher = matchedTeachers[0].name || matchedTeachers[0].username || practiceTeacherName
+    }
+  }
+
+  return updateData
+}
 
 const getStudents = async (req, res) => {
   try {
@@ -16,19 +157,28 @@ const getStudents = async (req, res) => {
     const query = {}
     
     if (user && user.role !== 'admin') {
-      query.teacherId = req.userId
+      Object.assign(query, getTeacherStudentAccessFilter(req.userId))
     } else if (user && user.role === 'admin' && req.query.teacherId) {
-      query.teacherId = req.query.teacherId
+      Object.assign(query, getTeacherStudentAccessFilter(req.query.teacherId))
     }
-    
+
     const students = await Student.find(query)
       .sort({ sortOrder: 1, createdAt: -1 })
       .populate('defaultCourseTypeId', 'name duration')
       .populate('teacherId', 'name username')
-    
+      .populate('practiceTeacherId', 'name username phone')
+
+    const studentData = await Promise.all(students.map(async (student) => {
+      const relationStudent = attachStudentRelationType(student, user)
+      const accountTeacherId = user?.role === 'admin'
+        ? (req.query.teacherId || student.teacherId)
+        : req.userId
+      return attachAccountBillingToStudent(relationStudent, accountTeacherId)
+    }))
+
     res.json({
       message: '获取成功',
-      data: students
+      data: studentData
     })
   } catch (error) {
     console.error('获取学生列表错误:', error)
@@ -44,19 +194,23 @@ const getStudentById = async (req, res) => {
     const student = await Student.findById(id)
       .populate('defaultCourseTypeId', 'name duration')
       .populate('teacherId', 'name username')
+      .populate('practiceTeacherId', 'name username phone')
     
     if (!student) {
       return res.status(404).json({ message: '学生不存在' })
     }
     
-    const studentTeacherId = student.teacherId?._id?.toString() || student.teacherId?.toString()
-    
-    if (user.role !== 'admin' && studentTeacherId !== req.userId.toString()) {
+    if (!canViewStudent(student, user)) {
       return res.status(403).json({ message: '无权限查看此学生' })
     }
     
-    const balance = await LessonBalance.findOne({ studentId: id })
-    const studentData = student.toObject()
+    const accountTeacherId = getTeacherAccountId(student, user, req.query.teacherId)
+    const ownedStudentIds = isSameId(student.teacherId, accountTeacherId) ? [student._id] : []
+    const balance = await LessonBalance.findOne({
+      studentId: id,
+      ...getTeacherAccountFilter(accountTeacherId, ownedStudentIds)
+    })
+    const studentData = await attachAccountBillingToStudent(attachStudentRelationType(student, user), accountTeacherId)
     studentData.remainingLessons = balance ? balance.remainingLessons : 0
     
     res.json({
@@ -73,10 +227,11 @@ const createStudent = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
     
-    const studentData = {
+    let studentData = {
       ...req.body,
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId
     }
+    studentData = await resolvePracticeTeacherAssignment(studentData)
 
     if (studentData.paymentType === 'free') {
       studentData.currentPrice = 0
@@ -91,6 +246,7 @@ const createStudent = async (req, res) => {
     if (studentData.paymentType !== 'free' && req.body.currentPrice && req.body.currentPrice > 0 && req.body.defaultCourseTypeId) {
       await FeeStandard.create({
         studentId: student._id,
+        teacherId: student.teacherId,
         courseTypeId: req.body.defaultCourseTypeId,
         price: req.body.currentPrice,
         effectiveDate: studentData.priceEffectiveDate
@@ -103,7 +259,7 @@ const createStudent = async (req, res) => {
     })
   } catch (error) {
     console.error('创建学生错误:', error)
-    res.status(500).json({ message: '服务器错误' })
+    res.status(error.status || 500).json({ message: error.status ? error.message : '服务器错误' })
   }
 }
 
@@ -138,7 +294,7 @@ const importStudents = async (req, res) => {
       console.log('所有值:', row)
       
       try {
-        const studentData = {
+        let studentData = {
           name: row['姓名'] || row['name'] || '',
           gender: row['性别'] || row['gender'] || '',
           phone: row['联系电话'] || row['phone'] || '',
@@ -189,6 +345,8 @@ const importStudents = async (req, res) => {
           }
         }
         
+        studentData = await resolvePracticeTeacherAssignment(studentData)
+
         const existingStudent = await Student.findOne({ 
           name: studentData.name,
           teacherId: req.userId
@@ -242,50 +400,120 @@ const updateStudent = async (req, res) => {
       return res.status(404).json({ message: '学生不存在' })
     }
     
-    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+    if (!canViewStudent(student, user)) {
       return res.status(403).json({ message: '无权限修改此学生' })
     }
 
-    if (req.body.paymentType === 'free') {
-      req.body.currentPrice = 0
+    const accountTeacherId = getTeacherAccountId(student, user, req.body.accountTeacherId || req.body.teacherId)
+    if (!canAccessTeacherAccount(student, user, accountTeacherId)) {
+      return res.status(403).json({ message: '无权限修改此老师账户' })
+    }
+
+    if (!canManageStudent(student, user)) {
+      const accountUpdateData = pickAccountUpdateData(req.body)
+      if (!hasAccountUpdateData(accountUpdateData)) {
+        const studentData = await attachAccountBillingToStudent(
+          attachStudentRelationType(student, user),
+          accountTeacherId
+        )
+        return res.json({
+          message: '更新成功',
+          data: studentData
+        })
+      }
+
+      if (accountUpdateData.paymentType === 'free') {
+        accountUpdateData.currentPrice = 0
+      }
+
+      await saveStudentAccountSettings({
+        student,
+        teacherId: accountTeacherId,
+        ...accountUpdateData
+      })
+      await syncAccountFeeStandard({
+        student,
+        teacherId: accountTeacherId,
+        paymentType: accountUpdateData.paymentType,
+        currentPrice: accountUpdateData.currentPrice,
+        priceEffectiveDate: accountUpdateData.priceEffectiveDate,
+        courseTypeId: req.body.defaultCourseTypeId || student.defaultCourseTypeId
+      })
+
+      const updatedStudent = await Student.findById(id)
+        .populate('defaultCourseTypeId', 'name duration')
+        .populate('teacherId', 'name username')
+        .populate('practiceTeacherId', 'name username phone')
+      const studentData = await attachAccountBillingToStudent(
+        attachStudentRelationType(updatedStudent, user),
+        accountTeacherId
+      )
+
+      return res.json({
+        message: '更新成功',
+        data: studentData
+      })
+    }
+
+    const updateData = await resolvePracticeTeacherAssignment(req.body)
+    const feeTeacherId = student.teacherId
+    const currentTeacherFeeFilter = {
+      studentId: id,
+      expireDate: { $exists: false },
+      $or: [
+        { teacherId: feeTeacherId },
+        { teacherId: { $exists: false } }
+      ]
+    }
+
+    if (updateData.paymentType === 'free') {
+      updateData.currentPrice = 0
       await FeeStandard.updateMany(
-        { studentId: id, expireDate: { $exists: false } },
+        currentTeacherFeeFilter,
         { expireDate: new Date() }
       )
     }
     
     const oldPrice = student.currentPrice
-    const newPrice = req.body.currentPrice
+    const newPrice = updateData.currentPrice
     const priceChanged = newPrice !== undefined && oldPrice !== newPrice
     
     if (priceChanged && newPrice > 0) {
-      req.body.priceEffectiveDate = req.body.priceEffectiveDate || new Date()
+      updateData.priceEffectiveDate = updateData.priceEffectiveDate || new Date()
       
-      const courseTypeId = req.body.defaultCourseTypeId || student.defaultCourseTypeId
+      const courseTypeId = updateData.defaultCourseTypeId || student.defaultCourseTypeId
       if (courseTypeId) {
         await FeeStandard.updateMany(
-          { studentId: id, expireDate: { $exists: false } },
+          currentTeacherFeeFilter,
           { expireDate: new Date() }
         )
-        
+
         await FeeStandard.create({
           studentId: id,
+          teacherId: feeTeacherId,
           courseTypeId: courseTypeId,
           price: newPrice,
-          effectiveDate: req.body.priceEffectiveDate
+          effectiveDate: updateData.priceEffectiveDate
         })
       }
     }
     
-    const updatedStudent = await Student.findByIdAndUpdate(id, req.body, { new: true })
+    const updatedStudent = await Student.findByIdAndUpdate(id, updateData, { new: true })
+      .populate('defaultCourseTypeId', 'name duration')
+      .populate('teacherId', 'name username')
+      .populate('practiceTeacherId', 'name username phone')
+    const studentData = await attachAccountBillingToStudent(
+      attachStudentRelationType(updatedStudent, user),
+      feeTeacherId
+    )
     
     res.json({
       message: '更新成功',
-      data: updatedStudent
+      data: studentData
     })
   } catch (error) {
     console.error('更新学生错误:', error)
-    res.status(500).json({ message: '服务器错误' })
+    res.status(error.status || 500).json({ message: error.status ? error.message : '服务器错误' })
   }
 }
 
@@ -300,7 +528,7 @@ const deleteStudent = async (req, res) => {
       return res.status(404).json({ message: '学生不存在' })
     }
     
-    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+    if (!canManageStudent(student, user)) {
       return res.status(403).json({ message: '无权限删除此学生' })
     }
     
@@ -323,13 +551,26 @@ const getStudentPriceHistory = async (req, res) => {
       return res.status(404).json({ message: '学生不存在' })
     }
     
-    if (user.role !== 'admin' && student.teacherId.toString() !== req.userId) {
+    if (!canViewStudent(student, user)) {
       return res.status(403).json({ message: '无权限查看此学生' })
     }
     
-    const priceHistory = await FeeStandard.find({ studentId: id })
+    const priceHistoryFilter = { studentId: id }
+    if (user.role !== 'admin') {
+      const includeLegacyStandards = isSameId(student.teacherId, req.userId)
+      priceHistoryFilter.$or = [{ teacherId: req.userId }]
+      if (includeLegacyStandards) {
+        priceHistoryFilter.$or.push(
+          { teacherId: { $exists: false } },
+          { teacherId: null }
+        )
+      }
+    }
+
+    const priceHistory = await FeeStandard.find(priceHistoryFilter)
       .sort({ effectiveDate: -1 })
       .populate('courseTypeId', 'name')
+      .populate('teacherId', 'name username')
     
     res.json({
       message: '获取成功',
@@ -350,7 +591,17 @@ const updateStudentsSort = async (req, res) => {
       return res.status(400).json({ message: '无效的排序数据' })
     }
     
-    const updatePromises = studentIds.map((id, index) => {
+    let sortableStudentIds = studentIds
+    if (user.role !== 'admin') {
+      const ownedStudents = await Student.find({
+        _id: { $in: studentIds },
+        teacherId: req.userId
+      }).select('_id')
+      const ownedIdSet = new Set(ownedStudents.map(student => student._id.toString()))
+      sortableStudentIds = studentIds.filter(id => ownedIdSet.has(id.toString()))
+    }
+
+    const updatePromises = sortableStudentIds.map((id, index) => {
       return Student.findByIdAndUpdate(id, { sortOrder: index })
     })
     

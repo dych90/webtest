@@ -16,6 +16,7 @@ const studentSchema = new mongoose.Schema({
   learningProgress: String,
   learningPlan: String,
   practiceTeacher: String,
+  practiceTeacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   notes: String,
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   sortOrder: { type: Number, default: 0 },

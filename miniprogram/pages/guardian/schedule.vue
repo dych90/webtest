@@ -54,6 +54,7 @@
             <view class="course-main">
               <text class="course-name">{{ course.courseTypeId?.name || '课程' }}</text>
               <text class="teacher-name">老师：{{ course.teacherId?.name || '未设置' }}</text>
+              <text v-if="getCourseFeeText(course)" class="fee-name">{{ getCourseFeeText(course) }}</text>
               <text v-if="course.lessonRecord" class="record-summary">{{ getRecordSummary(course.lessonRecord) }}</text>
             </view>
             <view class="course-side">
@@ -234,6 +235,12 @@ const getRecordSummary = (record) => {
   return parts.length ? parts.join(' · ') : '课后记录'
 }
 
+const getCourseFeeText = (course) => {
+  const price = course?.feeStandard?.price
+  if (price === undefined || price === null || price === '') return ''
+  return `课费：¥${price}`
+}
+
 const goCourseRecord = (course) => {
   if (!course?.lessonRecord?._id || !selectedStudentId.value) return
 
@@ -397,6 +404,13 @@ const goMine = () => {
   margin-top: 4rpx;
   font-size: 22rpx;
   color: var(--theme-muted);
+}
+
+.fee-name {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--theme-primary);
 }
 
 .record-summary {

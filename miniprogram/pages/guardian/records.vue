@@ -29,6 +29,10 @@
         <text class="balance-label">剩余课时</text>
         <text class="balance-value">{{ getBalanceText() }}</text>
       </view>
+      <view v-for="account in getBalanceAccounts()" :key="account.teacherId" class="balance-account-row">
+        <text class="balance-account-label">{{ getBalanceAccountLabel(account) }}</text>
+        <text class="balance-account-value">{{ getBalanceAccountValue(account) }}</text>
+      </view>
     </view>
 
     <view class="tabs">
@@ -47,6 +51,7 @@
           <view class="record-main">
             <text class="record-title">{{ record.courseTypeId?.name || '消课记录' }}</text>
             <text class="record-date">{{ formatDate(record.recordDate) }}</text>
+            <text class="record-date">老师：{{ getRecordTeacherName(record) }}</text>
           </view>
           <view class="record-side">
             <text class="record-value">{{ record.lessonsConsumed }}课时</text>
@@ -93,6 +98,7 @@
           <text class="record-content">
             赠课 {{ payment.bonusLessons || 0 }} 节，单价 ¥{{ payment.unitPrice || 0 }}
           </text>
+          <text class="record-content">老师：{{ getPaymentTeacherName(payment) }}</text>
         </view>
       </view>
     </scroll-view>
@@ -146,11 +152,47 @@ const currentStudent = computed(() => {
 })
 
 const getBalanceText = () => {
-  if (currentStudent.value?.paymentType === 'free') {
-    return '免费'
+  const accounts = getBalanceAccounts()
+  if (accounts.length) {
+    const prepaidAccounts = accounts.filter(account => account.paymentType === 'prepaid')
+    if (prepaidAccounts.length) {
+      return prepaidAccounts.reduce((sum, account) => sum + (account.remainingLessons || 0), 0)
+    }
+    if (accounts.every(account => account.paymentType === 'free')) {
+      return '免费'
+    }
+    return '单次付费'
   }
 
-  return balance.value.remainingLessons || 0
+  return currentStudent.value?.paymentType === 'free' ? '免费' : (balance.value.remainingLessons || 0)
+}
+
+const getBalanceAccounts = () => {
+  return balance.value.accounts || currentStudent.value?.balanceAccounts || []
+}
+
+const getBalanceAccountLabel = (account) => {
+  const label = account.relation === 'practice' ? '陪练' : '任课'
+  const teacherName = account.teacher?.name || account.teacher?.username || ''
+  return teacherName ? `${label} · ${teacherName}` : label
+}
+
+const getBalanceAccountValue = (account) => {
+  if (account.paymentType === 'free') {
+    return '免费'
+  }
+  if (account.paymentType === 'payPerLesson') {
+    return '单次付费'
+  }
+  return `${account.remainingLessons || 0}课时`
+}
+
+const getPaymentTeacherName = (payment) => {
+  return payment.teacherId?.name || payment.teacherId?.username || '未设置'
+}
+
+const getRecordTeacherName = (record) => {
+  return record.teacherId?.name || record.teacherId?.username || record.courseId?.teacherId?.name || '未设置'
 }
 
 onLoad((query = {}) => {
@@ -359,9 +401,27 @@ const goMine = () => {
   justify-content: space-between;
 }
 
+.balance-account-row {
+  min-height: 46rpx;
+  padding: 0 24rpx 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .balance-label {
   font-size: 26rpx;
   color: var(--theme-muted);
+}
+
+.balance-account-label,
+.balance-account-value {
+  font-size: 23rpx;
+  color: var(--theme-muted);
+}
+
+.balance-account-value {
+  color: var(--theme-primary);
 }
 
 .balance-value {
