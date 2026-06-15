@@ -15,6 +15,10 @@
           <text class="info-label">课程类型</text>
           <text class="info-value">{{ course.courseTypeId?.name || '未设置' }}</text>
         </view>
+        <view class="info-item" v-if="course.teacherId?.name">
+          <text class="info-label">老师</text>
+          <text class="info-value">{{ course.teacherId.name }}</text>
+        </view>
         <view class="info-item">
           <text class="info-label">上课时间</text>
           <text class="info-value">{{ formatDateTime(course.startTime) }}</text>
@@ -30,7 +34,7 @@
       </view>
     </view>
     
-    <view class="action-section">
+    <view class="action-section" v-if="canManageCourse">
       <button 
         class="btn-edit" 
         @click="handleEdit"
@@ -376,6 +380,14 @@ const statusClass = computed(() => {
   return map[course.value.status] || 'status-normal'
 })
 
+const canManageCourse = computed(() => Boolean(course.value?._id) && course.value.canManageCourse !== false)
+
+const ensureCanManageCourse = () => {
+  if (canManageCourse.value) return true
+  uni.showToast({ title: '只能查看该课程', icon: 'none' })
+  return false
+}
+
 const editWeekDayText = computed(() => {
   if (!editForm.value.date) return ''
   const date = new Date(editForm.value.date)
@@ -598,6 +610,8 @@ const onRescheduleDurationChange = (e) => {
 }
 
 const handleEdit = async () => {
+  if (!ensureCanManageCourse()) return
+
   await fetchStudents()
   await fetchCourseTypes()
   await fetchAllCourses()
@@ -637,6 +651,8 @@ const handleEdit = async () => {
 }
 
 const handleSaveEdit = async () => {
+  if (!ensureCanManageCourse()) return
+
   try {
     const [hours, minutes] = editForm.value.startTime.split(':').map(Number)
     const startDate = new Date(editForm.value.date)
@@ -710,6 +726,8 @@ const handleSaveEdit = async () => {
 }
 
 const openRescheduleDialog = async () => {
+  if (!ensureCanManageCourse()) return
+
   await fetchAllCourses()
   
   const startTime = new Date(course.value.startTime)
@@ -736,6 +754,8 @@ const openRescheduleDialog = async () => {
 }
 
 const handleReschedule = async () => {
+  if (!ensureCanManageCourse()) return
+
   try {
     if (!rescheduleForm.value.newStartDate || !rescheduleForm.value.newEndDate || !rescheduleForm.value.newStartTime) {
       uni.showToast({ title: '请填写完整的重新排课信息', icon: 'none' })
@@ -762,6 +782,8 @@ const handleReschedule = async () => {
 }
 
 const handleAttend = async () => {
+  if (!ensureCanManageCourse()) return
+
   if (!course.value.courseTypeId?._id && !course.value.courseTypeId) {
     uni.showModal({
       title: '提示',
@@ -785,11 +807,15 @@ const onLessonCountChange = (e) => {
 }
 
 const confirmAttendFromDialog = async () => {
+  if (!ensureCanManageCourse()) return
+
   attendDialogVisible.value = false
   await doAttend(lessonCountValues[lessonCountIndex.value])
 }
 
 const doAttend = async (lessonsConsumed = 1) => {
+  if (!ensureCanManageCourse()) return
+
   try {
     await put(`/courses/${courseId.value}`, { status: 'completed' })
     
@@ -819,6 +845,8 @@ const doAttend = async (lessonsConsumed = 1) => {
 }
 
 const handleCancelAttend = async () => {
+  if (!ensureCanManageCourse()) return
+
   uni.showModal({
     title: '提示',
     content: '确定要取消上课吗？这将撤销消课记录。',
@@ -852,6 +880,8 @@ const handleCancelAttend = async () => {
 }
 
 const handleCancel = async () => {
+  if (!ensureCanManageCourse()) return
+
   uni.showModal({
     title: '提示',
     content: '确定要取消这节课吗？',
@@ -870,6 +900,8 @@ const handleCancel = async () => {
 }
 
 const handleDelete = async () => {
+  if (!ensureCanManageCourse()) return
+
   uni.showModal({
     title: '确认删除',
     content: '确定要删除这个课程吗？',
@@ -891,6 +923,8 @@ const handleDelete = async () => {
 }
 
 const handleDeleteGroup = async () => {
+  if (!ensureCanManageCourse()) return
+
   await fetchAllCourses()
   const count = allCourses.value.filter(c => c.groupId === course.value.groupId).length
   

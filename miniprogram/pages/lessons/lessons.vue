@@ -85,7 +85,7 @@
               <text class="info-value">{{ record.notes }}</text>
             </view>
           </view>
-          <view class="record-actions">
+          <view class="record-actions" v-if="canManageRecord(record)">
             <button class="btn-edit" @click="handleEdit(record)">编辑</button>
             <button class="btn-delete" @click="handleDelete(record)">删除</button>
           </view>
@@ -114,7 +114,7 @@
               <text class="info-value">{{ formatDateTime(course.endTime) }}</text>
             </view>
           </view>
-          <view class="course-actions">
+          <view class="course-actions" v-if="canManageCourse(course)">
             <button class="btn-attend" @click="handleAttend(course)">上课</button>
           </view>
         </view>
@@ -202,6 +202,10 @@ const getMediaSummary = (record) => {
   return parts.join('，')
 }
 
+const canManageRecord = (record) => record?.canManageRecord !== false
+
+const canManageCourse = (course) => course?.canManageCourse !== false
+
 const fetchPendingCourses = async () => {
   try {
     const res = await get('/courses')
@@ -238,12 +242,22 @@ const handleAdd = () => {
 }
 
 const handleEdit = (record) => {
+  if (!canManageRecord(record)) {
+    uni.showToast({ title: '只能查看该记录', icon: 'none' })
+    return
+  }
+
   uni.navigateTo({
     url: `/pages/lessons/edit?id=${record._id}`
   })
 }
 
 const handleDelete = (record) => {
+  if (!canManageRecord(record)) {
+    uni.showToast({ title: '只能查看该记录', icon: 'none' })
+    return
+  }
+
   uni.showModal({
     title: '确认删除',
     content: '确定要删除这条消课记录吗？',
@@ -263,6 +277,11 @@ const handleDelete = (record) => {
 }
 
 const handleAttend = async (course) => {
+  if (!canManageCourse(course)) {
+    uni.showToast({ title: '只能查看该课程', icon: 'none' })
+    return
+  }
+
   try {
     await put(`/courses/${course._id}`, { status: 'completed' })
     

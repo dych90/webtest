@@ -135,7 +135,7 @@
     
     <view class="form-actions">
       <button class="btn-cancel" @click="handleCancel">取消</button>
-      <button class="btn-submit" @click="handleSubmit" :loading="loading">保存</button>
+      <button class="btn-submit" @click="handleSubmit" :loading="loading" :disabled="!canManageRecord || loading">保存</button>
     </view>
   </view>
 </template>
@@ -156,6 +156,7 @@ const courseTypes = ref([])
 const courseTypeIndex = ref(-1)
 const loading = ref(false)
 const recordId = ref('')
+const canManageRecord = ref(true)
 const lessonCountIndex = ref(1)
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
@@ -266,6 +267,7 @@ const fetchRecord = async () => {
   try {
     const res = await get(`/lesson-records/${recordId.value}`)
     const data = res.data || {}
+    canManageRecord.value = data.canManageRecord !== false
     form.studentId = data.studentId?._id || data.studentId || ''
     form.courseId = data.courseId?._id || data.courseId || ''
     form.courseTypeId = data.courseTypeId?._id || data.courseTypeId || ''
@@ -308,7 +310,7 @@ const fetchCourses = async () => {
     const res = await get('/courses')
     courses.value = (res.data || []).filter(c => {
       const courseId = c._id || c
-      return c.status === 'normal' || courseId === form.courseId
+      return c.canManageCourse !== false && (c.status === 'normal' || courseId === form.courseId)
     })
     
     const idx = courses.value.findIndex(c => (c._id || c) === form.courseId)
@@ -583,6 +585,11 @@ const handleCancel = () => {
 }
 
 const handleSubmit = async () => {
+  if (!canManageRecord.value) {
+    uni.showToast({ title: '只能查看该记录', icon: 'none' })
+    return
+  }
+
   const lessonsConsumed = lessonCountValues[lessonCountIndex.value]
   if (!lessonsConsumed || lessonsConsumed <= 0) {
     uni.showToast({ title: '请选择有效的消课数量', icon: 'none' })

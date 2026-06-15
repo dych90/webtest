@@ -212,11 +212,12 @@ const getLessonRecordTeacherId = async (record, student) => {
   if (record.teacherId) return record.teacherId
 
   if (record.courseId) {
-    const course = await Course.findById(record.courseId).select('teacherId')
+    const courseId = record.courseId?._id || record.courseId
+    const course = await Course.findById(courseId).select('teacherId')
     if (course?.teacherId) return course.teacherId
   }
 
-  return student?.teacherId
+  return student?.teacherId?._id || student?.teacherId
 }
 
 const canUserMutateRecord = async (record, user) => {
@@ -296,10 +297,11 @@ const getLessonRecords = async (req, res) => {
     const recordsWithBalance = await Promise.all(lessonRecords.map(async (r) => {
       const record = r.toObject()
       if (record.studentId) {
-        const teacherId = record.teacherId?._id || record.teacherId || (isTeacher ? req.userId : record.studentId.teacherId)
+        const teacherId = record.teacherId?._id || record.teacherId || await getLessonRecordTeacherId(r, r.studentId)
         record.studentId = await attachAccountBillingToStudent(record.studentId, teacherId)
         record.studentId.remainingLessons = balanceMap[`${record.studentId._id}:${teacherId}`] || 0
       }
+      record.canManageRecord = !isTeacher || await canUserMutateRecord(r, user)
       return record
     }))
     
@@ -338,9 +340,10 @@ const getLessonRecordById = async (req, res) => {
     
     const recordData = record.toObject()
     if (recordData.studentId) {
-      const recordTeacherId = recordData.teacherId?._id || recordData.teacherId || recordData.studentId.teacherId
+      const recordTeacherId = recordData.teacherId?._id || recordData.teacherId || await getLessonRecordTeacherId(record, record.studentId)
       recordData.studentId = await attachAccountBillingToStudent(recordData.studentId, recordTeacherId)
     }
+    recordData.canManageRecord = !isTeacher || await canUserMutateRecord(record, user)
 
     res.json({
       message: '获取成功',

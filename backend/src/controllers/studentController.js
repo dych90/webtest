@@ -555,16 +555,15 @@ const getStudentPriceHistory = async (req, res) => {
       return res.status(403).json({ message: '无权限查看此学生' })
     }
     
-    const priceHistoryFilter = { studentId: id }
-    if (user.role !== 'admin') {
-      const includeLegacyStandards = isSameId(student.teacherId, req.userId)
-      priceHistoryFilter.$or = [{ teacherId: req.userId }]
-      if (includeLegacyStandards) {
-        priceHistoryFilter.$or.push(
-          { teacherId: { $exists: false } },
-          { teacherId: null }
-        )
-      }
+    const accountTeacherId = getTeacherAccountId(student, user, req.query.teacherId)
+    if (!canAccessTeacherAccount(student, user, accountTeacherId)) {
+      return res.status(403).json({ message: '无权限查看此老师账户的价格历史' })
+    }
+
+    const ownedStudentIds = isSameId(student.teacherId, accountTeacherId) ? [student._id] : []
+    const priceHistoryFilter = {
+      studentId: id,
+      ...getTeacherAccountFilter(accountTeacherId, ownedStudentIds)
     }
 
     const priceHistory = await FeeStandard.find(priceHistoryFilter)

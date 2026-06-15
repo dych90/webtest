@@ -176,7 +176,7 @@ const filterStudents = () => {
 const fetchCourses = async () => {
   try {
     const res = await get('/courses')
-    courses.value = (res.data || []).filter(c => c.status === 'normal')
+    courses.value = (res.data || []).filter(c => c.canManageCourse !== false && c.status === 'normal')
   } catch (error) {
     console.error('获取课程列表失败', error)
   }

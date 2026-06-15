@@ -79,6 +79,7 @@
           <view class="course-info">
             <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
             <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
+            <text v-if="course.teacherId?.name" class="course-teacher">老师：{{ course.teacherId.name }}</text>
             <view v-if="course.lessonRecord" class="lesson-record-preview">
               <text v-if="course.lessonRecord.lessonContent" class="lesson-record-text">{{ course.lessonRecord.lessonContent }}</text>
               <text v-if="getMediaSummary(course.lessonRecord)" class="lesson-record-media">{{ getMediaSummary(course.lessonRecord) }}</text>
@@ -96,23 +97,23 @@
               {{ getStatusText(course.status) }}
             </text>
             <button 
-              v-if="course.status === 'normal'" 
+              v-if="canManageCourse(course) && course.status === 'normal'"
               class="btn-attend" 
               @click.stop="handleAttendCourse(course)"
             >
               上课
             </button>
             <button 
-              v-if="course.status === 'completed'" 
+              v-if="canManageCourse(course) && course.status === 'completed'"
               class="btn-cancel-attend" 
               @click.stop="handleCancelAttendCourse(course)"
             >
               取消
             </button>
             <button
-              v-if="course.lessonRecord"
+              v-if="canManageCourse(course) && course.lessonRecord"
               class="btn-edit-record"
-              @click.stop="goEditLessonRecord(course.lessonRecord)"
+              @click.stop="goEditLessonRecord(course.lessonRecord, course)"
             >
               编辑记录
             </button>
@@ -421,7 +422,14 @@ const fetchStatistics = async () => {
   }
 }
 
+const canManageCourse = (course) => course?.canManageCourse !== false
+
 const handleAttendCourse = async (course) => {
+  if (!canManageCourse(course)) {
+    uni.showToast({ title: '只能查看该课程', icon: 'none' })
+    return
+  }
+
   resetAttendForm()
 
   if (!course.courseTypeId?._id && !course.courseTypeId) {
@@ -658,6 +666,11 @@ const doAttendCourse = async (course, lessonsConsumed = 1) => {
 }
 
 const handleCancelAttendCourse = async (course) => {
+  if (!canManageCourse(course)) {
+    uni.showToast({ title: '只能查看该课程', icon: 'none' })
+    return
+  }
+
   uni.showModal({
     title: '提示',
     content: '确定要取消上课吗？',
@@ -703,7 +716,12 @@ const goToCourseDetail = (course) => {
   })
 }
 
-const goEditLessonRecord = (record) => {
+const goEditLessonRecord = (record, course) => {
+  if (!canManageCourse(course)) {
+    uni.showToast({ title: '只能查看该课程', icon: 'none' })
+    return
+  }
+
   if (!record?._id) return
 
   uni.navigateTo({
@@ -1771,6 +1789,16 @@ onUnmounted(() => {
   font-size: 22rpx;
   line-height: 30rpx;
   color: rgba(63, 53, 43, 0.58);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-teacher {
+  display: block;
+  font-size: 22rpx;
+  line-height: 30rpx;
+  color: rgba(63, 53, 43, 0.52);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -4,7 +4,12 @@ const CourseType = require('../models/CourseType')
 const User = require('../models/User')
 const LessonRecord = require('../models/LessonRecord')
 const LessonBalance = require('../models/LessonBalance')
-const { canViewStudent, getStudentRelationType } = require('../utils/studentAccess')
+const {
+  canViewStudent,
+  getStudentRelationType,
+  getTeacherStudentAccessFilter,
+  isSameId
+} = require('../utils/studentAccess')
 const { getEffectivePaymentType } = require('../utils/studentAccount')
 
 const PRACTICE_COURSE_TYPE_NAME = '陪练课'
@@ -41,11 +46,35 @@ const toPlainObject = (doc) => {
   return doc?.toObject ? doc.toObject() : doc
 }
 
-const attachLessonRecordsToCourses = async (courses = []) => {
+const getCourseOwnerId = (course) => {
+  return course?.teacherId?._id || course?.teacherId
+}
+
+const canManageCourse = (course, user) => {
+  if (!course || !user) return false
+  if (user.role === 'admin') return true
+  return isSameId(getCourseOwnerId(course), user._id || user.id)
+}
+
+const attachCourseAccess = (course, user) => {
+  const plainCourse = toPlainObject(course)
+  if (!plainCourse) return plainCourse
+
+  const manageCourse = canManageCourse(plainCourse, user)
+  const relationType = getStudentRelationType(plainCourse.studentId, user)
+  return {
+    ...plainCourse,
+    canManageCourse: manageCourse,
+    courseRelationType: relationType,
+    isPracticeCourse: relationType === 'owner' && !manageCourse
+  }
+}
+
+const attachLessonRecordsToCourses = async (courses = [], user) => {
   if (!courses.length) return []
 
   const courseIds = courses.map(course => course?._id).filter(Boolean)
-  if (!courseIds.length) return courses.map(toPlainObject)
+  if (!courseIds.length) return courses.map(course => attachCourseAccess(course, user))
 
   const lessonRecords = await LessonRecord.find({ courseId: { $in: courseIds } })
     .sort({ recordDate: -1, createdAt: -1 })
@@ -64,10 +93,10 @@ const attachLessonRecordsToCourses = async (courses = []) => {
   return courses.map(course => {
     const plainCourse = toPlainObject(course)
     const courseId = plainCourse._id?.toString()
-    return {
+    return attachCourseAccess({
       ...plainCourse,
       lessonRecord: courseId ? recordMap[courseId] || null : null
-    }
+    }, user)
   })
 }
 
@@ -82,12 +111,26 @@ const getCourses = async (req, res) => {
     const filter = {}
     
     if (user && user.role !== 'admin') {
-      filter.teacherId = req.userId
+      const accessibleStudents = await Student.find(getTeacherStudentAccessFilter(req.userId))
+        .select('_id')
+      const accessibleStudentIds = accessibleStudents.map(student => student._id)
+
+      if (studentId) {
+        if (!accessibleStudentIds.some(accessibleId => isSameId(accessibleId, studentId))) {
+          return res.json({
+            message: '获取成功',
+            data: []
+          })
+        }
+        filter.studentId = studentId
+      } else {
+        filter.studentId = { $in: accessibleStudentIds }
+      }
     } else if (user && user.role === 'admin' && teacherId) {
       filter.teacherId = teacherId
     }
     
-    if (studentId) {
+    if (studentId && !filter.studentId) {
       filter.studentId = studentId
     }
     
@@ -102,12 +145,12 @@ const getCourses = async (req, res) => {
     
     const courses = await Course.find(filter)
       .sort({ startTime: 1 })
-      .populate('studentId', 'name phone')
+      .populate('studentId', 'name phone teacherId practiceTeacherId')
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name username')
     
     console.log('查询到的课程数量:', courses.length)
-    const coursesWithRecords = await attachLessonRecordsToCourses(courses)
+    const coursesWithRecords = await attachLessonRecordsToCourses(courses, user)
     
     res.json({
       message: '获取成功',
@@ -125,7 +168,7 @@ const getCourseById = async (req, res) => {
     const user = await User.findById(req.userId)
     
     const course = await Course.findById(id)
-      .populate('studentId', 'name phone')
+      .populate('studentId', 'name phone teacherId practiceTeacherId')
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name username')
     
@@ -133,15 +176,13 @@ const getCourseById = async (req, res) => {
       return res.status(404).json({ message: '课程不存在' })
     }
     
-    const courseTeacherId = course.teacherId?._id?.toString() || course.teacherId?.toString()
-    
-    if (user.role !== 'admin' && courseTeacherId !== req.userId.toString()) {
+    if (!canViewStudent(course.studentId, user)) {
       return res.status(403).json({ message: '无权限查看此课程' })
     }
     
     res.json({
       message: '获取成功',
-      data: course
+      data: attachCourseAccess(course, user)
     })
   } catch (error) {
     console.error('获取课程详情错误:', error)
