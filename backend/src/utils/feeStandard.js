@@ -1,6 +1,11 @@
 const FeeStandard = require('../models/FeeStandard')
 const Student = require('../models/Student')
 const { isSameId } = require('./studentAccess')
+const { getEffectiveStudentAccount } = require('./studentAccount')
+
+const toNumber = (value) => Number(value) || 0
+
+const getDocId = (doc) => doc?._id || doc
 
 const getFeeStandardScore = (standard, studentId, teacherId) => {
   let score = 0
@@ -76,6 +81,43 @@ const findApplicableFeeStandard = async ({ studentId, courseTypeId, teacherId, a
   return bestStandard
 }
 
+const getAccountCoursePrice = async ({ student, studentId, courseTypeId, teacherId, at = new Date(), fallbackPrice = 0 }) => {
+  const resolvedStudent = student || (studentId ? await Student.findById(studentId).select('teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId') : null)
+  const resolvedStudentId = studentId || getDocId(resolvedStudent)
+
+  if (!resolvedStudentId || !teacherId) {
+    return toNumber(fallbackPrice)
+  }
+
+  const account = resolvedStudent
+    ? await getEffectiveStudentAccount(resolvedStudent, teacherId)
+    : null
+
+  if (account?.paymentType === 'free') {
+    return 0
+  }
+
+  const feeStandard = courseTypeId
+    ? await findApplicableFeeStandard({
+      studentId: resolvedStudentId,
+      courseTypeId,
+      teacherId,
+      at
+    })
+    : null
+
+  if (feeStandard) {
+    return toNumber(feeStandard.price)
+  }
+
+  if (!resolvedStudent) {
+    return toNumber(fallbackPrice)
+  }
+
+  return toNumber(account.currentPrice ?? fallbackPrice)
+}
+
 module.exports = {
+  getAccountCoursePrice,
   findApplicableFeeStandard
 }

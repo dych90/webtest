@@ -6,8 +6,8 @@ const LessonBalance = require('../models/LessonBalance')
 const User = require('../models/User')
 const { getTeacherStudentAccessFilter, isSameId } = require('../utils/studentAccess')
 const { getTeacherAccountFilter } = require('../utils/teacherAccount')
-const { findApplicableFeeStandard } = require('../utils/feeStandard')
-const { getEffectivePaymentType, getEffectiveStudentAccount } = require('../utils/studentAccount')
+const { getAccountCoursePrice } = require('../utils/feeStandard')
+const { getEffectivePaymentType } = require('../utils/studentAccount')
 
 const BILLABLE_COURSE_STATUSES = new Set(['normal', 'completed'])
 
@@ -31,19 +31,13 @@ const getScheduledCoursePrice = async (course) => {
 
   if (!studentId || !teacherId) return 0
 
-  const account = await getEffectiveStudentAccount(student, teacherId)
-  if (account.paymentType === 'free') return 0
-
-  const feeStandard = courseTypeId
-    ? await findApplicableFeeStandard({
-      studentId,
-      courseTypeId,
-      teacherId,
-      at: course.startTime ? new Date(course.startTime) : new Date()
-    })
-    : null
-
-  return toNumber(feeStandard?.price ?? account.currentPrice)
+  return getAccountCoursePrice({
+    student,
+    studentId,
+    courseTypeId,
+    teacherId,
+    at: course.startTime || new Date()
+  })
 }
 
 const calculateScheduledRevenue = async (courses = []) => {
@@ -82,6 +76,35 @@ const getPrepaidLessonRecords = async (records = [], students = [], accountTeach
   }))
 
   return records.filter((record, index) => prepaidFlags[index])
+}
+
+const getLessonRecordRevenue = async (record) => {
+  if (!record || record.isGiftLesson) return 0
+
+  const student = record.studentId
+  const studentId = getDocId(student)
+  const teacherId = getDocId(record.teacherId) || getDocId(student?.teacherId)
+  const courseTypeId = getDocId(record.courseTypeId)
+
+  if (!studentId || !teacherId) {
+    return toNumber(record.unitPrice) * toNumber(record.lessonsConsumed)
+  }
+
+  const unitPrice = await getAccountCoursePrice({
+    student,
+    studentId,
+    courseTypeId,
+    teacherId,
+    at: record.courseStartTime || record.courseId?.startTime || record.recordDate || record.createdAt || new Date(),
+    fallbackPrice: record.unitPrice
+  })
+
+  return unitPrice * toNumber(record.lessonsConsumed)
+}
+
+const calculateLessonRecordRevenue = async (records = []) => {
+  const revenues = await Promise.all(records.map(getLessonRecordRevenue))
+  return revenues.reduce((sum, revenue) => sum + revenue, 0)
 }
 
 const getStatistics = async (req, res) => {
@@ -132,6 +155,9 @@ const getStatistics = async (req, res) => {
     
     const lessonRecordQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
+      .populate('studentId', 'teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId')
+      .populate('courseId', 'startTime')
+      .populate('courseTypeId', 'name duration')
     console.log('总消课记录数:', lessonRecords.length)
     
     if (lessonRecords.length > 0) {
@@ -188,10 +214,7 @@ const getStatistics = async (req, res) => {
     })
     console.log(`筛选后的月度消课记录数: ${monthlyLessonRecords.length}`)
     
-    const monthlyActualRevenue = monthlyLessonRecords.reduce((sum, r) => {
-      if (r.isGiftLesson) return sum
-      return sum + toNumber(r.unitPrice) * toNumber(r.lessonsConsumed)
-    }, 0)
+    const monthlyActualRevenue = await calculateLessonRecordRevenue(monthlyLessonRecords)
     
     const monthlyLessonsConsumed = monthlyLessonRecords.reduce((sum, r) => sum + toNumber(r.lessonsConsumed), 0)
     const monthlyLessonsAttended = monthlyLessonRecords.length
@@ -273,6 +296,9 @@ const getChartStatistics = async (req, res) => {
     
     const lessonRecordQuery = accountTeacherId ? { studentId: { $in: studentIds }, ...accountFilter } : {}
     const lessonRecords = await LessonRecord.find(lessonRecordQuery)
+      .populate('studentId', 'teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId')
+      .populate('courseId', 'startTime')
+      .populate('courseTypeId', 'name duration')
 
     const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
     const courses = await Course.find(courseQuery)
@@ -301,10 +327,7 @@ const getChartStatistics = async (req, res) => {
           return courseStartTime >= startOfMonth && courseStartTime < endOfMonth
         })
         
-        const actualRevenue = monthLessonRecords.reduce((sum, r) => {
-          if (r.isGiftLesson) return sum
-          return sum + toNumber(r.unitPrice) * toNumber(r.lessonsConsumed)
-        }, 0)
+        const actualRevenue = await calculateLessonRecordRevenue(monthLessonRecords)
         actualRevenueData.push(actualRevenue)
         
         // 应消课数: 当月排定的课程数量
@@ -331,10 +354,7 @@ const getChartStatistics = async (req, res) => {
           return courseStartTime >= startOfYear && courseStartTime < endOfYear
         })
         
-        const actualRevenue = yearLessonRecords.reduce((sum, r) => {
-          if (r.isGiftLesson) return sum
-          return sum + toNumber(r.unitPrice) * toNumber(r.lessonsConsumed)
-        }, 0)
+        const actualRevenue = await calculateLessonRecordRevenue(yearLessonRecords)
         actualRevenueData.push(actualRevenue)
         
         // 应消课数: 当年排定的课程数量

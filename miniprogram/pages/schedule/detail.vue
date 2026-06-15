@@ -33,6 +33,20 @@
         </view>
       </view>
     </view>
+
+    <view class="record-section" v-if="course.lessonRecord">
+      <view class="record-header">
+        <text class="record-title">消课记录</text>
+        <button class="btn-record-detail" @click="goEditLessonRecord">
+          {{ canManageCourse ? '编辑记录' : '查看记录' }}
+        </button>
+      </view>
+      <view class="record-body">
+        <text class="record-text" v-if="course.lessonRecord.lessonContent">{{ course.lessonRecord.lessonContent }}</text>
+        <text class="record-media" v-if="getMediaSummary(course.lessonRecord)">{{ getMediaSummary(course.lessonRecord) }}</text>
+        <text class="record-meta">消课 {{ course.lessonRecord.lessonsConsumed || 0 }} 课时</text>
+      </view>
+    </view>
     
     <view class="action-section" v-if="canManageCourse">
       <button 
@@ -387,6 +401,31 @@ const ensureCanManageCourse = () => {
   if (canManageCourse.value) return true
   uni.showToast({ title: '只能查看该课程', icon: 'none' })
   return false
+}
+
+const getMediaSummary = (record) => {
+  const mediaItems = record?.mediaItems || []
+  const imageCount = mediaItems.filter(item => item.type === 'image').length
+  const audioCount = mediaItems.filter(item => item.type === 'audio').length
+  const parts = []
+
+  if (imageCount > 0) {
+    parts.push(`${imageCount}张照片`)
+  }
+  if (audioCount > 0) {
+    parts.push(`${audioCount}段语音`)
+  }
+
+  return parts.join('，')
+}
+
+const goEditLessonRecord = () => {
+  const recordId = course.value?.lessonRecord?._id
+  if (!recordId) return
+
+  uni.navigateTo({
+    url: `/pages/lessons/edit?id=${recordId}`
+  })
 }
 
 const editWeekDayText = computed(() => {
@@ -962,6 +1001,62 @@ const handleDeleteGroup = async () => {
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
+}
+
+.record-section {
+  background-color: #FFFDF8;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  margin-bottom: 20rpx;
+}
+
+.record-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #3F352B;
+}
+
+.record-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.record-text {
+  font-size: 28rpx;
+  line-height: 40rpx;
+  color: #3F352B;
+}
+
+.record-media {
+  font-size: 26rpx;
+  color: #5F724C;
+}
+
+.record-meta {
+  font-size: 24rpx;
+  color: #8B8176;
+}
+
+.btn-record-detail {
+  min-width: 160rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 20rpx;
+  background-color: #E7EFE3;
+  color: #5F724C;
+  border: 2rpx solid #5F724C;
+  border-radius: 8rpx;
+  font-size: 26rpx;
 }
 
 .info-header {

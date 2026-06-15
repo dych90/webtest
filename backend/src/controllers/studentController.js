@@ -55,6 +55,13 @@ const hasAccountUpdateData = (data = {}) => {
   return ACCOUNT_UPDATE_FIELDS.some(field => Object.prototype.hasOwnProperty.call(data, field))
 }
 
+const resolvePriceEffectiveDate = (value) => {
+  if (!value) return new Date()
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? new Date() : date
+}
+
 const getAccountCourseTypeId = async (student, teacherId, requestedCourseTypeId) => {
   const isPracticeAccount = isSameId(student.practiceTeacherId, teacherId) && !isSameId(student.teacherId, teacherId)
   if (isPracticeAccount) {
@@ -87,13 +94,15 @@ const syncAccountFeeStandard = async ({ student, teacherId, paymentType, current
   const effectiveCourseTypeId = await getAccountCourseTypeId(student, teacherId, courseTypeId)
   if (!effectiveCourseTypeId) return
 
-  await FeeStandard.updateMany(currentFeeFilter, { expireDate: new Date() })
+  const effectiveDate = resolvePriceEffectiveDate(priceEffectiveDate)
+
+  await FeeStandard.updateMany(currentFeeFilter, { expireDate: effectiveDate })
   await FeeStandard.create({
     studentId: student._id,
     teacherId,
     courseTypeId: effectiveCourseTypeId,
     price: newPrice,
-    effectiveDate: priceEffectiveDate || new Date()
+    effectiveDate
   })
 }
 
@@ -487,13 +496,13 @@ const updateStudent = async (req, res) => {
     const priceChanged = newPrice !== undefined && oldPrice !== newPrice
     
     if (priceChanged && newPrice > 0) {
-      updateData.priceEffectiveDate = updateData.priceEffectiveDate || new Date()
+      updateData.priceEffectiveDate = resolvePriceEffectiveDate(updateData.priceEffectiveDate)
       
       const courseTypeId = updateData.defaultCourseTypeId || student.defaultCourseTypeId
       if (courseTypeId) {
         await FeeStandard.updateMany(
           currentTeacherFeeFilter,
-          { expireDate: new Date() }
+          { expireDate: updateData.priceEffectiveDate }
         )
 
         await FeeStandard.create({

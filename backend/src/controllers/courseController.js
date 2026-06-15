@@ -180,9 +180,11 @@ const getCourseById = async (req, res) => {
       return res.status(403).json({ message: '无权限查看此课程' })
     }
     
+    const [courseWithRecord] = await attachLessonRecordsToCourses([course], user)
+
     res.json({
       message: '获取成功',
-      data: attachCourseAccess(course, user)
+      data: courseWithRecord
     })
   } catch (error) {
     console.error('获取课程详情错误:', error)

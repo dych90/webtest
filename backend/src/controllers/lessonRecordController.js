@@ -7,7 +7,7 @@ const Payment = require('../models/Payment')
 const User = require('../models/User')
 const GuardianBinding = require('../models/GuardianBinding')
 const { canViewStudent, getTeacherStudentAccessFilter, isSameId } = require('../utils/studentAccess')
-const { findApplicableFeeStandard } = require('../utils/feeStandard')
+const { getAccountCoursePrice } = require('../utils/feeStandard')
 const {
   getDocumentTeacherId,
   getTeacherAccountFilter
@@ -544,10 +544,17 @@ const createLessonRecord = async (req, res) => {
     let unitPrice = 0
     let isGiftLesson = false
     const accountPaymentType = await getEffectivePaymentType(student, lessonTeacherId)
+    const priceAt = course?.startTime || req.body.courseStartTime || req.body.recordDate || new Date()
     
     if (accountPaymentType === 'prepaid') {
       const paymentInfo = await calculateUnitPriceAndGiftStatus(req.body.studentId, lessonTeacherId, req.body.lessonsConsumed || 1)
-      unitPrice = paymentInfo.unitPrice
+      unitPrice = await getAccountCoursePrice({
+        student,
+        courseTypeId: effectiveCourseTypeId,
+        teacherId: lessonTeacherId,
+        at: priceAt,
+        fallbackPrice: paymentInfo.unitPrice
+      })
       isGiftLesson = paymentInfo.isGiftLesson
       console.log('预付费学生 - 单价:', unitPrice, '是否赠课:', isGiftLesson)
     } else if (accountPaymentType === 'payPerLesson') {
@@ -559,22 +566,20 @@ const createLessonRecord = async (req, res) => {
 
       if (courseTypeId) {
         console.log('正在查找收费标准...')
-        const feeStandard = await findApplicableFeeStandard({
-          studentId: student._id,
+        unitPrice = await getAccountCoursePrice({
+          student,
           courseTypeId,
           teacherId: lessonTeacherId,
-          at: req.body.courseStartTime ? new Date(req.body.courseStartTime) : new Date()
+          at: priceAt,
+          fallbackPrice: 0
         })
 
-        if (feeStandard) {
-          unitPrice = feeStandard.price
+        if (unitPrice > 0) {
           console.log('✅ 找到收费标准:', {
-            _id: feeStandard._id,
-            price: feeStandard.price,
-            courseTypeId: feeStandard.courseTypeId,
-            studentId: feeStandard.studentId,
-            teacherId: feeStandard.teacherId,
-            effectiveDate: feeStandard.effectiveDate
+            price: unitPrice,
+            courseTypeId,
+            studentId: student._id,
+            teacherId: lessonTeacherId
           })
         } else {
           console.log('❌ 未找到收费标准')
@@ -582,6 +587,14 @@ const createLessonRecord = async (req, res) => {
         }
       } else {
         console.log('❌ 未提供课程类型ID (courseTypeId)')
+      }
+      if (unitPrice <= 0) {
+        unitPrice = await getAccountCoursePrice({
+          student,
+          teacherId: lessonTeacherId,
+          at: priceAt,
+          fallbackPrice: 0
+        })
       }
     } else if (accountPaymentType === 'free') {
       console.log('免费学生 - 不计算单价，不扣课时，不创建缴费记录')

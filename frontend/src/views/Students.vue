@@ -243,6 +243,16 @@
             原单价：¥{{ originalPrice }}，修改后将记录价格变更历史
           </div>
         </el-form-item>
+        <el-form-item v-if="form.paymentType !== 'free'" label="生效时间">
+          <el-date-picker
+            v-model="form.priceEffectiveDate"
+            type="datetime"
+            placeholder="不填则保存时生效"
+            clearable
+            style="width: 100%"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+          />
+        </el-form-item>
         <el-form-item label="学琴起始日期">
           <el-date-picker 
             v-model="form.pianoStartDate" 
@@ -398,6 +408,7 @@ const form = ref({
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: 0,
+  priceEffectiveDate: '',
   pianoStartDate: '',
   learningProgress: '',
   learningPlan: '',
@@ -592,6 +603,7 @@ const handleAdd = () => {
     defaultCourseTypeId: '',
     paymentType: 'prepaid',
     currentPrice: 0,
+    priceEffectiveDate: '',
     pianoStartDate: '',
     learningProgress: '',
     learningPlan: '',
@@ -608,7 +620,8 @@ const handleEdit = (row) => {
     ...row,
     defaultCourseTypeId: row.defaultCourseTypeId?._id || row.defaultCourseTypeId || '',
     birthday: row.birthday ? formatDate(row.birthday) : '',
-    pianoStartDate: row.pianoStartDate ? formatDate(row.pianoStartDate) : ''
+    pianoStartDate: row.pianoStartDate ? formatDate(row.pianoStartDate) : '',
+    priceEffectiveDate: ''
   }
   originalPrice.value = row.currentPrice || ''
   dialogVisible.value = true
@@ -633,6 +646,7 @@ const handleEditFromDetail = () => {
 const handlePaymentTypeChange = (paymentType) => {
   if (paymentType === 'free') {
     form.value.currentPrice = 0
+    form.value.priceEffectiveDate = ''
   }
 }
 
@@ -661,6 +675,11 @@ const handleSave = async () => {
     }
     if (submitData.pianoStartDate) {
       submitData.pianoStartDate = new Date(submitData.pianoStartDate)
+    }
+    if (submitData.priceEffectiveDate) {
+      submitData.priceEffectiveDate = new Date(submitData.priceEffectiveDate)
+    } else {
+      delete submitData.priceEffectiveDate
     }
     if (submitData.paymentType === 'free') {
       submitData.currentPrice = 0

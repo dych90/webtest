@@ -9,8 +9,9 @@
             placeholder="搜索学生姓名" 
             v-model="studentSearchKeyword"
             @input="filterStudents"
+            :disabled="!canManageRecord"
           />
-          <picker :value="studentIndex" :range="filteredStudents" range-key="name" @change="onStudentChange">
+          <picker :value="studentIndex" :range="filteredStudents" range-key="name" @change="onStudentChange" :disabled="!canManageRecord">
             <view class="form-picker">
               <text>{{ filteredStudents[studentIndex]?.name || '请选择学生' }}</text>
               <text class="picker-arrow">▼</text>
@@ -21,7 +22,7 @@
       
       <view class="form-item">
         <text class="form-label">课程</text>
-        <picker :value="courseIndex" :range="courseOptions" @change="onCourseChange">
+        <picker :value="courseIndex" :range="courseOptions" @change="onCourseChange" :disabled="!canManageRecord">
           <view class="form-picker">
             <text>{{ courseOptions[courseIndex] || '请选择课程' }}</text>
             <text class="picker-arrow">▼</text>
@@ -31,7 +32,7 @@
       
       <view class="form-item">
         <text class="form-label">课程类型</text>
-        <picker :value="courseTypeIndex" :range="courseTypeOptions" @change="onCourseTypeChange">
+        <picker :value="courseTypeIndex" :range="courseTypeOptions" @change="onCourseTypeChange" :disabled="!canManageRecord">
           <view class="form-picker">
             <text>{{ courseTypeOptions[courseTypeIndex] || '请选择课程类型' }}</text>
             <text class="picker-arrow">▼</text>
@@ -41,7 +42,7 @@
       
       <view class="form-item">
         <text class="form-label">上课日期</text>
-        <picker mode="date" :value="form.courseDate" @change="onDateChange">
+        <picker mode="date" :value="form.courseDate" @change="onDateChange" :disabled="!canManageRecord">
           <view class="form-picker">
             <text>{{ form.courseDate || '请选择日期' }}</text>
             <text class="picker-arrow">▼</text>
@@ -51,7 +52,7 @@
       
       <view class="form-item">
         <text class="form-label">上课时间</text>
-        <picker mode="time" :value="form.courseTime" start="08:00" end="23:00" @change="onTimeChange">
+        <picker mode="time" :value="form.courseTime" start="08:00" end="23:00" @change="onTimeChange" :disabled="!canManageRecord">
           <view class="form-picker">
             <text>{{ form.courseTime || '请选择时间' }}</text>
             <text class="picker-arrow">▼</text>
@@ -61,7 +62,7 @@
       
       <view class="form-item">
         <text class="form-label">消课数量 *</text>
-        <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonChange">
+        <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonChange" :disabled="!canManageRecord">
           <view class="form-picker">
             <text>{{ lessonCountOptions[lessonCountIndex] }}</text>
             <text class="picker-arrow">▼</text>
@@ -71,7 +72,7 @@
       
       <view class="form-item">
         <text class="form-label">上课曲目</text>
-        <textarea class="form-textarea" v-model="form.lessonContent" placeholder="请输入上课曲目" />
+        <textarea class="form-textarea" v-model="form.lessonContent" placeholder="请输入上课曲目" :disabled="!canManageRecord" />
       </view>
 
       <view class="form-item">
@@ -82,13 +83,13 @@
         <view class="photo-grid">
           <view class="photo-item" v-for="(media, imageIndex) in savedImages" :key="media.id">
             <image class="photo-preview" :src="mediaCache[media.id]" mode="aspectFill" @click="previewPhoto(imageIndex)"></image>
-            <text class="photo-remove" @click.stop="removeSavedMedia(media.id)">×</text>
+            <text v-if="canManageRecord" class="photo-remove" @click.stop="removeSavedMedia(media.id)">×</text>
           </view>
           <view class="photo-item" v-for="(photo, photoIndex) in newPhotoFiles" :key="photo.tempFilePath || photo.path">
             <image class="photo-preview" :src="photo.tempFilePath || photo.path" mode="aspectFill" @click="previewPhoto(savedImages.length + photoIndex)"></image>
-            <text class="photo-remove" @click.stop="removeNewPhoto(photoIndex)">×</text>
+            <text v-if="canManageRecord" class="photo-remove" @click.stop="removeNewPhoto(photoIndex)">×</text>
           </view>
-          <view v-if="totalPhotoCount < 6" class="photo-add" @click="choosePhotos">
+          <view v-if="canManageRecord && totalPhotoCount < 6" class="photo-add" @click="choosePhotos">
             <text class="photo-add-icon">+</text>
             <text class="photo-add-text">添加</text>
           </view>
@@ -107,35 +108,35 @@
             class="voice-result"
           >
             <text class="voice-info" @click="playVoice(mediaCache[media.id])">播放已保存语音 {{ formatDuration(media.duration || 0) }}</text>
-            <text class="voice-remove" @click="removeSavedMedia(media.id)">删除</text>
+            <text v-if="canManageRecord" class="voice-remove" @click="removeSavedMedia(media.id)">删除</text>
           </view>
-          <button v-if="!recording" class="voice-btn" @click="startRecord">
+          <button v-if="canManageRecord && !recording" class="voice-btn" @click="startRecord">
             {{ newVoiceFiles.length ? '继续录音' : '开始录音' }}
           </button>
-          <button v-else class="voice-btn recording" @click="stopRecord">
+          <button v-else-if="canManageRecord" class="voice-btn recording" @click="stopRecord">
             停止录音 {{ formatDuration(recordDuration) }}
           </button>
           <view v-for="(voice, voiceIndex) in newVoiceFiles" :key="voice.tempFilePath" class="voice-result">
             <text class="voice-info" @click="playVoice(voice.tempFilePath)">播放新录音{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
-            <text class="voice-remove" @click="removeNewVoice(voiceIndex)">删除</text>
+            <text v-if="canManageRecord" class="voice-remove" @click="removeNewVoice(voiceIndex)">删除</text>
           </view>
         </view>
       </view>
       
       <view class="form-item switch-item">
         <text class="form-label">是否扣费</text>
-        <switch :checked="form.isDeducted" @change="onDeductedChange" :color="themeColors.primary" />
+        <switch :checked="form.isDeducted" @change="onDeductedChange" :color="themeColors.primary" :disabled="!canManageRecord" />
       </view>
       
       <view class="form-item">
         <text class="form-label">备注</text>
-        <textarea class="form-textarea" v-model="form.notes" placeholder="请输入备注信息" />
+        <textarea class="form-textarea" v-model="form.notes" placeholder="请输入备注信息" :disabled="!canManageRecord" />
       </view>
     </view>
     
     <view class="form-actions">
       <button class="btn-cancel" @click="handleCancel">取消</button>
-      <button class="btn-submit" @click="handleSubmit" :loading="loading" :disabled="!canManageRecord || loading">保存</button>
+      <button v-if="canManageRecord" class="btn-submit" @click="handleSubmit" :loading="loading" :disabled="loading">保存</button>
     </view>
   </view>
 </template>
@@ -310,7 +311,7 @@ const fetchCourses = async () => {
     const res = await get('/courses')
     courses.value = (res.data || []).filter(c => {
       const courseId = c._id || c
-      return c.canManageCourse !== false && (c.status === 'normal' || courseId === form.courseId)
+      return (c.canManageCourse !== false || courseId === form.courseId) && (c.status === 'normal' || courseId === form.courseId)
     })
     
     const idx = courses.value.findIndex(c => (c._id || c) === form.courseId)

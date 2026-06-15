@@ -85,9 +85,11 @@
               <text class="info-value">{{ record.notes }}</text>
             </view>
           </view>
-          <view class="record-actions" v-if="canManageRecord(record)">
-            <button class="btn-edit" @click="handleEdit(record)">编辑</button>
-            <button class="btn-delete" @click="handleDelete(record)">删除</button>
+          <view class="record-actions">
+            <button class="btn-edit" @click="handleEdit(record)">
+              {{ canManageRecord(record) ? '编辑' : '查看' }}
+            </button>
+            <button v-if="canManageRecord(record)" class="btn-delete" @click="handleDelete(record)">删除</button>
           </view>
         </view>
       </view>
@@ -242,11 +244,6 @@ const handleAdd = () => {
 }
 
 const handleEdit = (record) => {
-  if (!canManageRecord(record)) {
-    uni.showToast({ title: '只能查看该记录', icon: 'none' })
-    return
-  }
-
   uni.navigateTo({
     url: `/pages/lessons/edit?id=${record._id}`
   })

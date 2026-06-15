@@ -77,6 +77,24 @@
           原单价：¥{{ originalPrice }}，修改后将记录价格变更历史
         </text>
       </view>
+
+      <view class="form-item" v-if="form.paymentType !== 'free'">
+        <text class="form-label">价格生效时间</text>
+        <view class="effective-time-row">
+          <picker class="effective-time-picker" mode="date" :value="form.priceEffectiveDate" @change="onPriceEffectiveDateChange">
+            <view class="form-picker">
+              <text>{{ form.priceEffectiveDate || '不填则保存时生效' }}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+          <picker class="effective-time-picker" mode="time" :value="form.priceEffectiveTime" @change="onPriceEffectiveTimeChange">
+            <view class="form-picker">
+              <text>{{ form.priceEffectiveTime || '00:00' }}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
       
       <view class="form-item" v-if="!isAccountOnlyEdit">
         <text class="form-label">学琴起始日期</text>
@@ -159,6 +177,8 @@ const form = reactive({
   defaultCourseTypeId: '',
   paymentType: 'prepaid',
   currentPrice: '',
+  priceEffectiveDate: '',
+  priceEffectiveTime: '',
   pianoStartDate: '',
   learningProgress: '',
   learningPlan: '',
@@ -194,7 +214,9 @@ const fetchStudent = async () => {
     form.parentPhone = data.parentPhone || ''
     form.defaultCourseTypeId = data.defaultCourseTypeId?._id || data.defaultCourseTypeId || ''
     form.paymentType = data.paymentType || 'prepaid'
-    form.currentPrice = data.currentPrice || ''
+    form.currentPrice = data.currentPrice === 0 || data.currentPrice ? String(data.currentPrice) : ''
+    form.priceEffectiveDate = ''
+    form.priceEffectiveTime = ''
     form.pianoStartDate = data.pianoStartDate ? formatDate(data.pianoStartDate) : ''
     form.learningProgress = data.learningProgress || ''
     form.learningPlan = data.learningPlan || ''
@@ -202,7 +224,7 @@ const fetchStudent = async () => {
     form.practiceTeacherId = data.practiceTeacherId?._id || data.practiceTeacherId || ''
     form.notes = data.notes || ''
     
-    originalPrice.value = data.currentPrice || ''
+    originalPrice.value = data.currentPrice === 0 || data.currentPrice ? String(data.currentPrice) : ''
     
     genderIndex.value = data.gender === '男' ? 1 : (data.gender === '女' ? 2 : 0)
     paymentTypeIndex.value = getPaymentTypeIndex(data.paymentType)
@@ -251,6 +273,8 @@ const onPaymentTypeChange = (e) => {
   form.paymentType = getPaymentTypeValue(index)
   if (form.paymentType === 'free') {
     form.currentPrice = ''
+    form.priceEffectiveDate = ''
+    form.priceEffectiveTime = ''
   }
 }
 
@@ -274,6 +298,14 @@ const fetchTeachers = async () => {
 
 const onPianoStartDateChange = (e) => {
   form.pianoStartDate = e.detail.value
+}
+
+const onPriceEffectiveDateChange = (e) => {
+  form.priceEffectiveDate = e.detail.value
+}
+
+const onPriceEffectiveTimeChange = (e) => {
+  form.priceEffectiveTime = e.detail.value
 }
 
 const onPracticeTeacherChange = (e) => {
@@ -305,15 +337,24 @@ const handleSubmit = async () => {
   const submitData = isAccountOnlyEdit.value
     ? {
         paymentType: form.paymentType,
-        currentPrice: form.currentPrice
+        currentPrice: form.currentPrice,
+        priceEffectiveDate: form.priceEffectiveDate,
+        priceEffectiveTime: form.priceEffectiveTime
       }
     : { ...form }
   if (!submitData.defaultCourseTypeId) {
     delete submitData.defaultCourseTypeId
   }
-  if (submitData.currentPrice) {
+  if (submitData.currentPrice !== undefined && submitData.currentPrice !== '') {
     submitData.currentPrice = Number(submitData.currentPrice)
   }
+  if (submitData.priceEffectiveDate) {
+    const effectiveTime = submitData.priceEffectiveTime || '00:00'
+    submitData.priceEffectiveDate = new Date(`${submitData.priceEffectiveDate}T${effectiveTime}:00`)
+  } else {
+    delete submitData.priceEffectiveDate
+  }
+  delete submitData.priceEffectiveTime
   if (submitData.birthday) {
     submitData.birthday = new Date(submitData.birthday)
   }
@@ -420,6 +461,16 @@ const handleSubmit = async () => {
   font-size: 22rpx;
   color: #A26B39;
   margin-top: 8rpx;
+}
+
+.effective-time-row {
+  display: flex;
+  gap: 16rpx;
+}
+
+.effective-time-picker {
+  flex: 1;
+  min-width: 0;
 }
 
 .form-actions {

@@ -111,11 +111,11 @@
               取消
             </button>
             <button
-              v-if="canManageCourse(course) && course.lessonRecord"
+              v-if="course.lessonRecord"
               class="btn-edit-record"
               @click.stop="goEditLessonRecord(course.lessonRecord, course)"
             >
-              编辑记录
+              {{ canManageCourse(course) ? '编辑记录' : '查看记录' }}
             </button>
             <text class="arrow-icon">›</text>
           </view>
@@ -721,11 +721,6 @@ const goToCourseDetail = (course) => {
 }
 
 const goEditLessonRecord = (record, course) => {
-  if (!canManageCourse(course)) {
-    uni.showToast({ title: '只能查看该课程', icon: 'none' })
-    return
-  }
-
   if (!record?._id) return
 
   uni.navigateTo({
