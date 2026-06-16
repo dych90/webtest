@@ -63,61 +63,78 @@
       </view>
       
       <view v-else class="course-list">
-        <view 
-          v-for="(course, index) in todayCourses" 
-          :key="course._id" 
-          class="course-item"
-          :class="{ 'course-completed': course.status === 'completed' }"
-          @click="goToCourseDetail(course)"
+        <view
+          v-for="section in todayCourseSections"
+          :key="section.key"
+          class="course-section"
         >
-          <view class="course-index">
-            <text>{{ index + 1 }}</text>
+          <view class="course-section-header">
+            <text class="course-section-title">{{ section.title }}</text>
+            <text class="course-section-count">{{ section.items.length }}节</text>
           </view>
-          <view class="course-time">
-            <text class="time">{{ formatTime(course.startTime) }}</text>
-          </view>
-          <view class="course-info">
-            <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
-            <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
-            <text v-if="shouldShowCourseTeacher(course)" class="course-teacher">老师：{{ course.teacherId.name }}</text>
-            <view v-if="course.lessonRecord" class="lesson-record-preview">
-              <text v-if="course.lessonRecord.lessonContent" class="lesson-record-text">{{ course.lessonRecord.lessonContent }}</text>
-              <text v-if="getMediaSummary(course.lessonRecord)" class="lesson-record-media">{{ getMediaSummary(course.lessonRecord) }}</text>
+
+          <view
+            v-for="(course, index) in section.items"
+            :key="course._id"
+            class="course-item"
+            :class="[
+              getCourseRoleClass(course),
+              { 'course-completed': course.status === 'completed' }
+            ]"
+            @click="goToCourseDetail(course)"
+          >
+            <view class="course-index">
+              <text>{{ index + 1 }}</text>
             </view>
-          </view>
-          <view class="course-actions">
-            <text 
-              class="status-tag" 
-              :class="{
-                'status-normal': course.status === 'normal',
-                'status-completed': course.status === 'completed',
-                'status-cancelled': course.status === 'cancelled'
-              }"
-            >
-              {{ getStatusText(course.status) }}
-            </text>
-            <button 
-              v-if="canManageCourse(course) && course.status === 'normal'"
-              class="btn-attend" 
-              @click.stop="handleAttendCourse(course)"
-            >
-              上课
-            </button>
-            <button 
-              v-if="canManageCourse(course) && course.status === 'completed'"
-              class="btn-cancel-attend" 
-              @click.stop="handleCancelAttendCourse(course)"
-            >
-              取消
-            </button>
-            <button
-              v-if="course.lessonRecord"
-              class="btn-edit-record"
-              @click.stop="goEditLessonRecord(course.lessonRecord, course)"
-            >
-              {{ canManageCourse(course) ? '编辑记录' : '查看记录' }}
-            </button>
-            <text class="arrow-icon">›</text>
+            <view class="course-time">
+              <text class="time">{{ formatTime(course.startTime) }}</text>
+            </view>
+            <view class="course-info">
+              <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
+              <view class="course-meta-row">
+                <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
+                <text class="course-role-tag" :class="getCourseRoleClass(course)">{{ getCourseRoleText(course) }}</text>
+              </view>
+              <text v-if="shouldShowCourseTeacher(course)" class="course-teacher">{{ getCourseTeacherText(course) }}</text>
+              <view v-if="course.lessonRecord" class="lesson-record-preview">
+                <text v-if="course.lessonRecord.lessonContent" class="lesson-record-text">{{ course.lessonRecord.lessonContent }}</text>
+                <text v-if="getMediaSummary(course.lessonRecord)" class="lesson-record-media">{{ getMediaSummary(course.lessonRecord) }}</text>
+              </view>
+            </view>
+            <view class="course-actions">
+              <text
+                class="status-tag"
+                :class="{
+                  'status-normal': course.status === 'normal',
+                  'status-completed': course.status === 'completed',
+                  'status-cancelled': course.status === 'cancelled'
+                }"
+              >
+                {{ getStatusText(course.status) }}
+              </text>
+              <button
+                v-if="canManageCourse(course) && course.status === 'normal'"
+                class="btn-attend"
+                @click.stop="handleAttendCourse(course)"
+              >
+                上课
+              </button>
+              <button
+                v-if="canManageCourse(course) && course.status === 'completed'"
+                class="btn-cancel-attend"
+                @click.stop="handleCancelAttendCourse(course)"
+              >
+                取消
+              </button>
+              <button
+                v-if="course.lessonRecord"
+                class="btn-edit-record"
+                @click.stop="goEditLessonRecord(course.lessonRecord, course)"
+              >
+                {{ canManageCourse(course) ? '编辑记录' : '查看记录' }}
+              </button>
+              <text class="arrow-icon">›</text>
+            </view>
           </view>
         </view>
       </view>
@@ -205,7 +222,7 @@
                 停止录音 {{ formatDuration(recordDuration) }}
               </button>
               <view v-for="(voice, voiceIndex) in voiceFiles" :key="voice.tempFilePath" class="voice-result">
-                <text class="voice-info" @click="playVoice(voice.tempFilePath)">播放语音{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
+                <text class="voice-info" @click="playVoice(voice.tempFilePath)">{{ isVoicePlaying(voice.tempFilePath) ? '暂停语音' : '播放语音' }}{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
                 <text class="voice-remove" @click="removeVoice(voiceIndex)">删除</text>
               </view>
             </view>
@@ -233,6 +250,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post, put, del, uploadFile, uploadFileData } from '@/utils/request'
 import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
+import { createAudioPlayback } from '@/utils/audioPlayback'
 
 const userStore = useUserStore()
 
@@ -264,10 +282,19 @@ const notifyGuardian = ref(false)
 const savingAttend = ref(false)
 const recording = ref(false)
 const recordDuration = ref(0)
+const playingVoiceKey = ref('')
 const themeClass = ref(getThemeClass())
 const themeColors = ref(getCurrentTheme())
 let recorderManager = null
 let recordTimer = null
+const audioPlayer = createAudioPlayback({
+  onStateChange: ({ key, playing }) => {
+    playingVoiceKey.value = playing ? key : ''
+  },
+  onError: () => {
+    uni.showToast({ title: '播放失败', icon: 'none' })
+  }
+})
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
@@ -342,6 +369,7 @@ const getMediaSummary = (record) => {
 }
 
 const resetAttendForm = () => {
+  audioPlayer.stop()
   lessonCountIndex.value = 1
   lessonContent.value = ''
   photoFiles.value = []
@@ -424,8 +452,70 @@ const fetchStatistics = async () => {
 
 const canManageCourse = (course) => course?.canManageCourse !== false
 
+const getCourseRoleText = (course) => {
+  if (canManageCourse(course)) {
+    return course?.courseRelationType === 'practice' ? '我的陪练课' : '我的课'
+  }
+
+  if (course?.courseRelationType === 'owner') {
+    return '陪练老师上课'
+  }
+  if (course?.courseRelationType === 'practice') {
+    return '任课老师上课'
+  }
+  return '互通课程'
+}
+
+const getCourseRoleClass = (course) => {
+  if (canManageCourse(course)) {
+    return course?.courseRelationType === 'practice' ? 'course-role-my-practice' : 'course-role-mine'
+  }
+
+  if (course?.courseRelationType === 'owner') {
+    return 'course-role-practice'
+  }
+  if (course?.courseRelationType === 'practice') {
+    return 'course-role-owner'
+  }
+  return 'course-role-shared'
+}
+
+const getSharedCoursesTitle = (items = []) => {
+  if (items.length === 0) return '互通课程'
+
+  const hasPracticeTeacherCourses = items.some(course => course?.courseRelationType === 'owner')
+  const hasOwnerTeacherCourses = items.some(course => course?.courseRelationType === 'practice')
+
+  if (hasPracticeTeacherCourses && !hasOwnerTeacherCourses) return '陪练课程'
+  if (hasOwnerTeacherCourses && !hasPracticeTeacherCourses) return '任课老师课程'
+  return '互通课程'
+}
+
+const todayCourseSections = computed(() => {
+  const myCourses = todayCourses.value.filter(course => canManageCourse(course))
+  const sharedCourses = todayCourses.value.filter(course => !canManageCourse(course))
+
+  return [
+    { key: 'mine', title: '我的课程', items: myCourses },
+    { key: 'shared', title: getSharedCoursesTitle(sharedCourses), items: sharedCourses }
+  ].filter(section => section.items.length > 0)
+})
+
 const shouldShowCourseTeacher = (course) => {
-  return Boolean(course?.teacherId?.name && !canManageCourse(course))
+  return Boolean(getCourseTeacherText(course))
+}
+
+const getCourseTeacherText = (course) => {
+  const teacherName = course?.teacherId?.name || course?.teacherId?.username
+  if (!teacherName || canManageCourse(course)) return ''
+
+  if (course?.courseRelationType === 'owner') {
+    return `陪练老师：${teacherName}`
+  }
+  if (course?.courseRelationType === 'practice') {
+    return `任课老师：${teacherName}`
+  }
+  return `老师：${teacherName}`
 }
 
 const handleAttendCourse = async (course) => {
@@ -519,6 +609,7 @@ const startRecord = () => {
     return
   }
 
+  audioPlayer.stop()
   recordDuration.value = 0
   recording.value = true
   clearRecordTimer()
@@ -551,19 +642,18 @@ const stopRecord = () => {
 const playVoice = (src) => {
   if (!src) return
 
-  const audioContext = uni.createInnerAudioContext()
-  audioContext.src = src
-  audioContext.play()
-  audioContext.onEnded(() => {
-    audioContext.destroy()
-  })
-  audioContext.onError(() => {
-    audioContext.destroy()
-    uni.showToast({ title: '播放失败', icon: 'none' })
-  })
+  audioPlayer.playOrPause(src)
+}
+
+const isVoicePlaying = (src) => {
+  return Boolean(src && playingVoiceKey.value === src)
 }
 
 const removeVoice = (index) => {
+  const voice = voiceFiles.value[index]
+  if (voice?.tempFilePath) {
+    audioPlayer.stop(voice.tempFilePath)
+  }
   voiceFiles.value.splice(index, 1)
 }
 
@@ -775,6 +865,7 @@ onShow(() => {
 
 onUnmounted(() => {
   clearRecordTimer()
+  audioPlayer.stop()
 })
 </script>
 
@@ -948,6 +1039,30 @@ onUnmounted(() => {
   gap: 16rpx;
 }
 
+.course-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.course-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4rpx;
+}
+
+.course-section-title {
+  font-size: 26rpx;
+  font-weight: bold;
+  color: var(--theme-text);
+}
+
+.course-section-count {
+  font-size: 22rpx;
+  color: var(--theme-muted);
+}
+
 .course-item {
   display: flex;
   align-items: center;
@@ -964,6 +1079,12 @@ onUnmounted(() => {
 .course-item.course-completed {
   opacity: 0.6;
   border-left-color: var(--theme-success);
+}
+
+.course-item.course-role-practice,
+.course-item.course-role-owner,
+.course-item.course-role-shared {
+  border-left-color: var(--theme-warning);
 }
 
 .course-index {
@@ -1008,6 +1129,38 @@ onUnmounted(() => {
 .course-type {
   font-size: 22rpx;
   color: var(--theme-muted);
+}
+
+.course-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.course-role-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  font-size: 19rpx;
+  line-height: 30rpx;
+  white-space: nowrap;
+}
+
+.course-role-tag.course-role-mine,
+.course-role-tag.course-role-my-practice {
+  color: var(--theme-primary);
+  background-color: var(--theme-primary-soft);
+}
+
+.course-role-tag.course-role-practice,
+.course-role-tag.course-role-owner,
+.course-role-tag.course-role-shared {
+  color: var(--theme-warning);
+  background-color: var(--theme-warning-soft);
 }
 
 .lesson-record-preview {
@@ -1730,6 +1883,25 @@ onUnmounted(() => {
   gap: 16rpx;
 }
 
+.course-section {
+  gap: 14rpx;
+}
+
+.course-section-header {
+  padding: 0 2rpx;
+}
+
+.course-section-title {
+  font-size: 26rpx;
+  line-height: 34rpx;
+  color: #3f352b;
+}
+
+.course-section-count {
+  font-size: 22rpx;
+  color: rgba(63, 53, 43, 0.52);
+}
+
 .course-item {
   align-items: center;
   padding: 18rpx;
@@ -1747,6 +1919,12 @@ onUnmounted(() => {
 
 .course-item.course-completed {
   opacity: 0.72;
+  border-left-color: #a26b39;
+}
+
+.course-item.course-role-practice,
+.course-item.course-role-owner,
+.course-item.course-role-shared {
   border-left-color: #a26b39;
 }
 
@@ -1791,6 +1969,38 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.course-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.course-role-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  font-size: 19rpx;
+  line-height: 30rpx;
+  white-space: nowrap;
+}
+
+.course-role-tag.course-role-mine,
+.course-role-tag.course-role-my-practice {
+  color: #5f724c;
+  background: rgba(95, 114, 76, 0.14);
+}
+
+.course-role-tag.course-role-practice,
+.course-role-tag.course-role-owner,
+.course-role-tag.course-role-shared {
+  color: #a26b39;
+  background: rgba(217, 155, 82, 0.16);
 }
 
 .course-teacher {

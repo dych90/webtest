@@ -107,7 +107,7 @@
             :key="media.id"
             class="voice-result"
           >
-            <text class="voice-info" @click="playVoice(mediaCache[media.id])">播放已保存语音 {{ formatDuration(media.duration || 0) }}</text>
+            <text class="voice-info" @click="playSavedVoice(media)">{{ isVoicePlaying(getSavedVoiceKey(media)) ? '暂停已保存语音' : '播放已保存语音' }} {{ formatDuration(media.duration || 0) }}</text>
             <text v-if="canManageRecord" class="voice-remove" @click="removeSavedMedia(media.id)">删除</text>
           </view>
           <button v-if="canManageRecord && !recording" class="voice-btn" @click="startRecord">
@@ -117,7 +117,7 @@
             停止录音 {{ formatDuration(recordDuration) }}
           </button>
           <view v-for="(voice, voiceIndex) in newVoiceFiles" :key="voice.tempFilePath" class="voice-result">
-            <text class="voice-info" @click="playVoice(voice.tempFilePath)">播放新录音{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
+            <text class="voice-info" @click="playNewVoice(voice)">{{ isVoicePlaying(getNewVoiceKey(voice)) ? '暂停新录音' : '播放新录音' }}{{ voiceIndex + 1 }} {{ formatDuration(voice.duration || 0) }}</text>
             <text v-if="canManageRecord" class="voice-remove" @click="removeNewVoice(voiceIndex)">删除</text>
           </view>
         </view>
@@ -146,6 +146,7 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, put, uploadFile, uploadFileData, downloadFile } from '@/utils/request'
 import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
+import { createAudioPlayback } from '@/utils/audioPlayback'
 
 const students = ref([])
 const filteredStudents = ref([])
@@ -167,10 +168,19 @@ const newPhotoFiles = ref([])
 const newVoiceFiles = ref([])
 const recording = ref(false)
 const recordDuration = ref(0)
+const playingVoiceKey = ref('')
 const themeClass = ref(getThemeClass())
 const themeColors = ref(getCurrentTheme())
 let recorderManager = null
 let recordTimer = null
+const audioPlayer = createAudioPlayback({
+  onStateChange: ({ key, playing }) => {
+    playingVoiceKey.value = playing ? key : ''
+  },
+  onError: () => {
+    uni.showToast({ title: '播放失败', icon: 'none' })
+  }
+})
 
 const form = reactive({
   studentId: '',
@@ -253,6 +263,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearRecordTimer()
+  audioPlayer.stop()
 })
 
 onShow(() => {
@@ -467,6 +478,7 @@ const previewPhoto = (index) => {
 }
 
 const removeSavedMedia = (mediaId) => {
+  audioPlayer.stop(`saved:${mediaId}`)
   savedMediaItems.value = savedMediaItems.value.filter(item => item.id !== mediaId)
 }
 
@@ -484,6 +496,7 @@ const startRecord = () => {
     return
   }
 
+  audioPlayer.stop()
   recordDuration.value = 0
   recording.value = true
   clearRecordTimer()
@@ -513,22 +526,30 @@ const stopRecord = () => {
   clearRecordTimer()
 }
 
-const playVoice = (src) => {
-  if (!src) return
+const playSavedVoice = (media) => {
+  const src = mediaCache.value[media?.id]
+  audioPlayer.playOrPause(src, getSavedVoiceKey(media))
+}
 
-  const audioContext = uni.createInnerAudioContext()
-  audioContext.src = src
-  audioContext.play()
-  audioContext.onEnded(() => {
-    audioContext.destroy()
-  })
-  audioContext.onError(() => {
-    audioContext.destroy()
-    uni.showToast({ title: '播放失败', icon: 'none' })
-  })
+const playNewVoice = (voice) => {
+  audioPlayer.playOrPause(voice?.tempFilePath, getNewVoiceKey(voice))
+}
+
+const getSavedVoiceKey = (media) => {
+  return media?.id ? `saved:${media.id}` : ''
+}
+
+const getNewVoiceKey = (voice) => {
+  return voice?.tempFilePath ? `new:${voice.tempFilePath}` : ''
+}
+
+const isVoicePlaying = (key) => {
+  return Boolean(key && playingVoiceKey.value === key)
 }
 
 const removeNewVoice = (index) => {
+  const voice = newVoiceFiles.value[index]
+  audioPlayer.stop(getNewVoiceKey(voice))
   newVoiceFiles.value.splice(index, 1)
 }
 

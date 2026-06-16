@@ -77,8 +77,8 @@
               class="audio-row"
               @click="playRecordAudio(media)"
             >
-              <text class="audio-icon">▶</text>
-              <text class="audio-text">语音记录 {{ formatDuration(media.duration || 0) }}</text>
+              <text class="audio-icon">{{ isRecordAudioPlaying(media) ? 'Ⅱ' : '▶' }}</text>
+              <text class="audio-text">{{ isRecordAudioPlaying(media) ? '暂停播放' : '语音记录' }} {{ formatDuration(media.duration || 0) }}</text>
             </view>
           </view>
         </view>
@@ -125,11 +125,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { get, downloadFile } from '@/utils/request'
 import { getGuardianToken, getSelectedGuardianStudentId, saveGuardianSession } from '@/utils/guardian'
 import { applyTheme, getThemeClass } from '@/utils/theme'
+import { createAudioPlayback } from '@/utils/audioPlayback'
 
 const students = ref([])
 const selectedStudentId = ref('')
@@ -141,7 +142,15 @@ const targetStudentId = ref('')
 const targetRecordId = ref('')
 const mediaCache = ref({})
 const themeClass = ref(getThemeClass())
-let audioContext = null
+const playingAudioKey = ref('')
+const audioPlayer = createAudioPlayback({
+  onStateChange: ({ key, playing }) => {
+    playingAudioKey.value = playing ? key : ''
+  },
+  onError: () => {
+    uni.showToast({ title: '语音播放失败', icon: 'none' })
+  }
+})
 
 const studentIndex = computed(() => {
   return Math.max(0, students.value.findIndex(student => student._id === selectedStudentId.value))
@@ -203,6 +212,10 @@ onLoad((query = {}) => {
 onShow(() => {
   refreshTheme()
   fetchStudents()
+})
+
+onUnmounted(() => {
+  audioPlayer.stop()
 })
 
 const refreshTheme = () => {
@@ -313,22 +326,15 @@ const playRecordAudio = (media) => {
   const src = mediaCache.value[media.id]
   if (!src) return
 
-  if (audioContext) {
-    audioContext.destroy()
-  }
+  audioPlayer.playOrPause(src, getRecordAudioKey(media))
+}
 
-  audioContext = uni.createInnerAudioContext()
-  audioContext.src = src
-  audioContext.play()
-  audioContext.onEnded(() => {
-    audioContext.destroy()
-    audioContext = null
-  })
-  audioContext.onError(() => {
-    audioContext.destroy()
-    audioContext = null
-    uni.showToast({ title: '语音播放失败', icon: 'none' })
-  })
+const getRecordAudioKey = (media) => {
+  return media?.id ? `record:${media.id}` : ''
+}
+
+const isRecordAudioPlaying = (media) => {
+  return playingAudioKey.value === getRecordAudioKey(media)
 }
 
 const getPaymentTypeText = (type) => {

@@ -147,13 +147,17 @@
                 v-for="course in cell.courses"
                 :key="course._id"
                 class="week-calendar-course"
-                :class="{
-                  'completed': course.status === 'completed',
-                  'cancelled': course.status === 'cancelled'
-                }"
+                :class="[
+                  getCourseRoleClass(course),
+                  {
+                    'completed': course.status === 'completed',
+                    'cancelled': course.status === 'cancelled'
+                  }
+                ]"
                 @click.stop="goToDetail(course)"
               >
                 <text class="week-calendar-time">{{ formatTime(course.startTime) }}</text>
+                <text class="week-calendar-role">{{ getCourseRoleText(course) }}</text>
                 <text class="week-calendar-name">{{ formatStudentName(course.studentId?.name) }}</text>
               </view>
             </view>
@@ -171,40 +175,60 @@
         当日暂无课程安排
       </view>
       
-      <view v-else class="course-timeline">
-        <view 
-          v-for="(course, index) in dayCourses" 
-          :key="course._id" 
-          class="course-item"
-          :class="{
-            'completed': course.status === 'completed',
-            'cancelled': course.status === 'cancelled'
-          }"
-          @click="goToDetail(course)"
+      <view v-else class="course-list-sections">
+        <view
+          v-for="section in dayCourseSections"
+          :key="section.key"
+          class="course-section"
         >
-          <view class="timeline-dot">
-            <text class="dot-number">{{ index + 1 }}</text>
+          <view class="course-section-header">
+            <text class="course-section-title">{{ section.title }}</text>
+            <text class="course-section-count">{{ section.items.length }}节</text>
           </view>
-          <view class="timeline-line"></view>
-          <view class="course-content">
-            <view class="course-time">
-              <text>{{ formatTime(course.startTime) }} - {{ formatTime(course.endTime) }}</text>
-            </view>
-            <view class="course-main">
-              <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
-              <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
-            </view>
-            <view class="course-status">
-              <text 
-                class="status-tag"
-                :class="{
-                  'status-normal': course.status === 'normal',
-                  'status-completed': course.status === 'completed',
-                  'status-cancelled': course.status === 'cancelled'
-                }"
-              >
-                {{ getStatusText(course.status) }}
-              </text>
+
+          <view class="course-timeline">
+            <view
+              v-for="(course, index) in section.items"
+              :key="course._id"
+              class="course-item"
+              :class="[
+                getCourseRoleClass(course),
+                {
+                  'completed': course.status === 'completed',
+                  'cancelled': course.status === 'cancelled'
+                }
+              ]"
+              @click="goToDetail(course)"
+            >
+              <view class="timeline-dot">
+                <text class="dot-number">{{ index + 1 }}</text>
+              </view>
+              <view class="timeline-line"></view>
+              <view class="course-content">
+                <view class="course-time">
+                  <text>{{ formatTime(course.startTime) }} - {{ formatTime(course.endTime) }}</text>
+                </view>
+                <view class="course-main">
+                  <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
+                  <view class="course-meta-row">
+                    <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
+                    <text class="course-role-tag" :class="getCourseRoleClass(course)">{{ getCourseRoleText(course) }}</text>
+                  </view>
+                </view>
+                <text v-if="getCourseTeacherText(course)" class="course-teacher">{{ getCourseTeacherText(course) }}</text>
+                <view class="course-status">
+                  <text
+                    class="status-tag"
+                    :class="{
+                      'status-normal': course.status === 'normal',
+                      'status-completed': course.status === 'completed',
+                      'status-cancelled': course.status === 'cancelled'
+                    }"
+                  >
+                    {{ getStatusText(course.status) }}
+                  </text>
+                </view>
+              </view>
             </view>
           </view>
         </view>
@@ -416,6 +440,16 @@ const dayCourses = computed(() => {
     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
 })
 
+const dayCourseSections = computed(() => {
+  const myCourses = dayCourses.value.filter(course => isOwnCourse(course))
+  const sharedCourses = dayCourses.value.filter(course => !isOwnCourse(course))
+
+  return [
+    { key: 'mine', title: '我的课程', items: myCourses },
+    { key: 'shared', title: getSharedCoursesTitle(sharedCourses), items: sharedCourses }
+  ].filter(section => section.items.length > 0)
+})
+
 function buildCalendarDay(dateObj, dayNumber, otherMonth, today) {
   const date = formatDateString(dateObj)
   const countMode = getMonthCourseCountMode(dateObj.getFullYear(), dateObj.getMonth())
@@ -486,6 +520,62 @@ function getStatusText(status) {
     'cancelled': '已取消'
   }
   return statusMap[status] || '待上课'
+}
+
+function isOwnCourse(course) {
+  return course?.canManageCourse !== false
+}
+
+function getCourseRoleText(course) {
+  if (isOwnCourse(course)) {
+    return course?.courseRelationType === 'practice' ? '我的陪练课' : '我的课'
+  }
+
+  if (course?.courseRelationType === 'owner') {
+    return '陪练老师上课'
+  }
+  if (course?.courseRelationType === 'practice') {
+    return '任课老师上课'
+  }
+  return '互通课程'
+}
+
+function getCourseRoleClass(course) {
+  if (isOwnCourse(course)) {
+    return course?.courseRelationType === 'practice' ? 'course-role-my-practice' : 'course-role-mine'
+  }
+
+  if (course?.courseRelationType === 'owner') {
+    return 'course-role-practice'
+  }
+  if (course?.courseRelationType === 'practice') {
+    return 'course-role-owner'
+  }
+  return 'course-role-shared'
+}
+
+function getSharedCoursesTitle(items = []) {
+  if (items.length === 0) return '互通课程'
+
+  const hasPracticeTeacherCourses = items.some(course => course?.courseRelationType === 'owner')
+  const hasOwnerTeacherCourses = items.some(course => course?.courseRelationType === 'practice')
+
+  if (hasPracticeTeacherCourses && !hasOwnerTeacherCourses) return '陪练课程'
+  if (hasOwnerTeacherCourses && !hasPracticeTeacherCourses) return '任课老师课程'
+  return '互通课程'
+}
+
+function getCourseTeacherText(course) {
+  const teacherName = course?.teacherId?.name || course?.teacherId?.username
+  if (!teacherName || isOwnCourse(course)) return ''
+
+  if (course?.courseRelationType === 'owner') {
+    return `陪练老师：${teacherName}`
+  }
+  if (course?.courseRelationType === 'practice') {
+    return `任课老师：${teacherName}`
+  }
+  return `老师：${teacherName}`
 }
 
 const prevPeriod = () => {
@@ -1011,7 +1101,7 @@ onShow(() => {
 
 .week-calendar-course {
   min-width: 0;
-  min-height: 58rpx;
+  min-height: 74rpx;
   padding: 5rpx 4rpx;
   border-radius: 6rpx;
   box-sizing: border-box;
@@ -1021,8 +1111,28 @@ onShow(() => {
   overflow: hidden;
 }
 
+.week-calendar-course.course-role-practice,
+.week-calendar-course.course-role-owner,
+.week-calendar-course.course-role-shared {
+  background-color: #A26B39;
+}
+
+.week-calendar-course.course-role-my-practice {
+  background-color: #6F6254;
+}
+
 .week-calendar-course.completed {
   background-color: #5F724C;
+}
+
+.week-calendar-course.completed.course-role-practice,
+.week-calendar-course.completed.course-role-owner,
+.week-calendar-course.completed.course-role-shared {
+  background-color: #A26B39;
+}
+
+.week-calendar-course.completed.course-role-my-practice {
+  background-color: #6F6254;
 }
 
 .week-calendar-course.cancelled {
@@ -1033,6 +1143,16 @@ onShow(() => {
   font-size: 16rpx;
   line-height: 20rpx;
   color: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
+}
+
+.week-calendar-role {
+  min-width: 0;
+  font-size: 15rpx;
+  line-height: 19rpx;
+  color: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1061,6 +1181,37 @@ onShow(() => {
 
 .course-list {
   padding: 20rpx;
+}
+
+.course-list-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 28rpx;
+}
+
+.course-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+}
+
+.course-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4rpx;
+}
+
+.course-section-title {
+  font-size: 28rpx;
+  line-height: 36rpx;
+  font-weight: bold;
+  color: #3F352B;
+}
+
+.course-section-count {
+  font-size: 22rpx;
+  color: #8B8176;
 }
 
 .empty-tip {
@@ -1112,6 +1263,16 @@ onShow(() => {
   background-color: #5F724C;
 }
 
+.course-item.course-role-practice .timeline-dot,
+.course-item.course-role-owner .timeline-dot,
+.course-item.course-role-shared .timeline-dot {
+  background-color: #A26B39;
+}
+
+.course-item.course-role-my-practice .timeline-dot {
+  background-color: #6F6254;
+}
+
 .course-item.cancelled .timeline-dot {
   background-color: #A0523E;
 }
@@ -1130,6 +1291,18 @@ onShow(() => {
   background-color: #FFFDF8;
   border-radius: 16rpx;
   padding: 24rpx;
+  border-left: 6rpx solid #5F724C;
+  box-sizing: border-box;
+}
+
+.course-item.course-role-practice .course-content,
+.course-item.course-role-owner .course-content,
+.course-item.course-role-shared .course-content {
+  border-left-color: #A26B39;
+}
+
+.course-item.course-role-my-practice .course-content {
+  border-left-color: #6F6254;
 }
 
 .course-time {
@@ -1142,6 +1315,7 @@ onShow(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16rpx;
   margin-bottom: 12rpx;
 }
 
@@ -1154,6 +1328,47 @@ onShow(() => {
 .course-type {
   font-size: 26rpx;
   color: #6F6254;
+}
+
+.course-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
+.course-role-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  font-size: 20rpx;
+  line-height: 32rpx;
+  white-space: nowrap;
+}
+
+.course-role-tag.course-role-mine,
+.course-role-tag.course-role-my-practice {
+  color: #5F724C;
+  background-color: #E7EFE3;
+}
+
+.course-role-tag.course-role-practice,
+.course-role-tag.course-role-owner,
+.course-role-tag.course-role-shared {
+  color: #A26B39;
+  background-color: #F6E8C9;
+}
+
+.course-teacher {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 24rpx;
+  line-height: 32rpx;
+  color: #8B8176;
 }
 
 .course-status {
