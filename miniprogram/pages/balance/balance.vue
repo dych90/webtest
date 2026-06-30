@@ -155,13 +155,16 @@
                     <text>{{ index + 1 }}</text>
                   </view>
                   <view class="lesson-info">
-                    <text class="lesson-date">{{ formatDate(lesson.date) }} {{ getWeekDay(lesson.date) }}</text>
-                    <text class="lesson-time">{{ formatTime(lesson.startTime) }}</text>
+                    <view class="lesson-main-row">
+                      <text class="lesson-date">{{ formatDate(lesson.date) }} {{ getWeekDay(lesson.date) }}</text>
+                      <text class="lesson-time">{{ formatTime(lesson.startTime) }}</text>
+                    </view>
+                    <text v-if="lesson.notes" class="lesson-note">备注：{{ lesson.notes }}</text>
                   </view>
                   <view class="lesson-status">
-                    <text v-if="lesson.isGiftLesson" class="status-tag gift">赠课</text>
+                    <text v-if="lesson.isGiftLesson" class="status-tag gift">{{ getLessonStatusText(lesson) }}</text>
                     <text v-else :class="['status-tag', lesson.status === 'attended' ? 'attended' : 'absent']">
-                      {{ lesson.status === 'attended' ? '已上课' : '缺席' }}
+                      {{ getLessonStatusText(lesson) }}
                     </text>
                   </view>
                 </view>
@@ -220,6 +223,15 @@ const reportData = reactive({
   lessonDetails: []
 })
 
+const SYSTEM_REPORT_NOTES = new Set([
+  '批量添加',
+  '批量添加-自动消课',
+  '从课程详情上课',
+  '从首页直接上课',
+  '从消课管理直接上课',
+  '从排课直接上课'
+])
+
 const fetchBalances = async () => {
   try {
     const res = await get('/lesson-balances')
@@ -264,6 +276,42 @@ const getWeekDay = (date) => {
   const d = new Date(date)
   const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   return days[d.getDay()]
+}
+
+const formatLessonCount = (value) => {
+  const count = Number(value)
+  if (!Number.isFinite(count) || count <= 0 || Math.abs(count - 1) < 0.001) {
+    return ''
+  }
+
+  return `${Number.isInteger(count) ? count : count.toFixed(2).replace(/\.?0+$/, '')}课时`
+}
+
+const getLessonStatusText = (lesson) => {
+  const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
+  const lessonCountText = formatLessonCount(lesson.lessonsConsumed)
+  return lessonCountText ? `${statusText} · ${lessonCountText}` : statusText
+}
+
+const getVisibleNotes = (value) => {
+  const notes = String(value || '').trim()
+  if (!notes || SYSTEM_REPORT_NOTES.has(notes)) return ''
+  return notes
+}
+
+const getReportNotes = (record) => {
+  return getVisibleNotes(record.courseId?.notes) || getVisibleNotes(record.notes)
+}
+
+const getWrappedNoteLines = (notes, maxLength = 22) => {
+  const text = String(notes || '').trim()
+  if (!text) return []
+
+  const lines = []
+  for (let i = 0; i < text.length; i += maxLength) {
+    lines.push(text.slice(i, i + maxLength))
+  }
+  return lines
 }
 
 const handleUpdate = (item) => {
@@ -361,7 +409,8 @@ const handleGenerateReportData = async () => {
       startTime: record.courseStartTime || record.recordDate,
       status: record.isDeducted ? 'attended' : 'missed',
       isGiftLesson: record.isGiftLesson || false,
-      lessonsConsumed: record.lessonsConsumed || 0
+      lessonsConsumed: record.lessonsConsumed || 0,
+      notes: getReportNotes(record)
     })).sort((a, b) => new Date(a.date) - new Date(b.date))
     
     const attendedLessons = uniqueRecords
@@ -405,7 +454,9 @@ const saveReportImage = () => {
   const ctx = uni.createCanvasContext('shareCanvas')
   const dpr = uni.getSystemInfoSync().pixelRatio || 2
   const width = 375
-  const height = 600 + reportData.lessonDetails.length * 40
+  const noteLineCount = reportData.lessonDetails
+    .reduce((sum, lesson) => sum + getWrappedNoteLines(lesson.notes).length, 0)
+  const height = 600 + reportData.lessonDetails.length * 40 + noteLineCount * 18
   
   canvasWidth.value = width * dpr
   canvasHeight.value = height * dpr
@@ -454,9 +505,11 @@ const saveReportImage = () => {
   let y = 250
   reportData.lessonDetails.forEach((lesson, index) => {
     if (y > height - 50) return
+    const noteLines = getWrappedNoteLines(lesson.notes)
+    const itemHeight = 35 + noteLines.length * 18
     
     ctx.setFillStyle('#FBF6EE')
-    roundRect(ctx, 20, y, width - 40, 35, 6, '#FBF6EE')
+    roundRect(ctx, 20, y, width - 40, itemHeight, 6, '#FBF6EE')
     
     ctx.setFillStyle('#5F724C')
     ctx.setFontSize(10)
@@ -466,14 +519,23 @@ const saveReportImage = () => {
     ctx.setFontSize(12)
     ctx.fillText(`${formatDate(lesson.date)} ${getWeekDay(lesson.date)} ${formatTime(lesson.startTime)}`, 50, y + 22)
     
-    const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
+    const statusText = getLessonStatusText(lesson)
     const statusColor = lesson.isGiftLesson ? '#B8793E' : (lesson.status === 'attended' ? '#5F724C' : '#A0523E')
     ctx.setFillStyle(statusColor)
     ctx.setTextAlign('right')
     ctx.fillText(statusText, width - 30, y + 22)
     ctx.setTextAlign('left')
+
+    if (noteLines.length > 0) {
+      ctx.setFillStyle('#8B8176')
+      ctx.setFontSize(10)
+      noteLines.forEach((line, lineIndex) => {
+        const prefix = lineIndex === 0 ? '备注：' : '　　　'
+        ctx.fillText(`${prefix}${line}`, 50, y + 42 + lineIndex * 18)
+      })
+    }
     
-    y += 45
+    y += itemHeight + 10
   })
   
   ctx.draw(false, () => {
@@ -536,8 +598,9 @@ const copyReportText = () => {
   text += `\n上课明细：\n`
   
   reportData.lessonDetails.forEach((lesson, index) => {
-    const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
-    text += `${index + 1}. ${formatDate(lesson.date)} ${getWeekDay(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}\n`
+    const statusText = getLessonStatusText(lesson)
+    const notesText = lesson.notes ? `（备注：${lesson.notes}）` : ''
+    text += `${index + 1}. ${formatDate(lesson.date)} ${getWeekDay(lesson.date)} ${formatTime(lesson.startTime)} - ${statusText}${notesText}\n`
   })
   
   uni.setClipboardData({
@@ -1016,8 +1079,17 @@ onLoad((options) => {
 
 .lesson-info {
   display: flex;
+  flex-direction: column;
   gap: 16rpx;
   flex: 1;
+  min-width: 0;
+}
+
+.lesson-main-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  flex-wrap: wrap;
 }
 
 .lesson-date {
@@ -1028,6 +1100,17 @@ onLoad((options) => {
 .lesson-time {
   font-size: 24rpx;
   color: #8B8176;
+}
+
+.lesson-note {
+  font-size: 22rpx;
+  line-height: 30rpx;
+  color: #8B8176;
+  word-break: break-all;
+}
+
+.lesson-status {
+  flex-shrink: 0;
 }
 
 .status-tag {

@@ -121,11 +121,12 @@
                   <span class="lesson-date-text">{{ formatDate(lesson.date) }} {{ getWeekDay(lesson.date) }}</span>
                   <span class="lesson-time">{{ formatTime(lesson.startTime) }}</span>
                 </div>
+                <div v-if="lesson.notes" class="lesson-note">备注：{{ lesson.notes }}</div>
               </div>
               <div class="lesson-status">
-                <span v-if="lesson.isGiftLesson" class="lesson-tag lesson-tag-gift">赠课</span>
+                <span v-if="lesson.isGiftLesson" class="lesson-tag lesson-tag-gift">{{ getLessonStatusText(lesson) }}</span>
                 <span v-else :class="['lesson-tag', lesson.status === 'attended' ? 'lesson-tag-attended' : 'lesson-tag-absent']">
-                  {{ lesson.status === 'attended' ? '已上课' : '缺席' }}
+                  {{ getLessonStatusText(lesson) }}
                 </span>
               </div>
             </div>
@@ -204,6 +205,15 @@ const reportData = ref({
   paymentType: 'prepaid',
   lessonDetails: []
 })
+
+const SYSTEM_REPORT_NOTES = new Set([
+  '批量添加',
+  '批量添加-自动消课',
+  '从课程详情上课',
+  '从首页直接上课',
+  '从消课管理直接上课',
+  '从排课直接上课'
+])
 
 const fetchBalances = async () => {
   try {
@@ -321,7 +331,9 @@ const handleGenerateReport = async () => {
       startTime: record.courseStartTime || record.recordDate,
       courseName: '课程',
       status: record.isDeducted ? 'attended' : 'missed',
-      isGiftLesson: record.isGiftLesson || false
+      isGiftLesson: record.isGiftLesson || false,
+      lessonsConsumed: record.lessonsConsumed || 0,
+      notes: getReportNotes(record)
     })).sort((a, b) => new Date(a.date) - new Date(b.date))
     
     console.log('课程明细数量:', lessonDetails.length)
@@ -469,6 +481,31 @@ const getWeekDay = (date) => {
   const d = new Date(date)
   const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
   return days[d.getDay()]
+}
+
+const formatLessonCount = (value) => {
+  const count = Number(value)
+  if (!Number.isFinite(count) || count <= 0 || Math.abs(count - 1) < 0.001) {
+    return ''
+  }
+
+  return `${Number.isInteger(count) ? count : count.toFixed(2).replace(/\.?0+$/, '')}课时`
+}
+
+const getLessonStatusText = (lesson) => {
+  const statusText = lesson.isGiftLesson ? '赠课' : (lesson.status === 'attended' ? '已上课' : '缺席')
+  const lessonCountText = formatLessonCount(lesson.lessonsConsumed)
+  return lessonCountText ? `${statusText} · ${lessonCountText}` : statusText
+}
+
+const getVisibleNotes = (value) => {
+  const notes = String(value || '').trim()
+  if (!notes || SYSTEM_REPORT_NOTES.has(notes)) return ''
+  return notes
+}
+
+const getReportNotes = (record) => {
+  return getVisibleNotes(record.courseId?.notes) || getVisibleNotes(record.notes)
 }
 
 const formatStudentName = (name) => {
@@ -666,6 +703,7 @@ onMounted(() => {
 
 .lesson-info {
   flex: 1;
+  min-width: 0;
 }
 
 .lesson-date-time {
@@ -684,6 +722,14 @@ onMounted(() => {
   font-size: 13px;
   color: #5A6A7A;
   font-weight: 400;
+}
+
+.lesson-note {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5A6A7A;
+  word-break: break-word;
 }
 
 .lesson-status {

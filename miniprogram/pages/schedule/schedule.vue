@@ -41,8 +41,18 @@
       <view class="nav-btn" @click="nextPeriod">
         <text>›</text>
       </view>
-      <view class="today-btn" @click="goToday">
-        <text>今天</text>
+      <view class="date-actions">
+        <view class="today-btn" @click="goToday">
+          <text>今天</text>
+        </view>
+        <view
+          v-if="viewMode === 'week'"
+          class="image-btn"
+          :class="{ disabled: generatingImage }"
+          @click="saveWeekScheduleImage"
+        >
+          <text>{{ generatingImage ? '生成中' : '生成图片' }}</text>
+        </view>
       </view>
     </view>
     
@@ -251,6 +261,11 @@
     </view>
   </view>
 </view>
+    <canvas
+      canvas-id="weekScheduleCanvas"
+      class="week-share-canvas"
+      :style="{ width: shareCanvasWidth + 'px', height: shareCanvasHeight + 'px' }"
+    ></canvas>
   </view>
 </template>
 
@@ -273,6 +288,9 @@ const currentWeekStart = ref(new Date())
 const selectedDate = ref(formatDateString(new Date()))
 const courses = ref([])
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
+const shareCanvasWidth = ref(1125)
+const shareCanvasHeight = ref(900)
+const generatingImage = ref(false)
 
 const yearMonths = computed(() => {
   const months = []
@@ -578,6 +596,255 @@ function getCourseTeacherText(course) {
   return `老师：${teacherName}`
 }
 
+function getWeekDateRangeText() {
+  const start = new Date(currentWeekStart.value)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6)
+
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日 - ${end.getMonth() + 1}月${end.getDate()}日`
+  }
+
+  return `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日 - ${end.getFullYear()}年${end.getMonth() + 1}月${end.getDate()}日`
+}
+
+function getWeekCourses() {
+  const weekCourses = []
+  weekDays.value.forEach(day => {
+    weekCourses.push(...getCoursesByDate(day.date))
+  })
+  return weekCourses
+}
+
+function getWeekImageSummaryText() {
+  const weekCourses = getWeekCourses()
+  const activeCount = weekCourses.filter(course => course.status !== 'cancelled' && course.status !== 'rescheduled').length
+  const completedCount = weekCourses.filter(course => course.status === 'completed').length
+  const cancelledCount = weekCourses.filter(course => course.status === 'cancelled').length
+
+  return `共 ${activeCount} 节课程，已完成 ${completedCount} 节${cancelledCount > 0 ? `，已取消 ${cancelledCount} 节` : ''}`
+}
+
+function getCourseImageColor(course) {
+  if (course?.status === 'cancelled') return '#8B8176'
+  if (isOwnCourse(course)) {
+    return course?.courseRelationType === 'practice' ? '#6F6254' : '#5F724C'
+  }
+  return '#A26B39'
+}
+
+function getCourseImageRoleText(course) {
+  const statusText = course?.status === 'completed'
+    ? '已完成'
+    : (course?.status === 'cancelled' ? '已取消' : getCourseRoleText(course))
+
+  const courseType = course?.courseTypeId?.name || ''
+  return courseType ? `${statusText} · ${courseType}` : statusText
+}
+
+function ellipsizeText(text, maxChars) {
+  const value = String(text || '')
+  if (value.length <= maxChars) return value
+  if (maxChars <= 3) return value.slice(0, maxChars)
+  return `${value.slice(0, maxChars - 3)}...`
+}
+
+function drawText(ctx, text, x, y, fontSize, color, align = 'left') {
+  ctx.setFillStyle(color)
+  ctx.setFontSize(fontSize)
+  ctx.setTextAlign(align)
+  ctx.fillText(String(text || ''), x, y)
+}
+
+function drawLine(ctx, x1, y1, x2, y2, color = '#E7D8C7', lineWidth = 1) {
+  ctx.setStrokeStyle(color)
+  ctx.setLineWidth(lineWidth)
+  ctx.beginPath()
+  ctx.moveTo(x1, y1)
+  ctx.lineTo(x2, y2)
+  ctx.stroke()
+}
+
+function drawRoundRect(ctx, x, y, width, height, radius, color) {
+  ctx.setFillStyle(color)
+  ctx.beginPath()
+  ctx.arc(x + radius, y + radius, radius, Math.PI, Math.PI * 1.5)
+  ctx.arc(x + width - radius, y + radius, radius, Math.PI * 1.5, Math.PI * 2)
+  ctx.arc(x + width - radius, y + height - radius, radius, 0, Math.PI * 0.5)
+  ctx.arc(x + radius, y + height - radius, radius, Math.PI * 0.5, Math.PI)
+  ctx.closePath()
+  ctx.fill()
+}
+
+function drawLegendItem(ctx, x, y, color, text) {
+  drawRoundRect(ctx, x, y - 13, 22, 22, 5, color)
+  drawText(ctx, text, x + 34, y + 4, 22, '#6F6254')
+}
+
+function buildWeekImageRows() {
+  return weekTimeRows.value.map(row => {
+    const maxCourseCount = Math.max(...row.cells.map(cell => cell.courses.length), 1)
+    return {
+      ...row,
+      imageHeight: Math.max(108, 28 + maxCourseCount * 78)
+    }
+  })
+}
+
+async function drawWeekScheduleImage() {
+  const width = 1125
+  const margin = 48
+  const timeColumnWidth = 92
+  const dayColumnWidth = (width - margin * 2 - timeColumnWidth) / 7
+  const headerTop = 48
+  const gridTop = 218
+  const dayHeaderHeight = 92
+  const rows = buildWeekImageRows()
+  const rowTotalHeight = rows.reduce((sum, row) => sum + row.imageHeight, 0)
+  const emptyHeight = rows.length === 0 ? 320 : 0
+  const height = Math.max(700, gridTop + dayHeaderHeight + rowTotalHeight + emptyHeight + 120)
+
+  shareCanvasWidth.value = width
+  shareCanvasHeight.value = height
+  await new Promise(resolve => setTimeout(resolve, 80))
+
+  const ctx = uni.createCanvasContext('weekScheduleCanvas')
+  ctx.setFillStyle('#FFFDF8')
+  ctx.fillRect(0, 0, width, height)
+
+  drawText(ctx, '周课表', width / 2, headerTop, 38, '#3F352B', 'center')
+  drawText(ctx, getWeekDateRangeText(), width / 2, headerTop + 44, 24, '#6F6254', 'center')
+  drawText(ctx, getWeekImageSummaryText(), width / 2, headerTop + 78, 22, '#8B8176', 'center')
+
+  const legendY = headerTop + 126
+  drawLegendItem(ctx, margin, legendY, '#5F724C', '我的课')
+  drawLegendItem(ctx, margin + 185, legendY, '#6F6254', '我的陪练课')
+  drawLegendItem(ctx, margin + 420, legendY, '#A26B39', '互通课程')
+  drawLegendItem(ctx, margin + 650, legendY, '#8B8176', '已取消')
+
+  drawRoundRect(ctx, margin, gridTop, width - margin * 2, dayHeaderHeight, 12, '#FBF6EE')
+  drawLine(ctx, margin + timeColumnWidth, gridTop, margin + timeColumnWidth, gridTop + dayHeaderHeight, '#E7D8C7')
+
+  weekDays.value.forEach((day, index) => {
+    const x = margin + timeColumnWidth + index * dayColumnWidth
+    if (index > 0) {
+      drawLine(ctx, x, gridTop, x, gridTop + dayHeaderHeight, '#E7D8C7')
+    }
+    drawText(ctx, `周${day.dayName}`, x + dayColumnWidth / 2, gridTop + 34, 22, day.isToday ? '#5F724C' : '#6F6254', 'center')
+    drawText(ctx, `${day.dayNumber}日`, x + dayColumnWidth / 2, gridTop + 66, 28, '#3F352B', 'center')
+    if (day.courseCount > 0) {
+      drawText(ctx, `${day.courseCount}节`, x + dayColumnWidth / 2, gridTop + 88, 18, '#5F724C', 'center')
+    }
+  })
+
+  let y = gridTop + dayHeaderHeight
+
+  if (rows.length === 0) {
+    drawLine(ctx, margin, y, width - margin, y, '#E7D8C7')
+    drawText(ctx, '本周暂无课程安排', width / 2, y + 145, 28, '#8B8176', 'center')
+  } else {
+    rows.forEach(row => {
+      drawLine(ctx, margin, y, width - margin, y, '#E7D8C7')
+      drawText(ctx, row.label, margin + timeColumnWidth / 2, y + 42, 22, '#8B8176', 'center')
+      drawLine(ctx, margin + timeColumnWidth, y, margin + timeColumnWidth, y + row.imageHeight, '#E7D8C7')
+
+      row.cells.forEach((cell, index) => {
+        const cellX = margin + timeColumnWidth + index * dayColumnWidth
+        if (index > 0) {
+          drawLine(ctx, cellX, y, cellX, y + row.imageHeight, '#F0E5D8')
+        }
+
+        cell.courses.forEach((course, courseIndex) => {
+          const cardX = cellX + 8
+          const cardY = y + 14 + courseIndex * 78
+          const cardWidth = dayColumnWidth - 16
+          const cardHeight = 64
+          const maxChars = Math.max(4, Math.floor(cardWidth / 15))
+
+          drawRoundRect(ctx, cardX, cardY, cardWidth, cardHeight, 8, getCourseImageColor(course))
+          drawText(ctx, formatTime(course.startTime), cardX + 10, cardY + 21, 18, '#F5EFE7')
+          drawText(ctx, ellipsizeText(getCourseImageRoleText(course), maxChars), cardX + 10, cardY + 42, 17, '#E7D8C7')
+          drawText(ctx, ellipsizeText(formatStudentName(course.studentId?.name), maxChars), cardX + 10, cardY + 61, 21, '#FFFDF8')
+        })
+      })
+
+      y += row.imageHeight
+    })
+    drawLine(ctx, margin, y, width - margin, y, '#E7D8C7')
+  }
+
+  drawText(ctx, '保存后可在相册中分享或打印', width / 2, height - 42, 20, '#8B8176', 'center')
+
+  await new Promise(resolve => {
+    ctx.draw(false, () => {
+      setTimeout(resolve, 300)
+    })
+  })
+
+  return { width, height }
+}
+
+function canvasToTempFilePath(width, height) {
+  return new Promise((resolve, reject) => {
+    uni.canvasToTempFilePath({
+      canvasId: 'weekScheduleCanvas',
+      destWidth: width,
+      destHeight: height,
+      success: resolve,
+      fail: reject
+    })
+  })
+}
+
+function saveImageToAlbum(filePath) {
+  return new Promise((resolve, reject) => {
+    uni.saveImageToPhotosAlbum({
+      filePath,
+      success: resolve,
+      fail: reject
+    })
+  })
+}
+
+async function saveWeekScheduleImage() {
+  if (generatingImage.value) return
+
+  if (viewMode.value !== 'week') {
+    uni.showToast({ title: '请先切换到周课表', icon: 'none' })
+    return
+  }
+
+  generatingImage.value = true
+  uni.showLoading({ title: '生成图片中...' })
+
+  try {
+    const { width, height } = await drawWeekScheduleImage()
+    const tempFile = await canvasToTempFilePath(width, height)
+    await saveImageToAlbum(tempFile.tempFilePath)
+    uni.hideLoading()
+    uni.showToast({ title: '已保存到相册', icon: 'success' })
+  } catch (error) {
+    uni.hideLoading()
+    const errMsg = String(error?.errMsg || '')
+    if (errMsg.includes('auth') || errMsg.includes('authorize') || errMsg.includes('deny')) {
+      uni.showModal({
+        title: '提示',
+        content: '需要您授权保存图片到相册',
+        confirmText: '去授权',
+        success: (res) => {
+          if (res.confirm) {
+            uni.openSetting()
+          }
+        }
+      })
+    } else {
+      uni.showToast({ title: '生成图片失败', icon: 'none' })
+    }
+  } finally {
+    generatingImage.value = false
+  }
+}
+
 const prevPeriod = () => {
   if (viewMode.value === 'year') {
     currentYear.value -= 1
@@ -711,7 +978,7 @@ const handleSingleAdd = () => {
 const handleBatchAdd = () => {
   showAddMenu.value = false
   uni.navigateTo({
-    url: '/pages/schedule/batch-add'
+    url: `/pages/schedule/batch-add?date=${selectedDate.value}`
   })
 }
 
@@ -786,9 +1053,19 @@ onShow(() => {
 }
 
 .current-period {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
   font-size: 32rpx;
   font-weight: bold;
   color: #3F352B;
+}
+
+.date-actions {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
 }
 
 .today-btn {
@@ -797,6 +1074,18 @@ onShow(() => {
   color: #FFFDF8;
   font-size: 24rpx;
   border-radius: 6rpx;
+}
+
+.image-btn {
+  padding: 8rpx 16rpx;
+  background-color: #A26B39;
+  color: #FFFDF8;
+  font-size: 24rpx;
+  border-radius: 6rpx;
+}
+
+.image-btn.disabled {
+  opacity: 0.6;
 }
 
 .month-view {
@@ -887,6 +1176,8 @@ onShow(() => {
 
 .year-scroll {
   height: 100%;
+  box-sizing: border-box;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
 }
 
 .year-month-card {
@@ -1059,6 +1350,8 @@ onShow(() => {
 
 .week-calendar-grid {
   background-color: #FFFDF8;
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
 }
 
 .week-time-row {
@@ -1167,6 +1460,12 @@ onShow(() => {
   white-space: nowrap;
 }
 
+.week-share-canvas {
+  position: fixed;
+  left: -9999rpx;
+  top: 0;
+}
+
 .day-header {
   background-color: #FFFDF8;
   padding: 20rpx;
@@ -1181,6 +1480,7 @@ onShow(() => {
 
 .course-list {
   padding: 20rpx;
+  padding-bottom: calc(200rpx + env(safe-area-inset-bottom));
 }
 
 .course-list-sections {

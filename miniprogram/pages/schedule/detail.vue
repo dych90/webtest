@@ -76,7 +76,14 @@
       >
         取消课程
       </button>
-      <button 
+      <button
+        class="btn-restore"
+        @click="handleRestoreCourse"
+        v-if="course.status === 'cancelled'"
+      >
+        恢复课程
+      </button>
+      <button
         class="btn-delete" 
         @click="handleDelete"
       >
@@ -107,12 +114,12 @@
         <view class="dialog-body" @click.stop>
           <view class="form-item">
             <text class="form-label">学生</text>
-            <picker :value="studentIndex" :range="students" range-key="name" @change="onStudentChange">
+            <view class="student-picker" @click="openStudentPicker">
               <view class="form-picker">
-                <text>{{ students[studentIndex]?.name || '请选择学生' }}</text>
+                <text :class="{ placeholder: !editForm.studentId }">{{ getSelectedStudentName() }}</text>
                 <text class="picker-arrow">▼</text>
               </view>
-            </picker>
+            </view>
           </view>
           <view class="form-item">
             <text class="form-label">课程类型</text>
@@ -239,6 +246,64 @@
         </view>
       </view>
     </view>
+
+    <view class="student-picker-mask" v-if="showStudentPicker" @click.self="closeStudentPicker">
+      <view class="student-picker-dialog" @click.stop>
+        <view class="picker-header">
+          <text class="picker-title">选择学生</text>
+          <text class="picker-close" @click="closeStudentPicker">×</text>
+        </view>
+        <view class="picker-search">
+          <input
+            class="search-input"
+            v-model="studentSearchText"
+            placeholder="搜索学生姓名"
+            @input="filterStudents"
+          />
+        </view>
+        <scroll-view scroll-y class="picker-list">
+          <view
+            class="picker-item clear-student-item"
+            :class="{ selected: !editForm.studentId }"
+            @click="selectStudent(null)"
+          >
+            <view class="student-item-content">
+              <view class="student-avatar-small empty-avatar">
+                <text>-</text>
+              </view>
+              <view class="student-item-info">
+                <text class="student-item-name">不分配学生</text>
+              </view>
+            </view>
+            <view class="check-icon" v-if="!editForm.studentId">✓</view>
+          </view>
+          <view
+            v-for="student in filteredStudents"
+            :key="student._id"
+            class="picker-item"
+            :class="{ selected: editForm.studentId === student._id }"
+            @click="selectStudent(student)"
+          >
+            <view class="student-item-content">
+              <view class="student-avatar-small">
+                <text>{{ (student.name || '').charAt(0) || '?' }}</text>
+              </view>
+              <view class="student-item-info">
+                <view class="student-item-name-row">
+                  <text class="student-item-name">{{ formatStudentName(student.name) }}</text>
+                  <text v-if="student.studentRelationType === 'practice'" class="student-relation-tag">陪练</text>
+                </view>
+                <text class="student-item-phone" v-if="student.phone">{{ student.phone }}</text>
+              </view>
+            </view>
+            <view class="check-icon" v-if="editForm.studentId === student._id">✓</view>
+          </view>
+          <view v-if="filteredStudents.length === 0" class="empty-student">
+            <text>未找到匹配的学生</text>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
     
     <view class="dialog-mask" v-if="rescheduleDialogVisible" @click.self="rescheduleDialogVisible = false">
       <view class="dialog-content" @click.stop>
@@ -344,9 +409,11 @@ const course = ref({})
 const courseId = ref('')
 const editDialogVisible = ref(false)
 const rescheduleDialogVisible = ref(false)
-const students = ref([{ name: '请选择学生', _id: '' }])
+const students = ref([])
+const filteredStudents = ref([])
+const studentSearchText = ref('')
+const showStudentPicker = ref(false)
 const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
-const studentIndex = ref(0)
 const courseTypeIndex = ref(0)
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -524,11 +591,8 @@ const fetchCourse = async () => {
 const fetchStudents = async () => {
   try {
     const res = await get('/students')
-    students.value = [{ name: '请选择学生', _id: '' }, ...(res.data || [])]
-    
-    const studentId = (course.value.studentId?._id || course.value.studentId || '').toString()
-    const idx = students.value.findIndex(s => (s._id || '').toString() === studentId)
-    studentIndex.value = idx >= 0 ? idx : 0
+    students.value = res.data || []
+    filteredStudents.value = [...students.value]
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
@@ -583,9 +647,45 @@ const formatStudentName = (name) => {
   return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
-const onStudentChange = (e) => {
-  studentIndex.value = e.detail.value
-  editForm.value.studentId = students.value[e.detail.value]?._id || ''
+const openStudentPicker = () => {
+  studentSearchText.value = ''
+  filteredStudents.value = [...students.value]
+  showStudentPicker.value = true
+}
+
+const closeStudentPicker = () => {
+  showStudentPicker.value = false
+}
+
+const filterStudents = () => {
+  const keyword = studentSearchText.value.trim().toLowerCase()
+  if (!keyword) {
+    filteredStudents.value = [...students.value]
+    return
+  }
+
+  filteredStudents.value = students.value.filter(student =>
+    (student.name || '').toLowerCase().includes(keyword)
+  )
+}
+
+const getSelectedStudentName = () => {
+  if (!editForm.value.studentId) return '请选择学生'
+
+  const selectedId = editForm.value.studentId.toString()
+  const student = students.value.find(s => (s._id || '').toString() === selectedId)
+  return student ? formatStudentName(student.name) : '请选择学生'
+}
+
+const selectStudent = (student) => {
+  if (!student) {
+    editForm.value.studentId = ''
+    closeStudentPicker()
+    return
+  }
+
+  editForm.value.studentId = student._id
+  closeStudentPicker()
 }
 
 const onCourseTypeChange = (e) => {
@@ -939,6 +1039,26 @@ const handleCancel = async () => {
   })
 }
 
+const handleRestoreCourse = async () => {
+  if (!ensureCanManageCourse()) return
+
+  uni.showModal({
+    title: '提示',
+    content: '确定要恢复这节课为待上课吗？',
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await put(`/courses/${courseId.value}`, { status: 'normal' })
+          uni.showToast({ title: '课程已恢复', icon: 'success' })
+          fetchCourse()
+        } catch (error) {
+          uni.showToast({ title: error.message || '恢复失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
 const handleDelete = async () => {
   if (!ensureCanManageCourse()) return
 
@@ -1171,6 +1291,18 @@ const handleDeleteGroup = async () => {
   font-size: 28rpx;
 }
 
+.btn-restore {
+  flex: 1;
+  min-width: 45%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #5F724C;
+  color: #FFFDF8;
+  border: none;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
 .btn-delete {
   flex: 1;
   min-width: 45%;
@@ -1276,6 +1408,10 @@ const handleDeleteGroup = async () => {
   border: 2rpx solid #dcdfe6;
   border-radius: 8rpx;
   font-size: 28rpx;
+}
+
+.form-picker .placeholder {
+  color: #8B8176;
 }
 
 .form-picker.readonly {
@@ -1480,5 +1616,150 @@ const handleDeleteGroup = async () => {
   display: block;
   font-size: 24rpx;
   color: #8B8176;
+}
+
+/* 学生选择弹窗 */
+.student-picker-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.student-picker-dialog {
+  width: 90%;
+  max-width: 600rpx;
+  background-color: #FFFDF8;
+  border-radius: 20rpx;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.picker-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #3F352B;
+}
+
+.picker-close {
+  font-size: 40rpx;
+  color: #8B8176;
+}
+
+.picker-search {
+  padding: 20rpx 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.search-input {
+  width: 100%;
+  height: 70rpx;
+  padding: 0 20rpx;
+  background-color: #FBF6EE;
+  border-radius: 35rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.picker-list {
+  flex: 1;
+  height: 50vh;
+  overflow-y: auto;
+}
+
+.picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.picker-item.selected {
+  background-color: #E7EFE3;
+}
+
+.student-item-content {
+  display: flex;
+  align-items: center;
+}
+
+.student-avatar-small {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 50%;
+  background-color: #5F724C;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.student-avatar-small.empty-avatar {
+  background-color: #8B8176;
+}
+
+.student-avatar-small text {
+  color: #FFFDF8;
+  font-size: 26rpx;
+  font-weight: bold;
+}
+
+.student-item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.student-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.student-item-name {
+  font-size: 30rpx;
+  color: #3F352B;
+}
+
+.student-relation-tag {
+  font-size: 20rpx;
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+  background-color: #F8E4DD;
+  color: #A0523E;
+}
+
+.student-item-phone {
+  font-size: 24rpx;
+  color: #8B8176;
+  margin-top: 4rpx;
+}
+
+.check-icon {
+  color: #5F724C;
+  font-size: 32rpx;
+}
+
+.empty-student {
+  text-align: center;
+  padding: 60rpx 0;
+  color: #8B8176;
+  font-size: 28rpx;
 }
 </style>

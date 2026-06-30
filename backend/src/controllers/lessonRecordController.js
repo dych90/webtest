@@ -272,7 +272,7 @@ const getLessonRecords = async (req, res) => {
     const lessonRecords = await LessonRecord.find(filter)
       .sort({ recordDate: -1 })
       .populate('studentId', 'name phone paymentType currentPrice priceEffectiveDate teacherId practiceTeacherId')
-      .populate('courseId', 'startTime endTime')
+      .populate('courseId', 'startTime endTime notes')
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name username')
     
@@ -323,7 +323,7 @@ const getLessonRecordById = async (req, res) => {
     
     const record = await LessonRecord.findById(id)
       .populate('studentId', 'name phone paymentType currentPrice priceEffectiveDate teacherId practiceTeacherId')
-      .populate('courseId', 'startTime endTime')
+      .populate('courseId', 'startTime endTime notes')
       .populate('courseTypeId', 'name duration')
       .populate('teacherId', 'name username')
     

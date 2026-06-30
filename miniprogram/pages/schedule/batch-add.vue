@@ -63,18 +63,41 @@
               <text class="picker-arrow-small">▼</text>
             </view>
           </picker>
-          <picker mode="time" :value="item.startTime" start="08:00" end="23:00" @change="(e) => onItemTimeChange(e, index)" class="row-time">
-            <view class="form-picker-small">
-              <text>{{ item.startTime || '时间' }}</text>
-              <text class="picker-arrow-small">▼</text>
-            </view>
-          </picker>
+          <view class="row-time">
+            <input
+              class="time-input"
+              type="text"
+              v-model="item.startTime"
+              placeholder="时间"
+              maxlength="5"
+              confirm-type="done"
+              @blur="() => normalizeItemTime(index)"
+            />
+          </view>
           <view class="row-actions">
             <text class="btn-remove" @click="removeCourse(index)">✕</text>
           </view>
         </view>
       </view>
       
+      <view class="date-mode-row">
+        <view class="date-increment-check" @click.stop="toggleDateIncrement">
+          <view class="checkbox" :class="{ checked: isDateIncrementEnabled }">
+            <text v-if="isDateIncrementEnabled">✓</text>
+          </view>
+          <text class="checkbox-label">日期递增</text>
+        </view>
+        <view class="date-increment-control" :class="{ disabled: !isDateIncrementEnabled }">
+          <input
+            class="date-increment-input"
+            type="number"
+            v-model="dateIncrementDays"
+            :disabled="!isDateIncrementEnabled"
+          />
+          <text class="date-increment-unit">天</text>
+        </view>
+      </view>
+
       <button class="btn-add-row" @click="addCourseRow">
         <text>+ 添加一行</text>
       </button>
@@ -149,6 +172,8 @@ const statusIndex = ref(1)
 const loading = ref(false)
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 const isDefaultDuration = ref(false)
+const isDateIncrementEnabled = ref(false)
+const dateIncrementDays = ref(7)
 
 const form = reactive({
   studentId: '',
@@ -162,8 +187,9 @@ const courseList = ref([
 ])
 
 onMounted(async () => {
-  const today = new Date()
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  const dateStr = currentPage.options?.date || getTodayDateString()
   courseList.value[0].date = dateStr
   
   try {
@@ -284,10 +310,44 @@ const onStatusChange = (e) => {
   form.status = statusValues[e.detail.value]
 }
 
-const addCourseRow = () => {
+const getTodayDateString = () => {
   const today = new Date()
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  courseList.value.push({ date: dateStr, startTime: '' })
+  return formatDateString(today)
+}
+
+const formatDateString = (date) => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+const getNextCourseDate = (lastDate) => {
+  const baseDate = lastDate || getTodayDateString()
+  if (!isDateIncrementEnabled.value) return baseDate
+
+  const days = Number(dateIncrementDays.value)
+  if (!Number.isFinite(days) || days < 1) return baseDate
+
+  const nextDate = new Date(`${baseDate}T00:00:00`)
+  if (Number.isNaN(nextDate.getTime())) return baseDate
+
+  nextDate.setDate(nextDate.getDate() + Math.floor(days))
+  return formatDateString(nextDate)
+}
+
+const toggleDateIncrement = () => {
+  isDateIncrementEnabled.value = !isDateIncrementEnabled.value
+}
+
+const addCourseRow = () => {
+  const lastCourse = courseList.value[courseList.value.length - 1]
+  const lastStartTime = normalizeTimeInput(lastCourse?.startTime)
+  if (lastCourse) {
+    lastCourse.startTime = lastStartTime
+  }
+
+  courseList.value.push({
+    date: getNextCourseDate(lastCourse?.date),
+    startTime: lastStartTime
+  })
 }
 
 const removeCourse = (index) => {
@@ -302,8 +362,29 @@ const onItemDateChange = (e, index) => {
   courseList.value[index].date = e.detail.value
 }
 
-const onItemTimeChange = (e, index) => {
-  courseList.value[index].startTime = e.detail.value
+const normalizeTimeInput = (value) => {
+  const normalized = String(value || '').trim().replace(/\uFF1A/g, ':')
+  if (!normalized) return ''
+
+  const match = normalized.match(/^(\d{1,2}):(\d{1,2})$/)
+  if (!match) return normalized
+
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return normalized
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+const normalizeItemTime = (index) => {
+  const item = courseList.value[index]
+  if (!item) return
+
+  item.startTime = normalizeTimeInput(item.startTime)
+}
+
+const isValidTime = (value) => {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
 }
 
 const handleCancel = () => {
@@ -315,10 +396,18 @@ const handleSubmit = async () => {
     uni.showToast({ title: '请选择学生', icon: 'none' })
     return
   }
+
+  courseList.value.forEach((_, index) => normalizeItemTime(index))
   
   const incompleteCourses = courseList.value.filter(item => !item.date || !item.startTime)
   if (incompleteCourses.length > 0) {
     uni.showToast({ title: '请完善所有课程的日期和时间', icon: 'none' })
+    return
+  }
+
+  const invalidTimeIndex = courseList.value.findIndex(item => !isValidTime(item.startTime))
+  if (invalidTimeIndex >= 0) {
+    uni.showToast({ title: `第${invalidTimeIndex + 1}行时间格式错误`, icon: 'none' })
     return
   }
   
@@ -511,6 +600,18 @@ const handleSubmit = async () => {
   background-color: #FFFDF8;
 }
 
+.time-input {
+  width: 100%;
+  height: 64rpx;
+  box-sizing: border-box;
+  padding: 0 16rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  color: #3F352B;
+  background-color: #FFFDF8;
+}
+
 .picker-arrow-small {
   font-size: 18rpx;
   color: #8B8176;
@@ -532,6 +633,48 @@ const handleSubmit = async () => {
   color: #A0523E;
   border-radius: 50%;
   font-size: 24rpx;
+}
+
+.date-mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.date-increment-check {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.date-increment-control {
+  display: flex;
+  align-items: center;
+  height: 64rpx;
+  padding: 0 18rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  background-color: #FFFDF8;
+}
+
+.date-increment-control.disabled {
+  opacity: 0.55;
+}
+
+.date-increment-input {
+  width: 90rpx;
+  height: 64rpx;
+  font-size: 26rpx;
+  color: #3F352B;
+  text-align: center;
+}
+
+.date-increment-unit {
+  font-size: 26rpx;
+  color: #6F6254;
+  margin-left: 8rpx;
 }
 
 .btn-add-row {
