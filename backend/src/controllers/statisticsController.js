@@ -9,7 +9,7 @@ const { getTeacherAccountFilter } = require('../utils/teacherAccount')
 const { getAccountCoursePrice } = require('../utils/feeStandard')
 const { getEffectivePaymentType } = require('../utils/studentAccount')
 
-const SCHEDULED_COURSE_STATUSES = new Set(['normal', 'completed'])
+const SCHEDULED_COURSE_STATUSES = new Set(['normal', 'completed', 'cancelled'])
 const BILLABLE_COURSE_STATUSES = new Set(['normal', 'completed', 'cancelled'])
 
 const toNumber = (value) => Number(value) || 0
