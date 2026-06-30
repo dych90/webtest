@@ -387,6 +387,10 @@ const isValidTime = (value) => {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
 }
 
+const createCourseGroupId = () => {
+  return Date.now().toString() + Math.random().toString(36).substr(2, 9)
+}
+
 const handleCancel = () => {
   uni.navigateBack()
 }
@@ -414,6 +418,7 @@ const handleSubmit = async () => {
   loading.value = true
   
   try {
+    const groupId = createCourseGroupId()
     const promises = courseList.value.map(item => {
       const startTime = new Date(`${item.date}T${item.startTime}:00`)
       const endTime = new Date(startTime.getTime() + form.duration * 60000)
@@ -424,7 +429,8 @@ const handleSubmit = async () => {
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         status: form.status,
-        notes: '批量添加'
+        notes: '批量添加',
+        groupId
       })
       
       if (form.status === 'completed') {

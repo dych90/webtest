@@ -9,7 +9,8 @@ const { getTeacherAccountFilter } = require('../utils/teacherAccount')
 const { getAccountCoursePrice } = require('../utils/feeStandard')
 const { getEffectivePaymentType } = require('../utils/studentAccount')
 
-const BILLABLE_COURSE_STATUSES = new Set(['normal', 'completed'])
+const SCHEDULED_COURSE_STATUSES = new Set(['normal', 'completed'])
+const BILLABLE_COURSE_STATUSES = new Set(['normal', 'completed', 'cancelled'])
 
 const toNumber = (value) => Number(value) || 0
 
@@ -19,7 +20,15 @@ const isBillableScheduledCourse = (course) => {
   return Boolean(course && BILLABLE_COURSE_STATUSES.has(course.status || 'normal') && !course.isGiftLesson)
 }
 
+const isScheduledCourse = (course) => {
+  return Boolean(course && SCHEDULED_COURSE_STATUSES.has(course.status || 'normal') && !course.isGiftLesson)
+}
+
 const getScheduledCourses = (courses = []) => {
+  return courses.filter(isScheduledCourse)
+}
+
+const getBillableScheduledCourses = (courses = []) => {
   return courses.filter(isBillableScheduledCourse)
 }
 
@@ -41,7 +50,7 @@ const getScheduledCoursePrice = async (course) => {
 }
 
 const calculateScheduledRevenue = async (courses = []) => {
-  const scheduledCourses = getScheduledCourses(courses)
+  const scheduledCourses = getBillableScheduledCourses(courses)
   const prices = await Promise.all(scheduledCourses.map(getScheduledCoursePrice))
   return prices.reduce((sum, price) => sum + price, 0)
 }
