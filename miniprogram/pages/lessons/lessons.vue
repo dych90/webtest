@@ -145,6 +145,16 @@ const filteredRecords = ref([])
 const filteredCourses = ref([])
 const themeClass = ref(getThemeClass())
 const themeColors = ref(getCurrentTheme())
+const DEFAULT_PLANNED_LESSONS = 1
+
+const getCoursePlannedLessons = (course) => {
+  const plannedLessons = Number(course?.plannedLessons)
+  if (!Number.isFinite(plannedLessons) || plannedLessons <= 0) {
+    return DEFAULT_PLANNED_LESSONS
+  }
+
+  return Math.round((plannedLessons + Number.EPSILON) * 100) / 100
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -294,7 +304,7 @@ const handleAttend = async (course) => {
       courseId: course._id,
       courseTypeId: courseTypeId,
       courseStartTime: course.startTime,
-      lessonsConsumed: 1,
+      lessonsConsumed: getCoursePlannedLessons(course),
       lessonContent: '',
       isDeducted: true,
       notes: '从消课管理直接上课'
