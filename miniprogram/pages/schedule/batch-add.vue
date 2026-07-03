@@ -36,6 +36,16 @@
           <text class="checkbox-label">设为默认时长</text>
         </view>
       </view>
+
+      <view class="form-item">
+        <text class="form-label">计划课时</text>
+        <picker :value="plannedLessonIndex" :range="lessonCountOptions" @change="onPlannedLessonChange">
+          <view class="form-picker">
+            <text>{{ lessonCountOptions[plannedLessonIndex] }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
       
       <view class="form-item">
         <text class="form-label">状态</text>
@@ -166,6 +176,9 @@ const courseTypeIndex = ref(-1)
 const durationOptions = ['30分钟', '45分钟', '50分钟', '60分钟', '70分钟', '90分钟', '120分钟']
 const durationIndex = ref(3)
 const durationValues = [30, 45, 50, 60, 70, 90, 120]
+const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
+const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const plannedLessonIndex = ref(1)
 const statusOptions = ['未上课', '已完成', '已取消']
 const statusValues = ['normal', 'completed', 'cancelled']
 const statusIndex = ref(1)
@@ -179,6 +192,7 @@ const form = reactive({
   studentId: '',
   courseTypeId: '',
   duration: 60,
+  plannedLessons: 1,
   status: 'completed'
 })
 
@@ -291,6 +305,11 @@ const onCourseTypeChange = (e) => {
 const onDurationChange = (e) => {
   durationIndex.value = e.detail.value
   form.duration = durationValues[e.detail.value]
+}
+
+const onPlannedLessonChange = (e) => {
+  plannedLessonIndex.value = e.detail.value
+  form.plannedLessons = lessonCountValues[e.detail.value]
 }
 
 const toggleDefaultDuration = () => {
@@ -428,6 +447,7 @@ const handleSubmit = async () => {
         courseTypeId: form.courseTypeId || undefined,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
+        plannedLessons: form.plannedLessons,
         status: form.status,
         notes: '批量添加',
         groupId
@@ -440,7 +460,7 @@ const handleSubmit = async () => {
             courseId: courseRes.data._id,
             courseTypeId: form.courseTypeId,
             courseStartTime: startTime.toISOString(),
-            lessonsConsumed: 1,
+            lessonsConsumed: form.plannedLessons,
             lessonContent: '',
             isDeducted: true,
             notes: '批量添加-自动消课'

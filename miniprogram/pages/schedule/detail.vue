@@ -15,6 +15,10 @@
           <text class="info-label">课程类型</text>
           <text class="info-value">{{ course.courseTypeId?.name || '未设置' }}</text>
         </view>
+        <view class="info-item">
+          <text class="info-label">计划课时</text>
+          <text class="info-value">{{ getCoursePlannedLessons(course) }}</text>
+        </view>
         <view class="info-item" v-if="showCourseTeacher">
           <text class="info-label">老师</text>
           <text class="info-value">{{ course.teacherId.name }}</text>
@@ -44,7 +48,7 @@
       <view class="record-body">
         <text class="record-text" v-if="course.lessonRecord.lessonContent">{{ course.lessonRecord.lessonContent }}</text>
         <text class="record-media" v-if="getMediaSummary(course.lessonRecord)">{{ getMediaSummary(course.lessonRecord) }}</text>
-        <text class="record-meta">消课 {{ course.lessonRecord.lessonsConsumed || 0 }} 课时</text>
+        <text class="record-meta">记录 {{ course.lessonRecord.lessonsConsumed || 0 }} 课时</text>
       </view>
     </view>
     
@@ -153,6 +157,15 @@
             <picker :value="durationIndex" :range="durationOptions" @change="onDurationChange">
               <view class="form-picker">
                 <text>{{ durationOptions[durationIndex] }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item">
+            <text class="form-label">计划课时</text>
+            <picker :value="plannedLessonIndex" :range="lessonCountOptions" @change="onPlannedLessonChange">
+              <view class="form-picker">
+                <text>{{ lessonCountOptions[plannedLessonIndex] }}</text>
                 <text class="picker-arrow">▼</text>
               </view>
             </picker>
@@ -382,7 +395,7 @@
             <text class="attend-time">{{ formatDateTime(course.startTime) }}</text>
           </view>
           <view class="form-item">
-            <text class="form-label">消课数量</text>
+            <text class="form-label">记录课时</text>
             <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonCountChange">
               <view class="form-picker">
                 <text>{{ lessonCountOptions[lessonCountIndex] }}</text>
@@ -421,6 +434,8 @@ const durationOptions = ['30分钟', '45分钟', '50分钟', '60分钟', '70分�
 const durationIndex = ref(3)
 const durationValues = [30, 45, 50, 60, 70, 90, 120]
 const rescheduleDurationIndex = ref(3)
+const DEFAULT_PLANNED_LESSONS = 1
+const plannedLessonIndex = ref(1)
 
 const editForm = ref({
   studentId: '',
@@ -428,6 +443,7 @@ const editForm = ref({
   date: '',
   startTime: '',
   duration: 60,
+  plannedLessons: DEFAULT_PLANNED_LESSONS,
   isRecurring: false,
   recurringStartDate: '',
   recurringEndDate: '',
@@ -450,6 +466,31 @@ const attendDialogVisible = ref(false)
 const lessonCountIndex = ref(1)
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+
+const getCoursePlannedLessons = (courseItem) => {
+  const plannedLessons = Number(courseItem?.plannedLessons)
+  if (!Number.isFinite(plannedLessons) || plannedLessons <= 0) {
+    return DEFAULT_PLANNED_LESSONS
+  }
+
+  return Math.round((plannedLessons + Number.EPSILON) * 100) / 100
+}
+
+const getLessonCountIndexByValue = (value) => {
+  const targetValue = getCoursePlannedLessons({ plannedLessons: value })
+  let closestIndex = 0
+  let minDiff = Number.POSITIVE_INFINITY
+
+  lessonCountValues.forEach((option, index) => {
+    const diff = Math.abs(option - targetValue)
+    if (diff < minDiff) {
+      minDiff = diff
+      closestIndex = index
+    }
+  })
+
+  return closestIndex
+}
 
 const statusText = computed(() => {
   const map = { normal: '待上课', completed: '已完成', cancelled: '已取消' }
@@ -709,6 +750,11 @@ const onDurationChange = (e) => {
   editForm.value.duration = durationValues[e.detail.value]
 }
 
+const onPlannedLessonChange = (e) => {
+  plannedLessonIndex.value = e.detail.value
+  editForm.value.plannedLessons = lessonCountValues[e.detail.value]
+}
+
 const onRecurringChange = (e) => {
   editForm.value.isRecurring = e.detail.value
   if (editForm.value.isRecurring) {
@@ -775,6 +821,7 @@ const handleEdit = async () => {
     date: formatDate(startTime),
     startTime: formatTime(startTime),
     duration: duration,
+    plannedLessons: getCoursePlannedLessons(course.value),
     isRecurring: false,
     recurringStartDate: formatDate(startTime),
     recurringEndDate: '',
@@ -786,6 +833,7 @@ const handleEdit = async () => {
   
   const durIdx = durationValues.findIndex(d => d === duration)
   durationIndex.value = durIdx >= 0 ? durIdx : 3
+  plannedLessonIndex.value = getLessonCountIndexByValue(editForm.value.plannedLessons)
   
   editDialogVisible.value = true
 }
@@ -805,6 +853,7 @@ const handleSaveEdit = async () => {
       courseTypeId: editForm.value.courseTypeId || null,
       startTime: startDate.toISOString(),
       endTime: endDate.toISOString(),
+      plannedLessons: editForm.value.plannedLessons,
       notes: editForm.value.notes
     }
     
@@ -826,6 +875,7 @@ const handleSaveEdit = async () => {
           courseTypeId: editForm.value.courseTypeId || null,
           startTime: newStartTime.toISOString(),
           endTime: newEndTime.toISOString(),
+          plannedLessons: editForm.value.plannedLessons,
           notes: editForm.value.notes
         })
       })
@@ -846,6 +896,7 @@ const handleSaveEdit = async () => {
             courseTypeId: editForm.value.courseTypeId || undefined,
             startTime: courseStartTime.toISOString(),
             endTime: courseEndTime.toISOString(),
+            plannedLessons: editForm.value.plannedLessons,
             status: 'normal',
             notes: editForm.value.notes
           })
@@ -907,7 +958,8 @@ const handleReschedule = async () => {
       newStartDate: rescheduleForm.value.newStartDate,
       newEndDate: rescheduleForm.value.newEndDate,
       newStartTime: rescheduleForm.value.newStartTime,
-      duration: rescheduleForm.value.duration
+      duration: rescheduleForm.value.duration,
+      plannedLessons: getCoursePlannedLessons(course.value)
     })
     
     uni.showToast({ title: response.message || '重新排课成功', icon: 'success' })
@@ -930,7 +982,7 @@ const handleAttend = async () => {
       content: '该课程未设置课程类型，上课后无法记录收入。是否继续上课？',
       success: async (res) => {
         if (res.confirm) {
-          lessonCountIndex.value = 1
+          lessonCountIndex.value = getLessonCountIndexByValue(getCoursePlannedLessons(course.value))
           attendDialogVisible.value = true
         }
       }
@@ -938,7 +990,7 @@ const handleAttend = async () => {
     return
   }
   
-  lessonCountIndex.value = 1
+  lessonCountIndex.value = getLessonCountIndexByValue(getCoursePlannedLessons(course.value))
   attendDialogVisible.value = true
 }
 

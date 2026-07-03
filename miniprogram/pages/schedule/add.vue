@@ -56,6 +56,16 @@
           <text class="checkbox-label">设为默认时长</text>
         </view>
       </view>
+
+      <view class="form-item">
+        <text class="form-label">计划课时</text>
+        <picker :value="plannedLessonIndex" :range="lessonCountOptions" @change="onPlannedLessonChange">
+          <view class="form-picker">
+            <text>{{ lessonCountOptions[plannedLessonIndex] }}</text>
+            <text class="picker-arrow">▼</text>
+          </view>
+        </picker>
+      </view>
       
       <view class="form-item switch-item" @click.stop>
         <text class="form-label">是否重复</text>
@@ -180,6 +190,9 @@ const courseTypeIndex = ref(-1)
 const durationOptions = ['30分钟', '45分钟', '50分钟', '60分钟', '70分钟', '90分钟', '120分钟']
 const durationIndex = ref(3)
 const durationValues = [30, 45, 50, 60, 70, 90, 120]
+const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
+const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const plannedLessonIndex = ref(1)
 const statusOptions = ['正常', '已取消', '已改期']
 const statusValues = ['normal', 'cancelled', 'rescheduled']
 const statusIndex = ref(0)
@@ -193,6 +206,7 @@ const form = reactive({
   date: '',
   startTime: '',
   duration: 60,
+  plannedLessons: 1,
   isRecurring: false,
   recurringStartDate: '',
   recurringEndDate: '',
@@ -381,6 +395,11 @@ const onDurationChange = (e) => {
   }
 }
 
+const onPlannedLessonChange = (e) => {
+  plannedLessonIndex.value = e.detail.value
+  form.plannedLessons = lessonCountValues[e.detail.value]
+}
+
 const onRecurringChange = (e) => {
   form.isRecurring = e.detail.value
   if (form.isRecurring && !form.recurringStartDate) {
@@ -440,6 +459,7 @@ const handleSubmit = async () => {
           courseTypeId: form.courseTypeId || undefined,
           startTime: startTime.toISOString(),
           endTime: endTime.toISOString(),
+          plannedLessons: form.plannedLessons,
           status: form.status,
           notes: form.notes,
           groupId: groupId
@@ -457,6 +477,7 @@ const handleSubmit = async () => {
         courseTypeId: form.courseTypeId || undefined,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
+        plannedLessons: form.plannedLessons,
         status: form.status,
         notes: form.notes
       })

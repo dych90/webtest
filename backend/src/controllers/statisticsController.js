@@ -11,12 +11,28 @@ const { getEffectivePaymentType } = require('../utils/studentAccount')
 
 const SCHEDULED_COURSE_STATUSES = new Set(['normal', 'completed', 'cancelled'])
 const BILLABLE_COURSE_STATUSES = new Set(['normal', 'completed', 'cancelled'])
+const DEFAULT_PLANNED_LESSONS = 1
 
 const toNumber = (value) => Number(value) || 0
 const roundLessonValue = (value) => Math.round((toNumber(value) + Number.EPSILON) * 100) / 100
 
 const sumLessonsConsumed = (records = []) => {
   return roundLessonValue(records.reduce((sum, record) => sum + toNumber(record?.lessonsConsumed), 0))
+}
+
+const getPlannedLessons = (course) => {
+  const plannedLessons = Number(course?.plannedLessons)
+  if (!Number.isFinite(plannedLessons) || plannedLessons <= 0) {
+    return DEFAULT_PLANNED_LESSONS
+  }
+
+  return roundLessonValue(plannedLessons)
+}
+
+const sumPlannedLessons = (courses = []) => {
+  return roundLessonValue(
+    getScheduledCourses(courses).reduce((sum, course) => sum + getPlannedLessons(course), 0)
+  )
 }
 
 const getDocId = (doc) => doc?._id || doc
@@ -230,15 +246,14 @@ const getStatistics = async (req, res) => {
     
     const monthlyActualRevenue = await calculateLessonRecordRevenue(monthlyLessonRecords)
     
-    const monthlyLessonsConsumed = sumLessonsConsumed(monthlyLessonRecords)
-    const monthlyLessonsAttended = monthlyLessonsConsumed
-    
     const monthlyCourses = courses.filter(c => {
       if (!c.startTime) return false
       const courseDate = new Date(c.startTime)
       if (isNaN(courseDate.getTime())) return false
       return courseDate >= startOfMonth && courseDate < endOfMonth
     })
+    const monthlyLessonsConsumed = sumPlannedLessons(monthlyCourses)
+    const monthlyLessonsAttended = sumLessonsConsumed(monthlyLessonRecords)
     const monthlyPrepaidRevenue = await calculateScheduledRevenue(monthlyCourses)
     
     console.log('========== 月度统计数据 ==========')
@@ -342,16 +357,14 @@ const getChartStatistics = async (req, res) => {
         const actualRevenue = await calculateLessonRecordRevenue(monthLessonRecords)
         actualRevenueData.push(actualRevenue)
         
-        // 应上课时: 直接沿用记录课时口径
         const monthCourses = courses.filter(c => {
           if (!c.startTime) return false
           const courseDate = new Date(c.startTime)
           return courseDate >= startOfMonth && courseDate < endOfMonth
         })
         prepaidRevenueData.push(await calculateScheduledRevenue(monthCourses))
-        lessonsConsumedData.push(sumLessonsConsumed(monthLessonRecords))
+        lessonsConsumedData.push(sumPlannedLessons(monthCourses))
         
-        // 实消课数: 实际完成的消课数量
         lessonsAttendedData.push(sumLessonsConsumed(monthLessonRecords))
       }
     } else {
@@ -369,16 +382,14 @@ const getChartStatistics = async (req, res) => {
         const actualRevenue = await calculateLessonRecordRevenue(yearLessonRecords)
         actualRevenueData.push(actualRevenue)
         
-        // 应上课时: 直接沿用记录课时口径
         const yearCourses = courses.filter(c => {
           if (!c.startTime) return false
           const courseDate = new Date(c.startTime)
           return courseDate >= startOfYear && courseDate < endOfYear
         })
         prepaidRevenueData.push(await calculateScheduledRevenue(yearCourses))
-        lessonsConsumedData.push(sumLessonsConsumed(yearLessonRecords))
+        lessonsConsumedData.push(sumPlannedLessons(yearCourses))
         
-        // 实消课数: 实际完成的消课数量
         lessonsAttendedData.push(sumLessonsConsumed(yearLessonRecords))
       }
     }

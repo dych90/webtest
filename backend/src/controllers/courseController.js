@@ -13,6 +13,20 @@ const {
 const { getEffectivePaymentType } = require('../utils/studentAccount')
 
 const PRACTICE_COURSE_TYPE_NAME = '陪练课'
+const DEFAULT_PLANNED_LESSONS = 1
+
+const normalizePlannedLessons = (value, fallback = DEFAULT_PLANNED_LESSONS) => {
+  if (value === undefined || value === null || value === '') {
+    return fallback
+  }
+
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return fallback
+  }
+
+  return Math.round((numericValue + Number.EPSILON) * 100) / 100
+}
 
 const getOrCreatePracticeCourseType = async () => {
   return CourseType.findOneAndUpdate(
@@ -210,6 +224,7 @@ const createCourse = async (req, res) => {
     const courseData = {
       ...req.body,
       courseTypeId,
+      plannedLessons: normalizePlannedLessons(req.body.plannedLessons),
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId,
       groupId: req.body.groupId || null
     }
@@ -257,6 +272,12 @@ const updateCourse = async (req, res) => {
     }
 
     updateData.courseTypeId = await resolveCourseTypeForTeacher(student, user, updateData.courseTypeId || course.courseTypeId)
+    if (Object.prototype.hasOwnProperty.call(req.body, 'plannedLessons')) {
+      updateData.plannedLessons = normalizePlannedLessons(
+        req.body.plannedLessons,
+        normalizePlannedLessons(course.plannedLessons)
+      )
+    }
     
     if (req.body.startTime && new Date(req.body.startTime).getTime() !== new Date(course.startTime).getTime()) {
       updateData.reminderSent = false
@@ -340,7 +361,7 @@ const updateCoursesByGroup = async (req, res) => {
       filter.teacherId = req.userId
     }
     
-    const { studentId, courseTypeId, startTime, endTime, status, notes } = req.body
+    const { studentId, courseTypeId, startTime, endTime, status, notes, plannedLessons } = req.body
     
     const updateData = {}
     if (studentId !== undefined) updateData.studentId = studentId
@@ -349,6 +370,7 @@ const updateCoursesByGroup = async (req, res) => {
     if (endTime !== undefined) updateData.endTime = endTime
     if (status !== undefined) updateData.status = status
     if (notes !== undefined) updateData.notes = notes
+    if (plannedLessons !== undefined) updateData.plannedLessons = normalizePlannedLessons(plannedLessons)
     
     const result = await Course.updateMany(filter, updateData)
     
@@ -436,7 +458,8 @@ const rescheduleCourseGroup = async (req, res) => {
       duration,
       studentId,
       courseTypeId,
-      notes
+      notes,
+      plannedLessons
     } = req.body
     
     if (!newStartDate || !newEndDate || !newStartTime || !duration) {
@@ -457,6 +480,9 @@ const rescheduleCourseGroup = async (req, res) => {
     }
     
     const firstCourse = allGroupCourses[0]
+    const plannedLessonsForGroup = plannedLessons === undefined
+      ? undefined
+      : normalizePlannedLessons(plannedLessons)
     const teacherId = firstCourse.teacherId?._id || firstCourse.teacherId
     
     let startIndex = 0
@@ -516,6 +542,7 @@ const rescheduleCourseGroup = async (req, res) => {
           studentId: studentId || course.studentId,
           courseTypeId: courseTypeId || course.courseTypeId,
           notes: notes !== undefined ? notes : course.notes,
+          ...(plannedLessonsForGroup === undefined ? {} : { plannedLessons: plannedLessonsForGroup }),
           reminderSent: false
         })
         updatedCount++
@@ -529,6 +556,9 @@ const rescheduleCourseGroup = async (req, res) => {
           status: 'normal',
           groupId: groupId,
           notes: notes !== undefined ? notes : firstCourse.notes,
+          plannedLessons: plannedLessonsForGroup === undefined
+            ? normalizePlannedLessons(firstCourse.plannedLessons)
+            : plannedLessonsForGroup,
           reminderSent: false
         }
         await Course.create(courseData)

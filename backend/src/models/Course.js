@@ -5,6 +5,7 @@ const courseSchema = new mongoose.Schema({
   courseTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseType' },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
+  plannedLessons: { type: Number, default: 1 },
   isRecurring: { type: Boolean, default: false },
   recurringPattern: String,
   groupId: { type: String, index: true },

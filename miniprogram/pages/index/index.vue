@@ -176,7 +176,7 @@
             <text class="attend-time">{{ formatTime(currentCourse?.startTime) }}</text>
           </view>
           <view class="form-item">
-            <text class="form-label">消课数量</text>
+            <text class="form-label">记录课时</text>
             <picker :value="lessonCountIndex" :range="lessonCountOptions" @change="onLessonCountChange">
               <view class="form-picker">
                 <text>{{ lessonCountOptions[lessonCountIndex] }}</text>
@@ -298,6 +298,32 @@ const audioPlayer = createAudioPlayback({
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const DEFAULT_PLANNED_LESSONS = 1
+
+const getCoursePlannedLessons = (course) => {
+  const plannedLessons = Number(course?.plannedLessons)
+  if (!Number.isFinite(plannedLessons) || plannedLessons <= 0) {
+    return DEFAULT_PLANNED_LESSONS
+  }
+
+  return Math.round((plannedLessons + Number.EPSILON) * 100) / 100
+}
+
+const getLessonCountIndexByValue = (value) => {
+  const targetValue = getCoursePlannedLessons({ plannedLessons: value })
+  let closestIndex = 0
+  let minDiff = Number.POSITIVE_INFINITY
+
+  lessonCountValues.forEach((option, index) => {
+    const diff = Math.abs(option - targetValue)
+    if (diff < minDiff) {
+      minDiff = diff
+      closestIndex = index
+    }
+  })
+
+  return closestIndex
+}
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -368,9 +394,9 @@ const getMediaSummary = (record) => {
   return parts.join('，')
 }
 
-const resetAttendForm = () => {
+const resetAttendForm = (plannedLessons = DEFAULT_PLANNED_LESSONS) => {
   audioPlayer.stop()
-  lessonCountIndex.value = 1
+  lessonCountIndex.value = getLessonCountIndexByValue(plannedLessons)
   lessonContent.value = ''
   photoFiles.value = []
   voiceFiles.value = []
@@ -524,7 +550,7 @@ const handleAttendCourse = async (course) => {
     return
   }
 
-  resetAttendForm()
+  resetAttendForm(getCoursePlannedLessons(course))
 
   if (!course.courseTypeId?._id && !course.courseTypeId) {
     uni.showModal({
