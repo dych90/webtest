@@ -157,7 +157,7 @@
         </view>
         <view class="stat-card">
           <text class="stat-value">{{ statistics.monthlyLessonsAttended }}</text>
-          <text class="stat-label">本月上课数</text>
+          <text class="stat-label">本月上课时</text>
         </view>
       </view>
     </view>

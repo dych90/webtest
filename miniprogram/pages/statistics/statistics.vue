@@ -12,7 +12,7 @@
       </view>
       <view class="stat-card">
         <text class="stat-value">{{ statistics.totalLessonsAttended }}</text>
-        <text class="stat-label">总上课数</text>
+        <text class="stat-label">总上课时</text>
       </view>
       <view class="stat-card">
         <text class="stat-value warning">{{ statistics.totalRemainingLessons }}</text>
@@ -47,7 +47,7 @@
       </view>
       <view class="stat-card">
         <text class="stat-value">{{ statistics.monthlyLessonsAttended }}</text>
-        <text class="stat-label">{{ monthLabel }}上课数</text>
+        <text class="stat-label">{{ monthLabel }}上课时</text>
       </view>
     </view>
     
@@ -116,7 +116,7 @@
       </view>
 
       <view class="chart-card">
-        <view class="chart-title">消课统计</view>
+        <view class="chart-title">课时统计</view>
         <view class="chart-canvas-wrapper">
           <canvas 
             canvas-id="lessonChart" 
@@ -128,11 +128,11 @@
         <view class="chart-legend">
           <view class="legend-item">
             <view class="legend-color lessons"></view>
-            <text>应消课数</text>
+            <text>应上课时</text>
           </view>
           <view class="legend-item">
             <view class="legend-color attended"></view>
-            <text>实消课数</text>
+            <text>实上课时</text>
           </view>
         </view>
       </view>
@@ -246,6 +246,29 @@ const formatMoney = (num) => {
     return (num / 1000).toFixed(1) + 'k'
   }
   return num.toString()
+}
+
+const formatLessonValue = (value) => {
+  const numericValue = Number(value) || 0
+  if (Number.isInteger(numericValue)) {
+    return numericValue.toString()
+  }
+
+  return numericValue.toFixed(2).replace(/\.?0+$/, '')
+}
+
+const getLessonChartMaxValue = (values = []) => {
+  const rawMaxValue = Math.max(...values, 0)
+  if (rawMaxValue <= 0) return 1
+
+  const bufferedValue = rawMaxValue * 1.15
+  if (bufferedValue <= 5) {
+    return Math.ceil(bufferedValue * 2) / 2
+  }
+  if (bufferedValue <= 20) {
+    return Math.ceil(bufferedValue)
+  }
+  return Math.ceil(bufferedValue / 5) * 5
 }
 
 const monthDisplayText = computed(() => {
@@ -532,10 +555,9 @@ const drawLessonChart = () => {
       const data = chartData.value
       if (!data.labels || data.labels.length === 0) return
 
-      const maxConsumed = Math.max(...data.lessonsConsumed, 1)
-      const maxAttended = Math.max(...data.lessonsAttended, 1)
-      const rawMaxValue = Math.max(maxConsumed, maxAttended)
-      const maxValue = Math.ceil(rawMaxValue * 1.2 / 10) * 10
+      const maxConsumed = Math.max(...data.lessonsConsumed, 0)
+      const maxAttended = Math.max(...data.lessonsAttended, 0)
+      const maxValue = getLessonChartMaxValue([maxConsumed, maxAttended])
       const pointCount = data.labels.length
       const stepX = chartWidth / (pointCount - 1 || 1)
 
@@ -593,7 +615,7 @@ const drawLessonChart = () => {
             ctx.textAlign = 'center'
             ctx.fillStyle = color
 
-            const text = value.toString()
+            const text = formatLessonValue(value)
 
             let labelY
             if (isSecondLine) {
