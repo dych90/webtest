@@ -101,10 +101,12 @@
             'other-month': day.otherMonth,
             'is-today': day.isToday,
             'is-selected': day.date === selectedDate,
-            'has-courses': day.courseCount > 0
+            'has-courses': day.courseCount > 0,
+            'has-pending-overdue': day.hasPendingOverdue
           }"
           @click="selectDate(day)"
         >
+          <view v-if="day.hasPendingOverdue" class="month-overdue-mark">!</view>
           <text class="day-number">{{ day.dayNumber }}</text>
           <text v-if="day.courseCount > 0" class="course-count">{{ day.courseCount }}节</text>
         </view>
@@ -161,11 +163,13 @@
                   getCourseRoleClass(course),
                   {
                     'completed': course.status === 'completed',
-                    'cancelled': course.status === 'cancelled'
+                    'cancelled': course.status === 'cancelled',
+                    'pending-overdue': isPendingOverdueCourse(course)
                   }
                 ]"
                 @click.stop="goToDetail(course)"
               >
+                <view v-if="isPendingOverdueCourse(course)" class="week-calendar-overdue-mark">!</view>
                 <text class="week-calendar-time">{{ formatTime(course.startTime) }}</text>
                 <text class="week-calendar-role">{{ getCourseRoleText(course) }}</text>
                 <text class="week-calendar-name">{{ formatStudentName(course.studentId?.name) }}</text>
@@ -477,7 +481,8 @@ function buildCalendarDay(dateObj, dayNumber, otherMonth, today) {
     dayNumber,
     otherMonth,
     isToday: !otherMonth && date === today,
-    courseCount: getCourseCount(date, countMode)
+    courseCount: getCourseCount(date, countMode),
+    hasPendingOverdue: hasPendingOverdueCourses(date)
   }
 }
 
@@ -505,6 +510,10 @@ function getCourseCount(dateStr, mode = 'scheduled') {
   return courseList.filter(c => c.status !== 'cancelled' && c.status !== 'rescheduled').length
 }
 
+function hasPendingOverdueCourses(dateStr) {
+  return courses.value.some(course => getCourseDateString(course) === dateStr && isPendingOverdueCourse(course))
+}
+
 function getCoursesByDate(dateStr) {
   return courses.value
     .filter(c => formatDateString(new Date(c.startTime)) === dateStr)
@@ -518,6 +527,19 @@ function getCoursesForWeekSlot(dateStr, hour) {
       return formatDateString(startTime) === dateStr && startTime.getHours() === hour
     })
     .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+}
+
+function getCourseDateString(course) {
+  const startTime = new Date(course?.startTime)
+  if (Number.isNaN(startTime.getTime())) return ''
+  return formatDateString(startTime)
+}
+
+function isPendingOverdueCourse(course) {
+  if (course?.status !== 'normal') return false
+  const courseDate = getCourseDateString(course)
+  if (!courseDate) return false
+  return courseDate < formatDateString(new Date())
 }
 
 function formatTime(dateStr) {
@@ -681,6 +703,11 @@ function drawLegendItem(ctx, x, y, color, text) {
   drawText(ctx, text, x + 34, y + 4, 22, '#6F6254')
 }
 
+function drawOverdueMark(ctx, x, y) {
+  drawRoundRect(ctx, x, y, 22, 22, 11, '#A0523E')
+  drawText(ctx, '!', x + 11, y + 18, 18, '#FFFDF8', 'center')
+}
+
 function buildWeekImageRows() {
   return weekTimeRows.value.map(row => {
     const maxCourseCount = Math.max(...row.cells.map(cell => cell.courses.length), 1)
@@ -762,6 +789,9 @@ async function drawWeekScheduleImage() {
           const maxChars = Math.max(4, Math.floor(cardWidth / 15))
 
           drawRoundRect(ctx, cardX, cardY, cardWidth, cardHeight, 8, getCourseImageColor(course))
+          if (isPendingOverdueCourse(course)) {
+            drawOverdueMark(ctx, cardX + cardWidth - 30, cardY + 8)
+          }
           drawText(ctx, formatTime(course.startTime), cardX + 10, cardY + 21, 18, '#F5EFE7')
           drawText(ctx, ellipsizeText(getCourseImageRoleText(course), maxChars), cardX + 10, cardY + 42, 17, '#E7D8C7')
           drawText(ctx, ellipsizeText(formatStudentName(course.studentId?.name), maxChars), cardX + 10, cardY + 61, 21, '#FFFDF8')
@@ -1138,6 +1168,23 @@ onShow(() => {
   color: #FFFDF8;
 }
 
+.month-overdue-mark {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 999rpx;
+  background-color: var(--theme-danger);
+  color: #FFFDF8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16rpx;
+  line-height: 20rpx;
+  font-weight: 600;
+}
+
 .day-number {
   font-size: 26rpx;
   color: #3F352B;
@@ -1402,6 +1449,7 @@ onShow(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .week-calendar-course.course-role-practice,
@@ -1430,6 +1478,28 @@ onShow(() => {
 
 .week-calendar-course.cancelled {
   background-color: #8B8176;
+}
+
+.week-calendar-course.pending-overdue {
+  padding-right: 20rpx;
+  box-shadow: inset 0 0 0 2rpx #A0523E;
+}
+
+.week-calendar-overdue-mark {
+  position: absolute;
+  top: 6rpx;
+  right: 6rpx;
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 999rpx;
+  background-color: var(--theme-danger);
+  color: #FFFDF8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16rpx;
+  line-height: 18rpx;
+  font-weight: 600;
 }
 
 .week-calendar-time {
