@@ -1,4 +1,5 @@
 const FeeStandard = require('../models/FeeStandard')
+const CourseType = require('../models/CourseType')
 const Student = require('../models/Student')
 const { isSameId } = require('./studentAccess')
 const { getEffectiveStudentAccount } = require('./studentAccount')
@@ -6,6 +7,11 @@ const { getEffectiveStudentAccount } = require('./studentAccount')
 const toNumber = (value) => Number(value) || 0
 
 const getDocId = (doc) => doc?._id || doc
+const PIANO_COURSE_TYPE_NAME = '钢琴课'
+const PIANO_FALLBACK_COURSE_TYPE_NAMES = new Set(['音基课', '陪练课'])
+const fallbackCourseTypeIdCache = new Map()
+let pianoCourseTypeIdCache = null
+let hasLoadedPianoCourseTypeId = false
 
 const getFeeStandardScore = (standard, studentId, teacherId) => {
   let score = 0
@@ -21,11 +27,7 @@ const getFeeStandardScore = (standard, studentId, teacherId) => {
   return score
 }
 
-const findApplicableFeeStandard = async ({ studentId, courseTypeId, teacherId, at = new Date() }) => {
-  if (!courseTypeId) return null
-  const student = studentId ? await Student.findById(studentId).select('teacherId') : null
-  const includeLegacyTeacherStandards = !teacherId || (student && isSameId(student.teacherId, teacherId))
-
+const buildApplicableFeeStandardFilters = ({ studentId, courseTypeId, teacherId, at, includeLegacyTeacherStandards }) => {
   const filters = [
     { courseTypeId },
     {
@@ -64,9 +66,10 @@ const findApplicableFeeStandard = async ({ studentId, courseTypeId, teacherId, a
     filters.push({ $or: teacherFilters })
   }
 
-  const standards = await FeeStandard.find({ $and: filters })
-    .sort({ effectiveDate: -1, createdAt: -1 })
+  return filters
+}
 
+const pickBestFeeStandard = (standards, studentId, teacherId) => {
   let bestStandard = null
   let bestScore = -1
 
@@ -79,6 +82,88 @@ const findApplicableFeeStandard = async ({ studentId, courseTypeId, teacherId, a
   })
 
   return bestStandard
+}
+
+const findBestFeeStandard = async ({ studentId, courseTypeId, teacherId, at, includeLegacyTeacherStandards }) => {
+  const standards = await FeeStandard.find({
+    $and: buildApplicableFeeStandardFilters({
+      studentId,
+      courseTypeId,
+      teacherId,
+      at,
+      includeLegacyTeacherStandards
+    })
+  })
+    .sort({ effectiveDate: -1, createdAt: -1 })
+
+  return pickBestFeeStandard(standards, studentId, teacherId)
+}
+
+const getPianoCourseTypeId = async () => {
+  if (hasLoadedPianoCourseTypeId) {
+    return pianoCourseTypeIdCache
+  }
+
+  const pianoCourseType = await CourseType.findOne({ name: PIANO_COURSE_TYPE_NAME }).select('_id')
+  pianoCourseTypeIdCache = pianoCourseType?._id || null
+  hasLoadedPianoCourseTypeId = true
+
+  return pianoCourseTypeIdCache
+}
+
+const resolveFallbackCourseTypeId = async (courseTypeId) => {
+  if (!courseTypeId) return null
+  const cacheKey = courseTypeId.toString()
+
+  if (fallbackCourseTypeIdCache.has(cacheKey)) {
+    return fallbackCourseTypeIdCache.get(cacheKey)
+  }
+
+  const courseType = await CourseType.findById(courseTypeId).select('name')
+  if (!courseType || !PIANO_FALLBACK_COURSE_TYPE_NAMES.has(courseType.name)) {
+    fallbackCourseTypeIdCache.set(cacheKey, null)
+    return null
+  }
+
+  const pianoCourseTypeId = await getPianoCourseTypeId()
+  if (!pianoCourseTypeId || isSameId(pianoCourseTypeId, courseTypeId)) {
+    fallbackCourseTypeIdCache.set(cacheKey, null)
+    return null
+  }
+
+  fallbackCourseTypeIdCache.set(cacheKey, pianoCourseTypeId)
+  return pianoCourseTypeId
+}
+
+const findApplicableFeeStandard = async ({ studentId, courseTypeId, teacherId, at = new Date() }) => {
+  if (!courseTypeId) return null
+
+  const student = studentId ? await Student.findById(studentId).select('teacherId') : null
+  const includeLegacyTeacherStandards = !teacherId || (student && isSameId(student.teacherId, teacherId))
+
+  const bestStandard = await findBestFeeStandard({
+    studentId,
+    courseTypeId,
+    teacherId,
+    at,
+    includeLegacyTeacherStandards
+  })
+  if (bestStandard) {
+    return bestStandard
+  }
+
+  const fallbackCourseTypeId = await resolveFallbackCourseTypeId(courseTypeId)
+  if (!fallbackCourseTypeId) {
+    return null
+  }
+
+  return findBestFeeStandard({
+    studentId,
+    courseTypeId: fallbackCourseTypeId,
+    teacherId,
+    at,
+    includeLegacyTeacherStandards
+  })
 }
 
 const getAccountCoursePrice = async ({ student, studentId, courseTypeId, teacherId, at = new Date(), fallbackPrice = 0 }) => {
