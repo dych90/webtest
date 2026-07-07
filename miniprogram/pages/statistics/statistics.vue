@@ -240,12 +240,13 @@ const roundRect = (ctx, x, y, w, h, r, color) => {
 }
 
 const formatMoney = (num) => {
-  if (num >= 10000) {
-    return (num / 10000).toFixed(2) + 'w'
-  } else if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'k'
+  const numericValue = Number(num) || 0
+  if (numericValue >= 10000) {
+    return `${(numericValue / 10000).toFixed(1).replace(/\.?0+$/, '')}w`
+  } else if (numericValue >= 1000) {
+    return `${(numericValue / 1000).toFixed(1).replace(/\.?0+$/, '')}k`
   }
-  return num.toString()
+  return numericValue.toString()
 }
 
 const formatLessonValue = (value) => {
@@ -269,6 +270,41 @@ const getLessonChartMaxValue = (values = []) => {
     return Math.ceil(bufferedValue)
   }
   return Math.ceil(bufferedValue / 5) * 5
+}
+
+const isLabelOverlapping = (labelBounds, nextBounds, gap = 6) => {
+  return labelBounds.some((bounds) => {
+    return !(
+      nextBounds.right + gap < bounds.left ||
+      nextBounds.left - gap > bounds.right ||
+      nextBounds.bottom + gap < bounds.top ||
+      nextBounds.top - gap > bounds.bottom
+    )
+  })
+}
+
+const drawChartValueLabel = (ctx, labelBounds, text, x, y, fontSize = 10, color = '#5F724C') => {
+  if (!text) return false
+
+  ctx.font = `${fontSize}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.fillStyle = color
+
+  const textWidth = ctx.measureText(text).width
+  const nextBounds = {
+    left: x - textWidth / 2,
+    right: x + textWidth / 2,
+    top: y - fontSize,
+    bottom: y + 4
+  }
+
+  if (isLabelOverlapping(labelBounds, nextBounds)) {
+    return false
+  }
+
+  ctx.fillText(text, x, y)
+  labelBounds.push(nextBounds)
+  return true
 }
 
 const monthDisplayText = computed(() => {
@@ -391,6 +427,8 @@ const drawPrepaidChart = () => {
       const barCount = data.labels.length
       const groupWidth = chartWidth / barCount
       const barWidth = groupWidth * 0.4
+      const labelBounds = []
+      const valueFontSize = barCount > 8 ? 9 : 10
 
       ctx.strokeStyle = '#f0f0f0'
       ctx.lineWidth = 1
@@ -421,17 +459,13 @@ const drawPrepaidChart = () => {
         ctx.fill()
 
         if (prepaidVal > 0) {
-          ctx.font = '10px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillStyle = '#5F724C'
-
           const text = formatMoney(prepaidVal)
           const labelY = barY - 16
 
           if (labelY < padding.top + 12) {
-            ctx.fillText(text, x, padding.top + 12)
+            drawChartValueLabel(ctx, labelBounds, text, x, padding.top + 12, valueFontSize)
           } else {
-            ctx.fillText(text, x, labelY)
+            drawChartValueLabel(ctx, labelBounds, text, x, labelY, valueFontSize)
           }
         }
       })
@@ -479,6 +513,8 @@ const drawActualChart = () => {
       const barCount = data.labels.length
       const groupWidth = chartWidth / barCount
       const barWidth = groupWidth * 0.4
+      const labelBounds = []
+      const valueFontSize = barCount > 8 ? 9 : 10
 
       ctx.strokeStyle = '#f0f0f0'
       ctx.lineWidth = 1
@@ -509,17 +545,13 @@ const drawActualChart = () => {
         ctx.fill()
 
         if (actualVal > 0) {
-          ctx.font = '10px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.fillStyle = '#5F724C'
-
           const text = formatMoney(actualVal)
           const labelY = barY - 16
 
           if (labelY < padding.top + 12) {
-            ctx.fillText(text, x, padding.top + 12)
+            drawChartValueLabel(ctx, labelBounds, text, x, padding.top + 12, valueFontSize)
           } else {
-            ctx.fillText(text, x, labelY)
+            drawChartValueLabel(ctx, labelBounds, text, x, labelY, valueFontSize)
           }
         }
       })
@@ -560,6 +592,7 @@ const drawLessonChart = () => {
       const maxValue = getLessonChartMaxValue([maxConsumed, maxAttended])
       const pointCount = data.labels.length
       const stepX = chartWidth / (pointCount - 1 || 1)
+      const labelBounds = []
 
       ctx.strokeStyle = '#f0f0f0'
       ctx.lineWidth = 1
@@ -611,10 +644,6 @@ const drawLessonChart = () => {
           ctx.stroke()
 
           if (value > 0) {
-            ctx.font = '10px sans-serif'
-            ctx.textAlign = 'center'
-            ctx.fillStyle = color
-
             const text = formatLessonValue(value)
 
             let labelY
@@ -627,7 +656,7 @@ const drawLessonChart = () => {
               }
             }
 
-            ctx.fillText(text, x, labelY)
+            drawChartValueLabel(ctx, labelBounds, text, x, labelY, 10, color)
           }
         })
       }

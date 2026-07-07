@@ -93,6 +93,7 @@
               <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
               <view class="course-meta-row">
                 <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
+                <text class="course-lesson-count">{{ formatCourseLessonCount(course) }}</text>
                 <text class="course-role-tag" :class="getCourseRoleClass(course)">{{ getCourseRoleText(course) }}</text>
               </view>
               <text v-if="shouldShowCourseTeacher(course)" class="course-teacher">{{ getCourseTeacherText(course) }}</text>
@@ -323,6 +324,19 @@ const getLessonCountIndexByValue = (value) => {
   })
 
   return closestIndex
+}
+
+const formatLessonCount = (value) => {
+  const numericValue = Number(value) || 0
+  if (Number.isInteger(numericValue)) {
+    return numericValue.toString()
+  }
+
+  return numericValue.toFixed(2).replace(/\.?0+$/, '')
+}
+
+const formatCourseLessonCount = (course) => {
+  return `${formatLessonCount(getCoursePlannedLessons(course))}节课`
 }
 
 const greeting = computed(() => {
@@ -1162,6 +1176,20 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: 8rpx;
+}
+
+.course-lesson-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  font-size: 19rpx;
+  line-height: 30rpx;
+  white-space: nowrap;
+  color: #6f6254;
+  background: rgba(111, 98, 84, 0.12);
 }
 
 .course-role-tag {

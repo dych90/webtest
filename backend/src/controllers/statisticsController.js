@@ -70,10 +70,15 @@ const getScheduledCoursePrice = async (course) => {
   })
 }
 
+const getScheduledCourseRevenue = async (course) => {
+  const unitPrice = await getScheduledCoursePrice(course)
+  return unitPrice * getPlannedLessons(course)
+}
+
 const calculateScheduledRevenue = async (courses = []) => {
   const scheduledCourses = getBillableScheduledCourses(courses)
-  const prices = await Promise.all(scheduledCourses.map(getScheduledCoursePrice))
-  return prices.reduce((sum, price) => sum + price, 0)
+  const revenues = await Promise.all(scheduledCourses.map(getScheduledCourseRevenue))
+  return revenues.reduce((sum, revenue) => sum + revenue, 0)
 }
 
 const buildStudentMap = (students = []) => {

@@ -226,6 +226,7 @@
                   <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
                   <view class="course-meta-row">
                     <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
+                    <text class="course-lesson-count">{{ formatCourseLessonCount(course) }}</text>
                     <text class="course-role-tag" :class="getCourseRoleClass(course)">{{ getCourseRoleText(course) }}</text>
                   </view>
                 </view>
@@ -551,6 +552,28 @@ function formatTime(dateStr) {
 function formatStudentName(name) {
   if (!name) return '未分配'
   return name.replace(/（/g, '(').replace(/）/g, ')')
+}
+
+function getCoursePlannedLessons(course) {
+  const plannedLessons = Number(course?.plannedLessons)
+  if (!Number.isFinite(plannedLessons) || plannedLessons <= 0) {
+    return 1
+  }
+
+  return Math.round((plannedLessons + Number.EPSILON) * 100) / 100
+}
+
+function formatLessonCount(value) {
+  const numericValue = Number(value) || 0
+  if (Number.isInteger(numericValue)) {
+    return numericValue.toString()
+  }
+
+  return numericValue.toFixed(2).replace(/\.?0+$/, '')
+}
+
+function formatCourseLessonCount(course) {
+  return `${formatLessonCount(getCoursePlannedLessons(course))}节课`
 }
 
 function getStatusText(status) {
@@ -1706,6 +1729,20 @@ onShow(() => {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8rpx;
+}
+
+.course-lesson-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  font-size: 20rpx;
+  line-height: 32rpx;
+  white-space: nowrap;
+  color: #6f6254;
+  background-color: #f3ece2;
 }
 
 .course-role-tag {
