@@ -136,6 +136,29 @@
           </view>
         </view>
       </view>
+
+      <view class="chart-card detail-card">
+        <view class="chart-title">数据明细</view>
+        <scroll-view scroll-x class="data-table-scroll">
+          <view class="data-table">
+            <view class="table-row table-header">
+              <text class="table-cell time-cell">时间</text>
+              <text class="table-cell orange">预收入</text>
+              <text class="table-cell green">实际收入</text>
+              <text class="table-cell blue">应上课时</text>
+              <text class="table-cell green">实上课时</text>
+            </view>
+            <view v-if="chartDetailRows.length === 0" class="table-empty">暂无数据</view>
+            <view v-for="row in chartDetailRows" :key="row.label" class="table-row">
+              <text class="table-cell time-cell">{{ row.label }}</text>
+              <text class="table-cell orange">{{ row.prepaidRevenueText }}</text>
+              <text class="table-cell green">{{ row.actualRevenueText }}</text>
+              <text class="table-cell blue">{{ row.lessonsConsumedText }}</text>
+              <text class="table-cell green">{{ row.lessonsAttendedText }}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
     </view>
   </view>
 </template>
@@ -180,6 +203,19 @@ const chartData = ref({
   actualRevenue: [],
   lessonsConsumed: [],
   lessonsAttended: []
+})
+
+const chartDetailRows = computed(() => {
+  const data = chartData.value || {}
+  const labels = data.labels || []
+
+  return labels.map((label, index) => ({
+    label,
+    prepaidRevenueText: formatCurrencyValue(data.prepaidRevenue?.[index]),
+    actualRevenueText: formatCurrencyValue(data.actualRevenue?.[index]),
+    lessonsConsumedText: formatLessonValue(data.lessonsConsumed?.[index]),
+    lessonsAttendedText: formatLessonValue(data.lessonsAttended?.[index])
+  }))
 })
 
 const fetchStatistics = async () => {
@@ -249,6 +285,14 @@ const formatMoney = (num) => {
   return numericValue.toString()
 }
 
+const formatCurrencyValue = (value) => {
+  const numericValue = Number(value) || 0
+  const valueText = Number.isInteger(numericValue)
+    ? numericValue.toString()
+    : numericValue.toFixed(2).replace(/\.?0+$/, '')
+  return `¥${valueText}`
+}
+
 const formatLessonValue = (value) => {
   const numericValue = Number(value) || 0
   if (Number.isInteger(numericValue)) {
@@ -283,27 +327,57 @@ const isLabelOverlapping = (labelBounds, nextBounds, gap = 6) => {
   })
 }
 
-const drawChartValueLabel = (ctx, labelBounds, text, x, y, fontSize = 10, color = '#5F724C') => {
+const drawChartValueLabel = (ctx, labelBounds, text, x, y, fontSize = 10, color = '#5F724C', options = {}) => {
   if (!text) return false
 
   ctx.font = `${fontSize}px sans-serif`
   ctx.textAlign = 'center'
-  ctx.fillStyle = color
 
   const textWidth = ctx.measureText(text).width
-  const nextBounds = {
+  const minY = options.minY || fontSize + 4
+  const maxY = options.maxY || Number.POSITIVE_INFINITY
+  const candidateYs = [
+    y,
+    y - fontSize - 6,
+    y + fontSize + 8,
+    y - (fontSize + 6) * 2,
+    y + (fontSize + 8) * 2
+  ].filter(candidateY => candidateY >= minY && candidateY <= maxY)
+
+  const drawLabel = (labelY, bounds) => {
+    if (options.background !== false) {
+      ctx.fillStyle = 'rgba(255, 253, 248, 0.86)'
+      ctx.fillRect(bounds.left - 3, bounds.top - 2, textWidth + 6, fontSize + 8)
+    }
+
+    ctx.fillStyle = color
+    ctx.fillText(text, x, labelY)
+    labelBounds.push(bounds)
+  }
+
+  for (const candidateY of candidateYs) {
+    const nextBounds = {
+      left: x - textWidth / 2,
+      right: x + textWidth / 2,
+      top: candidateY - fontSize,
+      bottom: candidateY + 4
+    }
+
+    if (!isLabelOverlapping(labelBounds, nextBounds)) {
+      drawLabel(candidateY, nextBounds)
+      return true
+    }
+  }
+
+  const fallbackY = Math.min(Math.max(y, minY), maxY)
+  const fallbackBounds = {
     left: x - textWidth / 2,
     right: x + textWidth / 2,
-    top: y - fontSize,
-    bottom: y + 4
+    top: fallbackY - fontSize,
+    bottom: fallbackY + 4
   }
 
-  if (isLabelOverlapping(labelBounds, nextBounds)) {
-    return false
-  }
-
-  ctx.fillText(text, x, y)
-  labelBounds.push(nextBounds)
+  drawLabel(fallbackY, fallbackBounds)
   return true
 }
 
@@ -463,9 +537,15 @@ const drawPrepaidChart = () => {
           const labelY = barY - 16
 
           if (labelY < padding.top + 12) {
-            drawChartValueLabel(ctx, labelBounds, text, x, padding.top + 12, valueFontSize)
+            drawChartValueLabel(ctx, labelBounds, text, x, padding.top + 12, valueFontSize, '#5F724C', {
+              minY: padding.top + 12,
+              maxY: height - padding.bottom - 4
+            })
           } else {
-            drawChartValueLabel(ctx, labelBounds, text, x, labelY, valueFontSize)
+            drawChartValueLabel(ctx, labelBounds, text, x, labelY, valueFontSize, '#5F724C', {
+              minY: padding.top + 12,
+              maxY: height - padding.bottom - 4
+            })
           }
         }
       })
@@ -549,9 +629,15 @@ const drawActualChart = () => {
           const labelY = barY - 16
 
           if (labelY < padding.top + 12) {
-            drawChartValueLabel(ctx, labelBounds, text, x, padding.top + 12, valueFontSize)
+            drawChartValueLabel(ctx, labelBounds, text, x, padding.top + 12, valueFontSize, '#5F724C', {
+              minY: padding.top + 12,
+              maxY: height - padding.bottom - 4
+            })
           } else {
-            drawChartValueLabel(ctx, labelBounds, text, x, labelY, valueFontSize)
+            drawChartValueLabel(ctx, labelBounds, text, x, labelY, valueFontSize, '#5F724C', {
+              minY: padding.top + 12,
+              maxY: height - padding.bottom - 4
+            })
           }
         }
       })
@@ -656,7 +742,10 @@ const drawLessonChart = () => {
               }
             }
 
-            drawChartValueLabel(ctx, labelBounds, text, x, labelY, 10, color)
+            drawChartValueLabel(ctx, labelBounds, text, x, labelY, 10, color, {
+              minY: padding.top + 12,
+              maxY: height - padding.bottom - 4
+            })
           }
         })
       }
@@ -750,14 +839,18 @@ onShow(() => {
   border-radius: 16rpx;
   padding: 30rpx;
   text-align: center;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .stat-value {
   display: block;
   font-size: 36rpx;
+  line-height: 44rpx;
   font-weight: bold;
   color: #5F724C;
   margin-bottom: 12rpx;
+  word-break: break-all;
 }
 
 .stat-value.revenue {
@@ -831,6 +924,7 @@ onShow(() => {
   border-radius: 16rpx;
   padding: 20rpx;
   margin-bottom: 16rpx;
+  box-sizing: border-box;
 }
 
 .chart-title {
@@ -890,16 +984,27 @@ onShow(() => {
   background-color: #5F724C;
 }
 
+.detail-card {
+  padding-bottom: 24rpx;
+}
+
+.data-table-scroll {
+  width: 100%;
+}
+
 .data-table {
-  background-color: #FFFDF8;
-  border-radius: 16rpx;
-  margin-bottom: 30rpx;
+  min-width: 980rpx;
+  border: 1rpx solid #E8DCCB;
+  border-radius: 12rpx;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .table-row {
   display: flex;
-  border-bottom: 1rpx solid #f0f0f0;
+  align-items: stretch;
+  min-height: 72rpx;
+  border-bottom: 1rpx solid #EFE5D8;
 }
 
 .table-row:last-child {
@@ -911,11 +1016,20 @@ onShow(() => {
 }
 
 .table-cell {
-  flex: 1;
-  padding: 20rpx 16rpx;
+  width: 190rpx;
+  flex: 0 0 190rpx;
+  padding: 18rpx 14rpx;
   text-align: center;
   font-size: 24rpx;
   color: #3F352B;
+  line-height: 34rpx;
+  box-sizing: border-box;
+  word-break: break-all;
+}
+
+.time-cell {
+  width: 160rpx;
+  flex-basis: 160rpx;
 }
 
 .table-header .table-cell {
@@ -937,5 +1051,13 @@ onShow(() => {
 .table-cell.orange {
   color: #A26B39;
   font-weight: bold;
+}
+
+.table-empty {
+  height: 88rpx;
+  line-height: 88rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: #8B8176;
 }
 </style>

@@ -70,7 +70,7 @@
         >
           <view class="course-section-header">
             <text class="course-section-title">{{ section.title }}</text>
-            <text class="course-section-count">{{ section.items.length }}节</text>
+            <text class="course-section-count">{{ formatCourseSectionLessonCount(section.items) }}节</text>
           </view>
 
           <view
@@ -337,6 +337,11 @@ const formatLessonCount = (value) => {
 
 const formatCourseLessonCount = (course) => {
   return `${formatLessonCount(getCoursePlannedLessons(course))}节课`
+}
+
+const formatCourseSectionLessonCount = (courses = []) => {
+  const totalLessons = courses.reduce((total, course) => total + getCoursePlannedLessons(course), 0)
+  return formatLessonCount(Math.round((totalLessons + Number.EPSILON) * 100) / 100)
 }
 
 const greeting = computed(() => {
@@ -2155,6 +2160,7 @@ onUnmounted(() => {
 }
 
 .stats-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16rpx;
 }
 
@@ -2164,14 +2170,18 @@ onUnmounted(() => {
   border: 3rpx solid rgba(85, 68, 53, 0.16);
   border-radius: 22rpx;
   background: rgba(255, 253, 244, 0.74);
+  min-width: 0;
   box-sizing: border-box;
 }
 
 .stat-value {
+  max-width: 100%;
   margin-bottom: 8rpx;
   font-size: 34rpx;
   line-height: 42rpx;
   color: #5f724c;
+  white-space: normal;
+  word-break: break-all;
 }
 
 .stat-value.warning {
