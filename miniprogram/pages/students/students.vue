@@ -49,11 +49,19 @@
             <text>{{ student.name.charAt(0) }}</text>
           </view>
           <view
-            v-if="getCrownMark(student.rewardRanking?.crownType)"
+            v-if="student.rewardRanking?.crownType"
             class="crown-badge"
             :class="student.rewardRanking?.crownType"
           >
-            <text>{{ getCrownMark(student.rewardRanking?.crownType) }}</text>
+            <view class="crown-icon">
+              <view class="crown-peak crown-peak-left"></view>
+              <view class="crown-peak crown-peak-center"></view>
+              <view class="crown-peak crown-peak-right"></view>
+              <view class="crown-base"></view>
+              <view class="crown-jewel crown-jewel-left"></view>
+              <view class="crown-jewel crown-jewel-center"></view>
+              <view class="crown-jewel crown-jewel-right"></view>
+            </view>
           </view>
         </view>
         <view class="student-info">
@@ -80,9 +88,12 @@
               {{ student.defaultCourseTypeId.name }}
             </text>
             <text class="detail-item" v-if="student.phone">{{ student.phone }}</text>
-            <text class="detail-item growth" v-if="student.rewardRanking">
-              成长{{ student.rewardRanking.totalGrowthStars || 0 }}星 · {{ formatGrowthLevel(student.rewardRanking) }}
-            </text>
+            <view class="detail-item growth" v-if="student.rewardRanking">
+              <text class="growth-label">成长</text>
+              <text class="growth-star-mark">★</text>
+              <text class="growth-star-count">×{{ formatGrowthStarCount(student.rewardRanking) }}</text>
+              <text class="growth-level">· {{ formatGrowthLevel(student.rewardRanking) }}</text>
+            </view>
           </view>
         </view>
         <view v-if="!isSortMode" class="student-arrow">
@@ -103,7 +114,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
-import { formatGrowthLevel, getCrownMark } from '@/utils/reward'
+import { formatGrowthLevel, formatGrowthStarCount } from '@/utils/reward'
 
 const userStore = useUserStore()
 
@@ -386,37 +397,105 @@ onShow(() => {
 
 .crown-badge {
   position: absolute;
-  top: -16rpx;
-  right: -12rpx;
-  width: 44rpx;
-  height: 34rpx;
-  line-height: 34rpx;
+  top: -18rpx;
+  right: -14rpx;
+  width: 46rpx;
+  height: 36rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8rpx 8rpx 12rpx 12rpx;
-  text-align: center;
   border: 2rpx solid rgba(63, 53, 43, 0.18);
   box-shadow: 0 4rpx 10rpx rgba(63, 53, 43, 0.12);
+  overflow: hidden;
 }
 
 .crown-badge.gold {
   background-color: #E2B84B;
+  color: #FFF7D9;
 }
 
 .crown-badge.silver {
   background-color: #C7CDD3;
+  color: #F7FAFC;
 }
 
 .crown-badge.bronze {
   background-color: #B8793E;
+  color: #FFF0DD;
 }
 
-.crown-badge text {
-  color: #FFFDF8;
-  font-size: 20rpx;
-  font-weight: bold;
+.crown-icon {
+  position: relative;
+  width: 28rpx;
+  height: 22rpx;
+}
+
+.crown-peak,
+.crown-base,
+.crown-jewel {
+  position: absolute;
+}
+
+.crown-peak {
+  bottom: 6rpx;
+  width: 0;
+  height: 0;
+  border-left: 5rpx solid transparent;
+  border-right: 5rpx solid transparent;
+  border-bottom: 11rpx solid currentColor;
+}
+
+.crown-peak-left {
+  left: 1rpx;
+  transform: rotate(-8deg);
+}
+
+.crown-peak-center {
+  left: 9rpx;
+  border-left-width: 6rpx;
+  border-right-width: 6rpx;
+  border-bottom-width: 14rpx;
+}
+
+.crown-peak-right {
+  right: 1rpx;
+  transform: rotate(8deg);
+}
+
+.crown-base {
+  left: 2rpx;
+  right: 2rpx;
+  bottom: 0;
+  height: 6rpx;
+  border-radius: 4rpx;
+  background-color: currentColor;
+}
+
+.crown-jewel {
+  bottom: 10rpx;
+  width: 3rpx;
+  height: 3rpx;
+  border-radius: 50%;
+  background-color: #FFFDF8;
+  opacity: 0.95;
+}
+
+.crown-jewel-left {
+  left: 4rpx;
+}
+
+.crown-jewel-center {
+  left: 12rpx;
+}
+
+.crown-jewel-right {
+  right: 4rpx;
 }
 
 .student-info {
   flex: 1;
+  min-width: 0;
 }
 
 .student-name-row {
@@ -494,6 +573,25 @@ onShow(() => {
 .detail-item.growth {
   color: #5F724C;
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4rpx;
+}
+
+.growth-label,
+.growth-level {
+  color: #5F724C;
+}
+
+.growth-star-mark {
+  color: #D59A24;
+  font-size: 26rpx;
+  line-height: 1;
+}
+
+.growth-star-count {
+  color: #5F724C;
 }
 
 .student-arrow {

@@ -5,9 +5,36 @@ export const CROWN_TEXT_MAP = {
 }
 
 export const CROWN_MARK_MAP = {
-  gold: '金',
-  silver: '银',
-  bronze: '铜'
+  gold: '皇冠',
+  silver: '皇冠',
+  bronze: '皇冠'
+}
+
+export const GROWTH_POINTS_PER_DISPLAY_STAR = 5
+
+export const formatRewardAmount = (value) => {
+  const numericValue = Number(value) || 0
+  const roundedValue = Math.round(numericValue * 100) / 100
+  return Number.isInteger(roundedValue)
+    ? String(roundedValue)
+    : String(roundedValue).replace(/\.?0+$/, '')
+}
+
+const getGrowthPointValue = (growth = {}) => {
+  if (typeof growth === 'number') {
+    return growth
+  }
+
+  return Number(growth.rankScore ?? growth.totalGrowthStars ?? 0) || 0
+}
+
+export const formatGrowthStarCount = (growth = {}) => {
+  const pointValue = getGrowthPointValue(growth)
+  return formatRewardAmount(pointValue / GROWTH_POINTS_PER_DISPLAY_STAR)
+}
+
+export const formatGrowthStarText = (growth = {}) => {
+  return `★×${formatGrowthStarCount(growth)}`
 }
 
 export const getCrownText = (crownType) => {
@@ -22,24 +49,28 @@ export const formatGrowthLevel = (growth = {}) => {
   const sunCount = Number(growth.sunCount) || 0
   const moonRemainder = Number(growth.moonRemainder) || 0
   const starRemainder = Number(growth.starRemainder) || 0
+  const parts = []
 
   if (sunCount > 0) {
-    return `${sunCount}日 ${moonRemainder}月 ${starRemainder}星`
+    parts.push(`${sunCount}日`)
   }
 
   if (moonRemainder > 0) {
-    return `${moonRemainder}月 ${starRemainder}星`
+    parts.push(`${moonRemainder}月`)
   }
 
-  return `${starRemainder}星`
+  if (starRemainder > 0 || parts.length === 0) {
+    parts.push(formatGrowthStarText(starRemainder))
+  }
+
+  return parts.join(' ')
 }
 
 export const formatPointText = (value) => {
-  const numericValue = Number(value) || 0
-  return `${numericValue}积分`
+  return `${formatRewardAmount(value)}积分`
 }
 
 export const formatDebtText = (debtOverview = {}) => {
   const debtPoints = Number(debtOverview.debtPoints) || 0
-  return debtPoints > 0 ? `欠 ${debtPoints} 积分` : '无欠账'
+  return debtPoints > 0 ? `欠 ${formatRewardAmount(debtPoints)} 积分` : '无欠账'
 }

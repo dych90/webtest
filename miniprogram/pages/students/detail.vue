@@ -62,9 +62,11 @@
     <view class="reward-section">
       <view class="section-header reward-header">
         <text class="section-title">成长与积分</text>
-        <text v-if="rewardOverview.growthOverview?.rankScore" class="reward-rank">
-          成长{{ rewardOverview.growthOverview.rankScore }}星
-        </text>
+        <view v-if="rewardOverview.growthOverview?.rankScore" class="reward-rank">
+          <text>成长</text>
+          <text class="reward-rank-star">★</text>
+          <text>×{{ formatGrowthStarCount(rewardOverview.growthOverview) }}</text>
+        </view>
       </view>
       <view class="reward-grid">
         <view class="reward-metric">
@@ -207,7 +209,7 @@ import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
-import { formatDebtText, formatGrowthLevel } from '@/utils/reward'
+import { formatDebtText, formatGrowthLevel, formatGrowthStarCount } from '@/utils/reward'
 
 const student = ref({})
 const studentId = ref('')
@@ -445,9 +447,18 @@ const handleDelete = () => {
 }
 
 .reward-rank {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
   font-size: 24rpx;
   color: #5F724C;
   font-weight: bold;
+}
+
+.reward-rank-star {
+  color: #D59A24;
+  font-size: 26rpx;
+  line-height: 1;
 }
 
 .reward-grid {
