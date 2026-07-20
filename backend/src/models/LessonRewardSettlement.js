@@ -9,6 +9,7 @@ const lessonRewardSettlementSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   issueLessonReward: { type: Boolean, default: false },
+  lessonCountSnapshot: { type: Number, default: 1 },
   lessonGrowthStars: { type: Number, default: 0 },
   lessonPoints: { type: Number, default: 0 },
   practiceGrowthStars: { type: Number, default: 0 },

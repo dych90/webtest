@@ -243,7 +243,7 @@
             <view class="form-item notify-row">
               <view>
                 <text class="form-label">上课奖励</text>
-                <text class="notify-tip">回课质量合格发放5星/5积分</text>
+                <text class="notify-tip">按课时倍数发放，基础为5星/5积分</text>
               </view>
               <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" :color="themeColors.primary" />
             </view>

@@ -4,7 +4,7 @@ const Student = require('../models/Student')
 const {
   GROWTH_GATE_TYPES
 } = require('../models/pointShared')
-const { toObjectId, toInteger, toDate } = require('./rewardCommon')
+const { toObjectId, toInteger, toAmount, normalizeAmount, toDate } = require('./rewardCommon')
 const { getActivePointRuleConfig, DEFAULT_POINT_RULE_CONFIG } = require('./rewardRuleService')
 
 const ensureGrowthSummary = async ({ studentId, teacherId }) => {
@@ -48,7 +48,7 @@ const createGrowthLedgerEntry = async ({
     studentId: toObjectId(studentId, 'studentId'),
     teacherId: toObjectId(teacherId, 'teacherId'),
     settlementId: settlementId ? toObjectId(settlementId, 'settlementId') : undefined,
-    changeAmount: toInteger(changeAmount, 'changeAmount'),
+    changeAmount: toAmount(changeAmount, 'changeAmount'),
     businessType,
     businessId: businessId ? toObjectId(businessId, 'businessId') : undefined,
     occurredAt: toDate(occurredAt, 'occurredAt'),
@@ -76,14 +76,14 @@ const rebuildGrowthSummary = async ({ studentId, teacherId }) => {
 
   for (const ledger of ledgers) {
     const amount = Number(ledger.changeAmount) || 0
-    totalGrowthStars += amount
+    totalGrowthStars = normalizeAmount(totalGrowthStars + amount)
 
     if (ledger.businessType === 'lesson_reward') {
-      totalLessonGrowthStars += amount
+      totalLessonGrowthStars = normalizeAmount(totalLessonGrowthStars + amount)
     }
 
     if (ledger.businessType === 'practice_reward') {
-      totalPracticeGrowthStars += amount
+      totalPracticeGrowthStars = normalizeAmount(totalPracticeGrowthStars + amount)
     }
 
     if (amount !== 0 && ledger.occurredAt) {
@@ -129,13 +129,13 @@ const applyGrowthChange = async (params) => {
 }
 
 const deriveGrowthBreakdown = (totalGrowthStars, ruleConfig = DEFAULT_POINT_RULE_CONFIG) => {
-  const safeTotalGrowthStars = Math.max(0, Number(totalGrowthStars) || 0)
+  const safeTotalGrowthStars = normalizeAmount(Math.max(0, Number(totalGrowthStars) || 0))
   const starsToMoon = ruleConfig.growthStarsToMoon || DEFAULT_POINT_RULE_CONFIG.growthStarsToMoon
   const moonsToSun = ruleConfig.growthMoonsToSun || DEFAULT_POINT_RULE_CONFIG.growthMoonsToSun
   const totalMoonEquivalent = Math.floor(safeTotalGrowthStars / starsToMoon)
   const sunCount = Math.floor(totalMoonEquivalent / moonsToSun)
   const moonRemainder = totalMoonEquivalent % moonsToSun
-  const starRemainder = safeTotalGrowthStars % starsToMoon
+  const starRemainder = normalizeAmount(safeTotalGrowthStars % starsToMoon)
 
   let currentLevelType = 'star'
   if (sunCount > 0) {

@@ -83,7 +83,7 @@
         <view class="form-item switch-item">
           <view>
             <text class="form-label">上课奖励</text>
-            <text class="form-hint">回课质量合格发放5星/5积分</text>
+            <text class="form-hint">按课时倍数发放，基础为5星/5积分</text>
           </view>
           <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" color="#5F724C" />
         </view>

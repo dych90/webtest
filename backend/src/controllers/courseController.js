@@ -11,6 +11,7 @@ const {
   isSameId
 } = require('../utils/studentAccess')
 const { getEffectivePaymentType } = require('../utils/studentAccount')
+const rewardSettlementService = require('../services/rewardSettlementService')
 
 const PRACTICE_COURSE_TYPE_NAME = '陪练课'
 const DEFAULT_PLANNED_LESSONS = 1
@@ -320,6 +321,12 @@ const deleteCourse = async (req, res) => {
       const recordTeacherId = lessonRecord.teacherId || course.teacherId
       const accountPaymentType = student ? await getEffectivePaymentType(student, recordTeacherId) : ''
 
+      await rewardSettlementService.voidRewardSettlementByLessonRecordId({
+        lessonRecordId: lessonRecord._id,
+        voidedBy: user._id,
+        voidReason: '删除课程自动回收关联上课积分奖励'
+      })
+
       if (student && accountPaymentType === 'prepaid' && lessonRecord.isDeducted) {
         const studentIdStr = lessonRecord.studentId.toString()
         await LessonBalance.findOneAndUpdate(
@@ -410,6 +417,12 @@ const deleteCoursesByGroup = async (req, res) => {
       const course = courses.find(item => item._id.toString() === record.courseId.toString())
       const recordTeacherId = record.teacherId || course?.teacherId
       const accountPaymentType = student ? await getEffectivePaymentType(student, recordTeacherId) : ''
+
+      await rewardSettlementService.voidRewardSettlementByLessonRecordId({
+        lessonRecordId: record._id,
+        voidedBy: user._id,
+        voidReason: '批量删除课程自动回收关联上课积分奖励'
+      })
 
       if (student && accountPaymentType === 'prepaid' && record.isDeducted) {
         const studentIdStr = record.studentId.toString()

@@ -1,8 +1,9 @@
 const PointLedger = require('../models/PointLedger')
 const PointBalance = require('../models/PointBalance')
 const LessonRewardSettlement = require('../models/LessonRewardSettlement')
+const RewardRedemption = require('../models/RewardRedemption')
 const Student = require('../models/Student')
-const { toObjectId, toInteger, toDate } = require('./rewardCommon')
+const { toObjectId, toInteger, toAmount, normalizeAmount, toDate } = require('./rewardCommon')
 
 const NEGATIVE_BALANCE_AUDIT_TYPES = ['lesson_reward', 'practice_reward', 'settlement_void', 'manual_adjust']
 
@@ -80,7 +81,7 @@ const createPointLedgerEntry = async ({
     studentId: toObjectId(studentId, 'studentId'),
     teacherId: toObjectId(teacherId, 'teacherId'),
     settlementId: settlementId ? toObjectId(settlementId, 'settlementId') : undefined,
-    changeAmount: toInteger(changeAmount, 'changeAmount'),
+    changeAmount: toAmount(changeAmount, 'changeAmount'),
     businessType,
     businessId: businessId ? toObjectId(businessId, 'businessId') : undefined,
     occurredAt: toDate(occurredAt, 'occurredAt'),
@@ -109,31 +110,31 @@ const rebuildPointBalance = async ({ studentId, teacherId }) => {
 
   for (const ledger of ledgers) {
     const amount = Number(ledger.changeAmount) || 0
-    availablePoints += amount
+    availablePoints = normalizeAmount(availablePoints + amount)
 
     if (['lesson_reward', 'practice_reward', 'manual_adjust'].includes(ledger.businessType)) {
-      totalEarnedPoints += amount
+      totalEarnedPoints = normalizeAmount(totalEarnedPoints + amount)
     }
 
     if (ledger.businessType === 'reward_redeem' && amount < 0) {
-      totalSpentPoints += Math.abs(amount)
+      totalSpentPoints = normalizeAmount(totalSpentPoints + Math.abs(amount))
     }
 
     if (ledger.businessType === 'reward_refund' && amount > 0) {
-      totalSpentPoints -= amount
+      totalSpentPoints = normalizeAmount(totalSpentPoints - amount)
     }
 
     if (ledger.businessType === 'lesson_reward') {
-      totalLessonPoints += amount
+      totalLessonPoints = normalizeAmount(totalLessonPoints + amount)
     }
 
     if (ledger.businessType === 'practice_reward') {
-      totalPracticePoints += amount
+      totalPracticePoints = normalizeAmount(totalPracticePoints + amount)
     }
   }
 
-  totalEarnedPoints = Math.max(0, totalEarnedPoints)
-  totalSpentPoints = Math.max(0, totalSpentPoints)
+  totalEarnedPoints = normalizeAmount(Math.max(0, totalEarnedPoints))
+  totalSpentPoints = normalizeAmount(Math.max(0, totalSpentPoints))
 
   return PointBalance.findOneAndUpdate(
     {
@@ -171,7 +172,7 @@ const applyPointChange = async ({
   remark = null,
   allowNegativeBalance = false
 }) => {
-  const normalizedChangeAmount = toInteger(changeAmount, 'changeAmount')
+  const normalizedChangeAmount = toAmount(changeAmount, 'changeAmount')
   const normalizedRemark = remark === undefined || remark === null
     ? null
     : remark.toString().trim()
@@ -224,7 +225,7 @@ const applyManualPointAdjustment = async ({
   adjustedBy,
   adjustedAt = new Date()
 }) => {
-  const normalizedChangeAmount = toInteger(changeAmount, 'changeAmount')
+  const normalizedChangeAmount = toAmount(changeAmount, 'changeAmount')
   if (normalizedChangeAmount === 0) {
     throw new Error('changeAmount must not be 0')
   }
@@ -335,6 +336,178 @@ const resolveDebtReasonLabel = (ledger, settlement) => {
   return '积分扣减'
 }
 
+const resolvePointRecordView = (ledger, { settlementMap, redemptionMap }) => {
+  const changeAmount = Number(ledger.changeAmount) || 0
+  const settlement = ledger.settlementId
+    ? settlementMap.get(String(ledger.settlementId))
+    : null
+  const redemption = ledger.businessId
+    ? redemptionMap.get(String(ledger.businessId))
+    : null
+  const rewardName = redemption?.rewardSnapshot?.rewardName || ''
+
+  if (ledger.businessType === 'lesson_reward') {
+    return {
+      recordType: changeAmount >= 0 ? 'earn' : 'rollback',
+      recordTitle: changeAmount >= 0 ? '上课奖励' : '上课奖励回收',
+      recordDetail: changeAmount >= 0
+        ? (ledger.remark || '正常上课获得积分')
+        : (settlement?.voidReason || ledger.remark || '取消上课回收积分')
+    }
+  }
+
+  if (ledger.businessType === 'practice_reward') {
+    return {
+      recordType: changeAmount >= 0 ? 'earn' : 'rollback',
+      recordTitle: changeAmount >= 0 ? '练琴奖励' : '练琴奖励回收',
+      recordDetail: changeAmount >= 0
+        ? (ledger.remark || '练琴完成获得积分')
+        : (settlement?.voidReason || ledger.remark || '练琴奖励作废回收')
+    }
+  }
+
+  if (ledger.businessType === 'reward_redeem') {
+    return {
+      recordType: 'spend',
+      recordTitle: '礼物兑换',
+      recordDetail: rewardName
+        ? `兑换${rewardName}`
+        : (ledger.remark || '兑换礼物扣减积分'),
+      rewardName,
+      redemptionStatus: redemption?.status || ''
+    }
+  }
+
+  if (ledger.businessType === 'reward_refund') {
+    return {
+      recordType: 'refund',
+      recordTitle: '兑换退回',
+      recordDetail: rewardName
+        ? `退回${rewardName}积分`
+        : (redemption?.cancelReason || ledger.remark || '兑换取消退回积分'),
+      rewardName,
+      redemptionStatus: redemption?.status || ''
+    }
+  }
+
+  if (ledger.businessType === 'manual_adjust') {
+    return {
+      recordType: changeAmount >= 0 ? 'earn' : 'adjust',
+      recordTitle: changeAmount >= 0 ? '人工增加积分' : '人工扣减积分',
+      recordDetail: ledger.remark || '人工调整'
+    }
+  }
+
+  if (ledger.businessType === 'settlement_void') {
+    return {
+      recordType: 'rollback',
+      recordTitle: '奖励结算作废',
+      recordDetail: settlement?.voidReason || ledger.remark || '奖励作废回收积分'
+    }
+  }
+
+  return {
+    recordType: changeAmount >= 0 ? 'earn' : 'spend',
+    recordTitle: changeAmount >= 0 ? '积分获得' : '积分使用',
+    recordDetail: ledger.remark || ''
+  }
+}
+
+const listStudentPointRecords = async ({
+  studentId,
+  teacherId,
+  limit = 50,
+  skip = 0,
+  businessType = ''
+}) => {
+  const normalizedStudentId = toObjectId(studentId, 'studentId')
+  const normalizedTeacherId = toObjectId(teacherId, 'teacherId')
+  const normalizedLimit = toInteger(limit, 'limit', { min: 1, max: 200 })
+  const normalizedSkip = toInteger(skip, 'skip', { min: 0 })
+  const query = {
+    studentId: normalizedStudentId,
+    teacherId: normalizedTeacherId
+  }
+
+  if (businessType) {
+    query.businessType = businessType
+  }
+
+  const ledgers = await PointLedger.find(query)
+    .sort({ occurredAt: -1, createdAt: -1, _id: -1 })
+    .skip(normalizedSkip)
+    .limit(normalizedLimit)
+    .lean()
+
+  const settlementIds = [
+    ...new Set(
+      ledgers
+        .filter(item => item.settlementId)
+        .map(item => String(item.settlementId))
+    )
+  ]
+  const redemptionIds = [
+    ...new Set(
+      ledgers
+        .filter(item => ['reward_redeem', 'reward_refund'].includes(item.businessType) && item.businessId)
+        .map(item => String(item.businessId))
+    )
+  ]
+
+  const [settlements, redemptions] = await Promise.all([
+    settlementIds.length > 0
+      ? LessonRewardSettlement.find({
+          _id: { $in: settlementIds.map(id => toObjectId(id, 'settlementId')) }
+        })
+          .select('status voidReason lessonRecordId')
+          .lean()
+      : [],
+    redemptionIds.length > 0
+      ? RewardRedemption.find({
+          _id: { $in: redemptionIds.map(id => toObjectId(id, 'redemptionId')) }
+        })
+          .select('rewardSnapshot status cancelReason')
+          .lean()
+      : []
+  ])
+
+  const settlementMap = new Map(
+    settlements.map(item => [String(item._id), item])
+  )
+  const redemptionMap = new Map(
+    redemptions.map(item => [String(item._id), item])
+  )
+
+  return ledgers.map(item => {
+    const settlement = item.settlementId
+      ? settlementMap.get(String(item.settlementId))
+      : null
+    const view = resolvePointRecordView(item, {
+      settlementMap,
+      redemptionMap
+    })
+
+    return {
+      ledgerId: item._id,
+      studentId: item.studentId,
+      teacherId: item.teacherId,
+      settlementId: item.settlementId || null,
+      businessType: item.businessType,
+      businessId: item.businessId || null,
+      changeAmount: item.changeAmount,
+      occurredAt: item.occurredAt || item.createdAt,
+      createdAt: item.createdAt || null,
+      createdByType: item.createdByType,
+      createdById: item.createdById || null,
+      remark: item.remark || '',
+      settlementStatus: settlement?.status || '',
+      voidReason: settlement?.voidReason || '',
+      lessonRecordId: settlement?.lessonRecordId || null,
+      ...view
+    }
+  })
+}
+
 const getPointDebtOverview = async ({
   studentId,
   teacherId,
@@ -350,7 +523,7 @@ const getPointDebtOverview = async ({
   const balance = typeof balanceDoc.toObject === 'function'
     ? balanceDoc.toObject()
     : balanceDoc
-  const debtPoints = Math.max(0, -(Number(balance.availablePoints) || 0))
+  const debtPoints = normalizeAmount(Math.max(0, -(Number(balance.availablePoints) || 0)))
 
   if (debtPoints <= 0) {
     return {
@@ -394,10 +567,10 @@ const getPointDebtOverview = async ({
   for (const ledger of ledgers) {
     const beforeBalance = runningBalance
     const changeAmount = Number(ledger.changeAmount) || 0
-    const afterBalance = beforeBalance + changeAmount
-    const debtBeforeChange = Math.max(0, -beforeBalance)
-    const debtAfterChange = Math.max(0, -afterBalance)
-    const debtIncrease = Math.max(0, debtAfterChange - debtBeforeChange)
+    const afterBalance = normalizeAmount(beforeBalance + changeAmount)
+    const debtBeforeChange = normalizeAmount(Math.max(0, -beforeBalance))
+    const debtAfterChange = normalizeAmount(Math.max(0, -afterBalance))
+    const debtIncrease = normalizeAmount(Math.max(0, debtAfterChange - debtBeforeChange))
 
     runningBalance = afterBalance
 
@@ -436,12 +609,12 @@ const getPointDebtOverview = async ({
     }
 
     const event = debtTimeline[index]
-    const contribution = Math.min(remainingDebt, event.debtIncrease)
+    const contribution = normalizeAmount(Math.min(remainingDebt, event.debtIncrease))
     outstandingDebtEvents.push({
       ...event,
       outstandingContribution: contribution
     })
-    remainingDebt -= contribution
+    remainingDebt = normalizeAmount(remainingDebt - contribution)
   }
 
   return {
@@ -462,5 +635,6 @@ module.exports = {
   applyManualPointAdjustment,
   getCurrentPointBalance,
   listTeacherPointRanking,
+  listStudentPointRecords,
   getPointDebtOverview
 }

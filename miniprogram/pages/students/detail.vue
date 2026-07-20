@@ -94,6 +94,29 @@
         <button class="btn-mall" @click="goToRewardMall">积分商城</button>
         <button class="btn-adjust" v-if="canManageStudent" @click="openAdjustDialog">积分修正</button>
       </view>
+      <view class="point-record-section">
+        <view class="point-record-header">
+          <text class="point-record-title">积分明细</text>
+          <text class="point-record-count">最近{{ pointRecords.length }}条</text>
+        </view>
+        <view v-if="pointRecords.length === 0" class="point-record-empty">暂无积分记录</view>
+        <view v-else class="point-record-list">
+          <view v-for="item in pointRecords" :key="item.ledgerId" class="point-record-item">
+            <view class="point-record-main">
+              <view class="point-record-info">
+                <text class="point-record-name">{{ item.recordTitle || formatPointBusinessType(item.businessType) }}</text>
+                <text class="point-record-time">{{ formatDateTime(item.occurredAt || item.createdAt) }}</text>
+              </view>
+              <text class="point-record-change" :class="getPointRecordClass(item)">
+                {{ formatPointChange(item.changeAmount) }}
+              </text>
+            </view>
+            <text v-if="item.recordDetail || item.remark" class="point-record-detail">
+              {{ item.recordDetail || item.remark }}
+            </text>
+          </view>
+        </view>
+      </view>
     </view>
     
     <view class="info-section" v-if="student.learningProgress">
@@ -190,6 +213,7 @@ const student = ref({})
 const studentId = ref('')
 const priceHistory = ref([])
 const rewardOverview = ref({})
+const pointRecords = ref([])
 const adjustDialogVisible = ref(false)
 const adjustSaving = ref(false)
 const adjustForm = ref({
@@ -207,6 +231,7 @@ onMounted(() => {
     fetchStudent()
     fetchPriceHistory()
     fetchRewardOverview()
+    fetchPointRecords()
   }
 })
 
@@ -215,6 +240,7 @@ onShow(() => {
     fetchStudent()
     fetchPriceHistory()
     fetchRewardOverview()
+    fetchPointRecords()
   }
 })
 
@@ -249,6 +275,44 @@ const fetchRewardOverview = async () => {
   } catch (error) {
     console.error('获取成长积分失败', error)
   }
+}
+
+const fetchPointRecords = async () => {
+  try {
+    const res = await get(`/students/${studentId.value}/point-records`, { limit: 20 })
+    pointRecords.value = res.data?.items || []
+  } catch (error) {
+    console.error('获取积分明细失败', error)
+  }
+}
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const dateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  const timeText = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return `${dateText} ${timeText}`
+}
+
+const formatPointChange = (value) => {
+  const amount = Number(value) || 0
+  return `${amount > 0 ? '+' : ''}${amount}积分`
+}
+
+const getPointRecordClass = (item) => {
+  return (Number(item?.changeAmount) || 0) >= 0 ? 'income' : 'expense'
+}
+
+const formatPointBusinessType = (businessType) => {
+  const map = {
+    lesson_reward: '上课奖励',
+    practice_reward: '练琴奖励',
+    manual_adjust: '人工调整',
+    reward_redeem: '礼物兑换',
+    reward_refund: '兑换退回',
+    settlement_void: '奖励作废'
+  }
+  return map[businessType] || '积分记录'
 }
 
 const getPracticeTeacherName = (student) => {
@@ -303,6 +367,7 @@ const submitPointAdjustment = async () => {
     uni.showToast({ title: '修正成功', icon: 'success' })
     adjustDialogVisible.value = false
     fetchRewardOverview()
+    fetchPointRecords()
   } catch (error) {
     uni.showToast({ title: error.message || '修正失败', icon: 'none' })
   } finally {
@@ -494,6 +559,107 @@ const handleDelete = () => {
   background-color: #FFFDF8;
   color: #A26B39;
   border: 2rpx solid #A26B39;
+}
+
+.point-record-section {
+  margin-top: 22rpx;
+  padding-top: 18rpx;
+  border-top: 1rpx solid #E7D8C7;
+}
+
+.point-record-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14rpx;
+}
+
+.point-record-title {
+  font-size: 28rpx;
+  color: #3F352B;
+  font-weight: bold;
+}
+
+.point-record-count {
+  font-size: 22rpx;
+  color: #8B8176;
+}
+
+.point-record-empty {
+  padding: 20rpx 0 4rpx;
+  font-size: 24rpx;
+  color: #8B8176;
+  text-align: center;
+}
+
+.point-record-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.point-record-item {
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid rgba(231, 216, 199, 0.72);
+}
+
+.point-record-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.point-record-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.point-record-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.point-record-name,
+.point-record-time,
+.point-record-detail {
+  display: block;
+}
+
+.point-record-name {
+  font-size: 25rpx;
+  color: #3F352B;
+  font-weight: bold;
+  line-height: 34rpx;
+}
+
+.point-record-time {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: #8B8176;
+}
+
+.point-record-change {
+  flex-shrink: 0;
+  min-width: 96rpx;
+  text-align: right;
+  font-size: 28rpx;
+  line-height: 34rpx;
+  font-weight: bold;
+}
+
+.point-record-change.income {
+  color: #5F724C;
+}
+
+.point-record-change.expense {
+  color: #A0523E;
+}
+
+.point-record-detail {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #6F6254;
+  line-height: 32rpx;
 }
 
 .info-header {

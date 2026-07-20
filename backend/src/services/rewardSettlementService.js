@@ -1,6 +1,6 @@
 const LessonRecord = require('../models/LessonRecord')
 const LessonRewardSettlement = require('../models/LessonRewardSettlement')
-const { toObjectId, toInteger, toDate } = require('./rewardCommon')
+const { toObjectId, toInteger, normalizeAmount, toDate } = require('./rewardCommon')
 const { getActivePointRuleConfig } = require('./rewardRuleService')
 const growthService = require('./growthService')
 const pointService = require('./pointService')
@@ -12,6 +12,15 @@ const requireAuditReason = (value, fieldName) => {
   }
 
   return reason
+}
+
+const resolveLessonCountSnapshot = lessonRecord => {
+  const parsed = Number(lessonRecord?.lessonsConsumed)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 1
+  }
+
+  return normalizeAmount(parsed)
 }
 
 const settleLessonReward = async ({
@@ -49,14 +58,19 @@ const settleLessonReward = async ({
 
   const studentId = lessonRecord.studentId
   const teacherId = lessonRecord.teacherId || normalizedSettledBy
-  const lessonGrowthStars = issueLessonReward ? activeRuleConfig.lessonGrowthStars : 0
-  const lessonPoints = issueLessonReward ? activeRuleConfig.lessonPoints : 0
+  const lessonCountSnapshot = resolveLessonCountSnapshot(lessonRecord)
+  const lessonGrowthStars = issueLessonReward
+    ? normalizeAmount(activeRuleConfig.lessonGrowthStars * lessonCountSnapshot)
+    : 0
+  const lessonPoints = issueLessonReward
+    ? normalizeAmount(activeRuleConfig.lessonPoints * lessonCountSnapshot)
+    : 0
   const practiceGrowthStars = normalizedPracticeRewardValue
   const practicePoints = activeRuleConfig.practicePointsMirrorGrowth
     ? normalizedPracticeRewardValue
     : 0
-  const totalGrowthStars = lessonGrowthStars + practiceGrowthStars
-  const totalPoints = lessonPoints + practicePoints
+  const totalGrowthStars = normalizeAmount(lessonGrowthStars + practiceGrowthStars)
+  const totalPoints = normalizeAmount(lessonPoints + practicePoints)
   const normalizedSettledAt = toDate(settledAt, 'settledAt')
 
   const settlement = await LessonRewardSettlement.create({
@@ -64,6 +78,7 @@ const settleLessonReward = async ({
     studentId,
     teacherId,
     issueLessonReward,
+    lessonCountSnapshot,
     lessonGrowthStars,
     lessonPoints,
     practiceGrowthStars,
@@ -250,7 +265,39 @@ const voidRewardSettlement = async ({
   }
 }
 
+const voidRewardSettlementByLessonRecordId = async ({
+  lessonRecordId,
+  voidedBy,
+  voidReason,
+  voidedAt = new Date()
+}) => {
+  const normalizedLessonRecordId = toObjectId(lessonRecordId, 'lessonRecordId')
+  const settlement = await LessonRewardSettlement.findOne({
+    lessonRecordId: normalizedLessonRecordId
+  })
+
+  if (!settlement || settlement.status !== 'active') {
+    return {
+      settlement,
+      voided: false
+    }
+  }
+
+  const result = await voidRewardSettlement({
+    settlementId: settlement._id,
+    voidedBy,
+    voidReason,
+    voidedAt
+  })
+
+  return {
+    ...result,
+    voided: true
+  }
+}
+
 module.exports = {
   settleLessonReward,
-  voidRewardSettlement
+  voidRewardSettlement,
+  voidRewardSettlementByLessonRecordId
 }

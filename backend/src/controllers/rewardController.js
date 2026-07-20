@@ -297,6 +297,41 @@ const getStudentPointDebt = async (req, res) => {
   }
 }
 
+const getStudentPointRecords = async (req, res) => {
+  try {
+    const user = await getRequestUser(req)
+    const student = await getAccessibleStudent({
+      studentId: req.params.id,
+      user
+    })
+    const teacherId = resolveTeacherScope({
+      user,
+      student,
+      teacherId: req.query.teacherId
+    })
+    const records = await pointService.listStudentPointRecords({
+      studentId: student._id,
+      teacherId,
+      limit: Number(req.query.limit) || 50,
+      skip: Number(req.query.skip) || 0,
+      businessType: req.query.businessType || ''
+    })
+
+    res.json({
+      message: 'student point records fetched successfully',
+      data: {
+        studentId: student._id,
+        studentName: student.name,
+        teacherId,
+        items: records
+      }
+    })
+  } catch (error) {
+    console.error('getStudentPointRecords error:', error)
+    res.status(getErrorStatus(error)).json({ message: error.message || 'server error' })
+  }
+}
+
 const createManualPointAdjustment = async (req, res) => {
   try {
     const user = await getRequestUser(req)
@@ -837,6 +872,7 @@ module.exports = {
   getStudentRanking,
   getStudentRewardOverview,
   getStudentPointDebt,
+  getStudentPointRecords,
   createManualPointAdjustment,
   getRewardCatalogs,
   createRewardCatalog,

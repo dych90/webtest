@@ -38,6 +38,42 @@ const toInteger = (value, fieldName = 'value', options = {}) => {
   return parsed
 }
 
+const normalizeAmount = (value, precision = 2) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return 0
+  }
+
+  const safePrecision = Number.isInteger(precision) && precision >= 0
+    ? precision
+    : 2
+  const factor = 10 ** safePrecision
+  return Math.round(parsed * factor) / factor
+}
+
+const toAmount = (value, fieldName = 'value', options = {}) => {
+  const parsed = Number(value)
+  const min = options.min
+  const max = options.max
+  const precision = options.precision
+
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} must be a number`)
+  }
+
+  const normalized = normalizeAmount(parsed, precision)
+
+  if (min !== undefined && normalized < min) {
+    throw new Error(`${fieldName} must be >= ${min}`)
+  }
+
+  if (max !== undefined && normalized > max) {
+    throw new Error(`${fieldName} must be <= ${max}`)
+  }
+
+  return normalized
+}
+
 const toDate = (value, fieldName = 'date') => {
   const dateValue = value ? new Date(value) : new Date()
 
@@ -51,5 +87,7 @@ const toDate = (value, fieldName = 'date') => {
 module.exports = {
   toObjectId,
   toInteger,
+  toAmount,
+  normalizeAmount,
   toDate
 }

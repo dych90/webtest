@@ -16,6 +16,7 @@ const {
   attachAccountBillingToStudent,
   getEffectivePaymentType
 } = require('../utils/studentAccount')
+const rewardSettlementService = require('../services/rewardSettlementService')
 const { verifyToken } = require('../utils/jwt')
 const { sendSubscribeMessage, formatTime } = require('../utils/wechat')
 const mongoose = require('mongoose')
@@ -923,6 +924,12 @@ const deleteLessonRecord = async (req, res) => {
     const accountPaymentType = student
       ? await getEffectivePaymentType(student, recordTeacherId)
       : ''
+
+    await rewardSettlementService.voidRewardSettlementByLessonRecordId({
+      lessonRecordId: id,
+      voidedBy: user._id,
+      voidReason: '取消上课自动回收该课积分奖励'
+    })
 
     if (student && accountPaymentType === 'prepaid' && record.isDeducted) {
       await updateLessonBalance(studentIdStr, recordTeacherId, record.lessonsConsumed)
