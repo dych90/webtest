@@ -417,6 +417,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, put, post, del } from '@/utils/request'
+import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const course = ref({})
 const courseId = ref('')
@@ -1029,6 +1030,7 @@ const doAttend = async (lessonsConsumed = 1) => {
       isDeducted: true,
       notes: '从课程详情上课'
     })
+    emitRewardStateChanged({ source: 'schedule-detail-attend', studentId })
     uni.showToast({ title: '上课成功', icon: 'success' })
     fetchCourse()
   } catch (error) {
@@ -1060,6 +1062,7 @@ const handleCancelAttend = async () => {
           }
           
           await put(`/courses/${courseId.value}`, { status: 'normal' })
+          emitRewardStateChanged({ source: 'schedule-detail-cancel-attend', studentId: course.value.studentId?._id || course.value.studentId })
           
           uni.showToast({ title: '取消上课成功', icon: 'success' })
           fetchCourse()
@@ -1122,6 +1125,7 @@ const handleDelete = async () => {
       if (res.confirm) {
         try {
           await del(`/courses/${courseId.value}`)
+          emitRewardStateChanged({ source: 'schedule-detail-delete-course', studentId: course.value.studentId?._id || course.value.studentId })
           uni.showToast({ title: '删除成功', icon: 'success' })
           setTimeout(() => {
             uni.navigateBack()
@@ -1148,6 +1152,7 @@ const handleDeleteGroup = async () => {
       if (res.confirm) {
         try {
           await del(`/courses/group/${course.value.groupId}`)
+          emitRewardStateChanged({ source: 'schedule-detail-delete-course-group', studentId: course.value.studentId?._id || course.value.studentId })
           uni.showToast({ title: `成功删除${count}节课程`, icon: 'success' })
           setTimeout(() => {
             uni.navigateBack()

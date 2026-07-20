@@ -198,6 +198,7 @@ import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, put } from '@/utils/request'
 import { formatGrowthLevel } from '@/utils/reward'
+import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const activeTab = ref('redeem')
 const students = ref([])
@@ -424,6 +425,7 @@ const redeemReward = async (item) => {
       studentId: selectedStudentId.value,
       rewardCode: item.rewardCode
     })
+    emitRewardStateChanged({ source: 'reward-redeem', studentId: selectedStudentId.value })
     uni.showToast({ title: '兑换成功', icon: 'success' })
     await Promise.all([fetchRewardCatalogs(), fetchRedemptions()])
   } catch (error) {
@@ -553,6 +555,7 @@ const submitRedemptionAction = async (item, action) => {
   try {
     const payload = action === 'reject' ? { reason: '老师驳回兑换' } : {}
     await post(`/reward-redemptions/${item._id}/${action}`, payload)
+    emitRewardStateChanged({ source: `reward-redemption-${action}`, studentId: item.studentId })
     uni.showToast({ title: '处理成功', icon: 'success' })
     await Promise.all([fetchRedemptions(), fetchRewardCatalogs()])
   } catch (error) {

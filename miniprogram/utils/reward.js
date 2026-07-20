@@ -10,6 +10,12 @@ export const CROWN_MARK_MAP = {
   bronze: '皇冠'
 }
 
+export const CROWN_COLOR_MAP = {
+  gold: '#E2B84B',
+  silver: '#B9C0C8',
+  bronze: '#B8793E'
+}
+
 export const GROWTH_POINTS_PER_DISPLAY_STAR = 5
 
 export const formatRewardAmount = (value) => {
@@ -75,6 +81,18 @@ export const getCrownText = (crownType) => {
 
 export const getCrownMark = (crownType) => {
   return CROWN_MARK_MAP[crownType] || ''
+}
+
+export const getCrownTypeByRank = (rank) => {
+  const normalizedRank = Number(rank)
+  if (normalizedRank === 1) return 'gold'
+  if (normalizedRank === 2) return 'silver'
+  if (normalizedRank === 3) return 'bronze'
+  return ''
+}
+
+export const getCrownColor = (crownType) => {
+  return CROWN_COLOR_MAP[crownType] || ''
 }
 
 export const formatGrowthLevel = (growth = {}) => {

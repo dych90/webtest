@@ -171,6 +171,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
 import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
+import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const activeTab = ref('records')
 const lessonRecords = ref([])
@@ -333,6 +334,7 @@ const handleDelete = (record) => {
       if (res.confirm) {
         try {
           await del(`/lesson-records/${record._id}`)
+          emitRewardStateChanged({ source: 'lessons-delete-record', studentId: record.studentId?._id || record.studentId })
           uni.showToast({ title: '删除成功', icon: 'success' })
           fetchRecords()
         } catch (error) {
@@ -413,6 +415,13 @@ const confirmRewardSettlement = async () => {
     uni.showToast({
       title: totalPoints > 0 ? `奖励${totalPoints}分` : '已结算',
       icon: 'success'
+    })
+    emitRewardStateChanged({
+      source: pendingRewardCourse.value ? 'lessons-attend' : 'lessons-settlement',
+      studentId: pendingRewardCourse.value?.studentId?._id ||
+        pendingRewardCourse.value?.studentId ||
+        rewardTargetRecord.value?.studentId?._id ||
+        rewardTargetRecord.value?.studentId
     })
     rewardDialogVisible.value = false
     fetchRecords()

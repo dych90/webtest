@@ -219,6 +219,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { get, post, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
 import { formatDebtText, formatGrowthLevel, formatPointLabelText, getGrowthStarUnits } from '@/utils/reward'
+import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const student = ref({})
 const studentId = ref('')
@@ -375,6 +376,7 @@ const submitPointAdjustment = async () => {
       changeAmount,
       reason
     })
+    emitRewardStateChanged({ source: 'student-point-adjustment', studentId: studentId.value })
     uni.showToast({ title: '修正成功', icon: 'success' })
     adjustDialogVisible.value = false
     fetchRewardOverview()

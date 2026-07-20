@@ -277,6 +277,7 @@ import { useUserStore } from '@/stores/user'
 import { get, post, put, del, uploadFile, uploadFileData } from '@/utils/request'
 import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
 import { createAudioPlayback } from '@/utils/audioPlayback'
+import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const userStore = useUserStore()
 
@@ -826,6 +827,7 @@ const doAttendCourse = async (course, lessonsConsumed = 1) => {
       notifyGuardian: notifyGuardian.value
     })
     const rewardText = await settleLessonReward(result.data)
+    emitRewardStateChanged({ source: 'index-attend', studentId })
     const notifyResult = result.notifyResult
     const notifyText = notifyGuardian.value && notifyResult
       ? `，通知${notifyResult.success || 0}/${notifyResult.total || 0}`
@@ -887,6 +889,7 @@ const handleCancelAttendCourse = async (course) => {
           }
           
           await put(`/courses/${course._id}`, { status: 'normal' })
+          emitRewardStateChanged({ source: 'index-cancel-attend', studentId: course.studentId?._id || course.studentId })
           
           uni.showToast({ title: '取消上课成功', icon: 'success' })
           await fetchDayCourses()

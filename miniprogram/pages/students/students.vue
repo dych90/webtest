@@ -49,9 +49,10 @@
             <text>{{ student.name.charAt(0) }}</text>
           </view>
           <view
-            v-if="student.rewardRanking?.crownType"
+            v-if="getRankingCrownType(student.rewardRanking)"
             class="crown-badge"
-            :class="student.rewardRanking?.crownType"
+            :class="getRankingCrownType(student.rewardRanking)"
+            :style="{ color: getRankingCrownColor(student.rewardRanking) }"
           >
             <view class="crown-icon">
               <view class="crown-peak crown-peak-left"></view>
@@ -117,12 +118,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
-import { formatPointLabelText, getGrowthStarUnits } from '@/utils/reward'
+import { formatPointLabelText, getCrownColor, getCrownTypeByRank, getGrowthStarUnits } from '@/utils/reward'
+import { offRewardStateChanged, onRewardStateChanged } from '@/utils/rewardEvents'
 
 const userStore = useUserStore()
 
@@ -131,6 +133,8 @@ const searchText = ref('')
 const isSortMode = ref(false)
 const hasChanged = ref(false)
 const sortList = ref([])
+const pendingRewardRefresh = ref(false)
+let fetchStudentsRequestId = 0
 
 const displayStudents = computed(() => {
   if (isSortMode.value) {
@@ -145,6 +149,8 @@ const displayStudents = computed(() => {
 })
 
 const fetchStudents = async () => {
+  const requestId = ++fetchStudentsRequestId
+
   try {
     const [studentRes, rankingRes, pointRankingRes] = await Promise.all([
       get('/students'),
@@ -163,6 +169,10 @@ const fetchStudents = async () => {
       pointRanking: pointRankingMap.get(String(student._id)) || null
     }))
 
+    if (requestId !== fetchStudentsRequestId) {
+      return
+    }
+
     students.value = studentList.sort((a, b) => {
       const aRank = a.rewardRanking?.rank || Number.MAX_SAFE_INTEGER
       const bRank = b.rewardRanking?.rank || Number.MAX_SAFE_INTEGER
@@ -172,6 +182,24 @@ const fetchStudents = async () => {
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
+}
+
+const getRankingCrownType = (ranking) => {
+  const crownType = getCrownTypeByRank(ranking?.rank) || ranking?.crownType || ''
+  return ['gold', 'silver', 'bronze'].includes(crownType) ? crownType : ''
+}
+
+const getRankingCrownColor = (ranking) => {
+  return getCrownColor(getRankingCrownType(ranking))
+}
+
+const refreshStudentsAfterRewardChange = () => {
+  if (isSortMode.value) {
+    pendingRewardRefresh.value = true
+    return
+  }
+
+  fetchStudents()
 }
 
 const handleSearch = () => {
@@ -201,6 +229,11 @@ const finishSort = async () => {
   }
   
   sortList.value = []
+
+  if (pendingRewardRefresh.value) {
+    pendingRewardRefresh.value = false
+    fetchStudents()
+  }
 }
 
 const moveUp = (index) => {
@@ -262,7 +295,12 @@ const handleAdd = () => {
 }
 
 onMounted(() => {
+  onRewardStateChanged(refreshStudentsAfterRewardChange)
   fetchStudents()
+})
+
+onUnmounted(() => {
+  offRewardStateChanged(refreshStudentsAfterRewardChange)
 })
 
 onShow(() => {

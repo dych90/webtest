@@ -114,6 +114,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { get, post } from '@/utils/request'
+import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const students = ref([])
 const filteredStudents = ref([])
@@ -327,6 +328,7 @@ const handleSubmit = async () => {
   try {
     const res = await post('/lesson-records', submitData)
     const rewardText = await settleLessonReward(res.data)
+    emitRewardStateChanged({ source: 'lessons-add', studentId: form.studentId })
     uni.showToast({ title: `添加成功${rewardText}`, icon: 'success' })
     setTimeout(() => {
       uni.navigateBack()
