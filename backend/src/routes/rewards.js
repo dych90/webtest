@@ -1,0 +1,22 @@
+const express = require('express')
+const router = express.Router()
+const rewardController = require('../controllers/rewardController')
+const { authenticateToken } = require('../middleware/auth')
+
+router.get('/reward-rankings', authenticateToken, rewardController.getStudentRanking)
+router.get('/students/:id/reward-overview', authenticateToken, rewardController.getStudentRewardOverview)
+router.get('/students/:id/point-debt', authenticateToken, rewardController.getStudentPointDebt)
+router.post('/students/:id/point-adjustments', authenticateToken, rewardController.createManualPointAdjustment)
+router.get('/reward-catalogs', authenticateToken, rewardController.getRewardCatalogs)
+router.post('/reward-catalogs', authenticateToken, rewardController.createRewardCatalog)
+router.put('/reward-catalogs/:id', authenticateToken, rewardController.updateRewardCatalog)
+router.delete('/reward-catalogs/:id', authenticateToken, rewardController.deleteRewardCatalog)
+router.get('/reward-redemptions', authenticateToken, rewardController.listRewardRedemptions)
+router.post('/lesson-records/:id/reward-settlements', authenticateToken, rewardController.createLessonRewardSettlement)
+router.post('/reward-settlements/:id/void', authenticateToken, rewardController.voidLessonRewardSettlement)
+router.post('/reward-redemptions', authenticateToken, rewardController.createRewardRedemption)
+router.post('/reward-redemptions/:id/approve', authenticateToken, rewardController.approveRewardRedemption)
+router.post('/reward-redemptions/:id/deliver', authenticateToken, rewardController.deliverRewardRedemption)
+router.post('/reward-redemptions/:id/reject', authenticateToken, rewardController.rejectRewardRedemption)
+
+module.exports = router

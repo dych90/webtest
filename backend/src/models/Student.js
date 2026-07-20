@@ -1,4 +1,5 @@
 const mongoose = require('mongoose')
+const { STUDY_STATUSES } = require('./pointShared')
 
 const studentSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -19,6 +20,9 @@ const studentSchema = new mongoose.Schema({
   practiceTeacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   notes: String,
   teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  studyStatus: { type: String, enum: STUDY_STATUSES, default: 'active' },
+  studyStatusChangedAt: { type: Date, default: Date.now },
+  pointRetentionUntil: Date,
   sortOrder: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }

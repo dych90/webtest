@@ -44,12 +44,24 @@
         <view class="student-index">
           <text>{{ index + 1 }}</text>
         </view>
-        <view class="student-avatar">
-          <text>{{ student.name.charAt(0) }}</text>
+        <view class="student-avatar-wrap">
+          <view class="student-avatar">
+            <text>{{ student.name.charAt(0) }}</text>
+          </view>
+          <view
+            v-if="getCrownMark(student.rewardRanking?.crownType)"
+            class="crown-badge"
+            :class="student.rewardRanking?.crownType"
+          >
+            <text>{{ getCrownMark(student.rewardRanking?.crownType) }}</text>
+          </view>
         </view>
         <view class="student-info">
           <view class="student-name-row">
             <text class="student-name">{{ student.name }}</text>
+            <text v-if="student.rewardRanking?.rank" class="rank-tag">
+              第{{ student.rewardRanking.rank }}名
+            </text>
             <text 
               class="payment-tag" 
               :class="student.paymentType || 'prepaid'"
@@ -68,6 +80,9 @@
               {{ student.defaultCourseTypeId.name }}
             </text>
             <text class="detail-item" v-if="student.phone">{{ student.phone }}</text>
+            <text class="detail-item growth" v-if="student.rewardRanking">
+              成长{{ student.rewardRanking.totalGrowthStars || 0 }}星 · {{ formatGrowthLevel(student.rewardRanking) }}
+            </text>
           </view>
         </view>
         <view v-if="!isSortMode" class="student-arrow">
@@ -88,6 +103,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
+import { formatGrowthLevel, getCrownMark } from '@/utils/reward'
 
 const userStore = useUserStore()
 
@@ -111,8 +127,24 @@ const displayStudents = computed(() => {
 
 const fetchStudents = async () => {
   try {
-    const res = await get('/students')
-    students.value = res.data || []
+    const [studentRes, rankingRes] = await Promise.all([
+      get('/students'),
+      get('/reward-rankings', { limit: 200 })
+    ])
+    const rankingMap = new Map(
+      (rankingRes.data?.items || []).map(item => [String(item.studentId), item])
+    )
+    const studentList = (studentRes.data || []).map(student => ({
+      ...student,
+      rewardRanking: rankingMap.get(String(student._id)) || null
+    }))
+
+    students.value = studentList.sort((a, b) => {
+      const aRank = a.rewardRanking?.rank || Number.MAX_SAFE_INTEGER
+      const bRank = b.rewardRanking?.rank || Number.MAX_SAFE_INTEGER
+      if (aRank !== bRank) return aRank - bRank
+      return (a.sortOrder || 0) - (b.sortOrder || 0)
+    })
   } catch (error) {
     console.error('获取学生列表失败', error)
   }
@@ -331,6 +363,11 @@ onShow(() => {
   font-weight: bold;
 }
 
+.student-avatar-wrap {
+  position: relative;
+  margin-right: 20rpx;
+}
+
 .student-avatar {
   width: 80rpx;
   height: 80rpx;
@@ -339,12 +376,42 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 20rpx;
 }
 
 .student-avatar text {
   color: #FFFDF8;
   font-size: 32rpx;
+  font-weight: bold;
+}
+
+.crown-badge {
+  position: absolute;
+  top: -16rpx;
+  right: -12rpx;
+  width: 44rpx;
+  height: 34rpx;
+  line-height: 34rpx;
+  border-radius: 8rpx 8rpx 12rpx 12rpx;
+  text-align: center;
+  border: 2rpx solid rgba(63, 53, 43, 0.18);
+  box-shadow: 0 4rpx 10rpx rgba(63, 53, 43, 0.12);
+}
+
+.crown-badge.gold {
+  background-color: #E2B84B;
+}
+
+.crown-badge.silver {
+  background-color: #C7CDD3;
+}
+
+.crown-badge.bronze {
+  background-color: #B8793E;
+}
+
+.crown-badge text {
+  color: #FFFDF8;
+  font-size: 20rpx;
   font-weight: bold;
 }
 
@@ -363,6 +430,15 @@ onShow(() => {
   font-weight: bold;
   color: #3F352B;
   margin-right: 16rpx;
+}
+
+.rank-tag {
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  background-color: #F5ECD9;
+  color: #A26B39;
+  margin-right: 8rpx;
 }
 
 .payment-tag {
@@ -412,6 +488,11 @@ onShow(() => {
 
 .detail-item.price {
   color: #A26B39;
+  font-weight: bold;
+}
+
+.detail-item.growth {
+  color: #5F724C;
   font-weight: bold;
 }
 

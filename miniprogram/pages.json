@@ -89,6 +89,14 @@
       }
     },
     {
+      "path": "pages/rewards/mall",
+      "style": {
+        "navigationBarTitleText": "积分商城",
+        "navigationBarBackgroundColor": "#B8793E",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/schedule/schedule",
       "style": {
         "navigationBarTitleText": "排课管理",

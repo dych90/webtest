@@ -38,6 +38,10 @@
           <view class="action-icon balance-icon">🎫</view>
           <text class="action-text">剩余课费</text>
         </view>
+        <view class="action-item" @click="goToPage('/pages/rewards/mall')">
+          <view class="action-icon reward-icon">🎁</view>
+          <text class="action-text">积分商城</text>
+        </view>
       </view>
     </view>
     
@@ -235,6 +239,27 @@
             </view>
             <switch :checked="notifyGuardian" @change="notifyGuardian = $event.detail.value" :color="themeColors.primary" />
           </view>
+          <view class="reward-form">
+            <view class="form-item notify-row">
+              <view>
+                <text class="form-label">上课奖励</text>
+                <text class="notify-tip">回课质量合格发放5星/5积分</text>
+              </view>
+              <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" :color="themeColors.primary" />
+            </view>
+            <view class="form-item">
+              <text class="form-label">本周练习星</text>
+              <picker :value="practiceRewardIndex" :range="practiceRewardOptions" @change="onPracticeRewardChange">
+                <view class="form-picker">
+                  <text>{{ practiceRewardOptions[practiceRewardIndex] }}</text>
+                  <text class="picker-arrow">▼</text>
+                </view>
+              </picker>
+            </view>
+            <text class="reward-summary-tip">
+              练习星每周上限35星
+            </text>
+          </view>
         </view>
         <view class="dialog-footer">
           <button class="btn-cancel" :disabled="savingAttend" @click="closeAttendDialog">取消</button>
@@ -280,6 +305,8 @@ const lessonContent = ref('')
 const photoFiles = ref([])
 const voiceFiles = ref([])
 const notifyGuardian = ref(false)
+const issueLessonReward = ref(true)
+const practiceRewardIndex = ref(0)
 const savingAttend = ref(false)
 const recording = ref(false)
 const recordDuration = ref(0)
@@ -299,6 +326,8 @@ const audioPlayer = createAudioPlayback({
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const practiceRewardOptions = Array.from({ length: 36 }, (_, index) => `${index}星`)
+const practiceRewardValues = Array.from({ length: 36 }, (_, index) => index)
 const DEFAULT_PLANNED_LESSONS = 1
 
 const getCoursePlannedLessons = (course) => {
@@ -420,6 +449,8 @@ const resetAttendForm = (plannedLessons = DEFAULT_PLANNED_LESSONS) => {
   photoFiles.value = []
   voiceFiles.value = []
   notifyGuardian.value = false
+  issueLessonReward.value = true
+  practiceRewardIndex.value = 0
   recording.value = false
   recordDuration.value = 0
   clearRecordTimer()
@@ -591,6 +622,10 @@ const handleAttendCourse = async (course) => {
 
 const onLessonCountChange = (e) => {
   lessonCountIndex.value = e.detail.value
+}
+
+const onPracticeRewardChange = (e) => {
+  practiceRewardIndex.value = Number(e.detail.value) || 0
 }
 
 const choosePhotos = async () => {
@@ -790,17 +825,38 @@ const doAttendCourse = async (course, lessonsConsumed = 1) => {
       notes: '从首页直接上课',
       notifyGuardian: notifyGuardian.value
     })
+    const rewardText = await settleLessonReward(result.data)
     const notifyResult = result.notifyResult
     const notifyText = notifyGuardian.value && notifyResult
       ? `，通知${notifyResult.success || 0}/${notifyResult.total || 0}`
       : ''
-    uni.showToast({ title: `上课成功${notifyText}`, icon: 'success' })
+    uni.showToast({ title: `上课成功${rewardText}${notifyText}`, icon: 'success' })
     await fetchDayCourses()
     await fetchStatistics()
     return true
   } catch (error) {
     uni.showToast({ title: error.message || '上课失败', icon: 'none' })
     return false
+  }
+}
+
+const settleLessonReward = async (lessonRecord) => {
+  if (!lessonRecord?._id) {
+    return ''
+  }
+
+  try {
+    const res = await post(`/lesson-records/${lessonRecord._id}/reward-settlements`, {
+      issueLessonReward: issueLessonReward.value,
+      practiceRewardValue: practiceRewardValues[practiceRewardIndex.value] || 0,
+      remark: '首页确认上课后结算'
+    })
+    const settlement = res.data?.settlement || {}
+    const totalPoints = Number(settlement.totalPoints) || 0
+    return totalPoints > 0 ? `，奖励${totalPoints}分` : ''
+  } catch (error) {
+    console.error('奖励结算失败', error)
+    return '，积分未结算'
   }
 }
 
@@ -1001,6 +1057,10 @@ onUnmounted(() => {
 
 .balance-icon {
   background-color: var(--theme-accent-soft);
+}
+
+.reward-icon {
+  background-color: var(--theme-primary-soft);
 }
 
 .action-text {
@@ -1601,6 +1661,21 @@ onUnmounted(() => {
   color: var(--theme-muted);
 }
 
+.reward-form {
+  margin-top: 24rpx;
+  padding: 20rpx;
+  border: 2rpx solid var(--theme-border);
+  border-radius: 12rpx;
+  background-color: var(--theme-bg-soft);
+}
+
+.reward-summary-tip {
+  display: block;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  color: var(--theme-muted);
+}
+
 .dialog-footer {
   display: flex;
   gap: 20rpx;
@@ -1837,6 +1912,10 @@ onUnmounted(() => {
 
 .balance-icon {
   background-color: rgba(118, 95, 75, 0.16);
+}
+
+.reward-icon {
+  background-color: rgba(95, 114, 76, 0.18);
 }
 
 .action-text {

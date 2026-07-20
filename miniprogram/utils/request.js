@@ -194,7 +194,7 @@ const request = async (options) => {
         ...options.header
       },
       success: (res) => {
-        if (res.statusCode === 200) {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
         } else if (res.statusCode === 401) {
           clearAuthSession(authType)

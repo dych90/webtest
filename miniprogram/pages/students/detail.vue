@@ -58,6 +58,43 @@
         </view>
       </view>
     </view>
+
+    <view class="reward-section">
+      <view class="section-header reward-header">
+        <text class="section-title">成长与积分</text>
+        <text v-if="rewardOverview.growthOverview?.rankScore" class="reward-rank">
+          成长{{ rewardOverview.growthOverview.rankScore }}星
+        </text>
+      </view>
+      <view class="reward-grid">
+        <view class="reward-metric">
+          <text class="metric-value">{{ formatGrowthLevel(rewardOverview.growthOverview) }}</text>
+          <text class="metric-label">成长等级</text>
+        </view>
+        <view class="reward-metric">
+          <text class="metric-value">{{ rewardOverview.pointBalance?.availablePoints || 0 }}</text>
+          <text class="metric-label">可用积分</text>
+        </view>
+      </view>
+      <view class="debt-box" :class="{ active: rewardOverview.pointDebtOverview?.hasDebt }">
+        <text class="debt-title">{{ formatDebtText(rewardOverview.pointDebtOverview) }}</text>
+        <view v-if="rewardOverview.pointDebtOverview?.hasDebt" class="debt-list">
+          <view
+            v-for="event in rewardOverview.pointDebtOverview.outstandingDebtEvents || []"
+            :key="event.ledgerId"
+            class="debt-item"
+          >
+            <text class="debt-reason">{{ event.reasonLabel }}</text>
+            <text class="debt-detail">{{ event.reasonDetail || event.remark || '未填写详情' }}</text>
+            <text class="debt-points">欠账{{ event.outstandingContribution || event.debtIncrease }}分</text>
+          </view>
+        </view>
+      </view>
+      <view class="reward-actions">
+        <button class="btn-mall" @click="goToRewardMall">积分商城</button>
+        <button class="btn-adjust" v-if="canManageStudent" @click="openAdjustDialog">积分修正</button>
+      </view>
+    </view>
     
     <view class="info-section" v-if="student.learningProgress">
       <view class="section-header">
@@ -116,6 +153,29 @@
       <button class="btn-edit" v-if="canEditStudent" @click="handleEdit">{{ canManageStudent ? '编辑学生' : '编辑账户' }}</button>
       <button class="btn-delete" v-if="canManageStudent" @click="handleDelete">删除学生</button>
     </view>
+
+    <view class="dialog-mask" v-if="adjustDialogVisible" @click="closeAdjustDialog">
+      <view class="adjust-dialog" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">积分修正</text>
+          <text class="dialog-close" @click="closeAdjustDialog">×</text>
+        </view>
+        <view class="dialog-body">
+          <view class="form-item">
+            <text class="form-label">调整积分</text>
+            <input class="form-input" v-model="adjustForm.changeAmount" placeholder="例如 -10 或 20" />
+          </view>
+          <view class="form-item">
+            <text class="form-label">修正原因</text>
+            <textarea class="form-textarea" v-model="adjustForm.reason" placeholder="必须填写原因，欠账会按原因展示" />
+          </view>
+        </view>
+        <view class="dialog-footer">
+          <button class="btn-cancel" @click="closeAdjustDialog" :disabled="adjustSaving">取消</button>
+          <button class="btn-submit-adjust" @click="submitPointAdjustment" :loading="adjustSaving" :disabled="adjustSaving">保存</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -124,10 +184,18 @@ import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
+import { formatDebtText, formatGrowthLevel } from '@/utils/reward'
 
 const student = ref({})
 const studentId = ref('')
 const priceHistory = ref([])
+const rewardOverview = ref({})
+const adjustDialogVisible = ref(false)
+const adjustSaving = ref(false)
+const adjustForm = ref({
+  changeAmount: '',
+  reason: ''
+})
 const canEditStudent = computed(() => Boolean(student.value?._id))
 const canManageStudent = computed(() => student.value.studentRelationType !== 'practice')
 
@@ -138,6 +206,7 @@ onMounted(() => {
   if (studentId.value) {
     fetchStudent()
     fetchPriceHistory()
+    fetchRewardOverview()
   }
 })
 
@@ -145,6 +214,7 @@ onShow(() => {
   if (studentId.value) {
     fetchStudent()
     fetchPriceHistory()
+    fetchRewardOverview()
   }
 })
 
@@ -172,6 +242,15 @@ const formatDate = (dateStr) => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+const fetchRewardOverview = async () => {
+  try {
+    const res = await get(`/students/${studentId.value}/reward-overview`)
+    rewardOverview.value = res.data || {}
+  } catch (error) {
+    console.error('获取成长积分失败', error)
+  }
+}
+
 const getPracticeTeacherName = (student) => {
   return student.practiceTeacherId?.name || student.practiceTeacher || '未设置'
 }
@@ -180,6 +259,55 @@ const handleEdit = () => {
   uni.navigateTo({
     url: `/pages/students/edit?id=${studentId.value}`
   })
+}
+
+const goToRewardMall = () => {
+  uni.navigateTo({
+    url: `/pages/rewards/mall?studentId=${studentId.value}`
+  })
+}
+
+const openAdjustDialog = () => {
+  adjustForm.value = {
+    changeAmount: '',
+    reason: ''
+  }
+  adjustDialogVisible.value = true
+}
+
+const closeAdjustDialog = () => {
+  if (adjustSaving.value) return
+  adjustDialogVisible.value = false
+}
+
+const submitPointAdjustment = async () => {
+  const changeAmount = Number(adjustForm.value.changeAmount)
+  const reason = adjustForm.value.reason.trim()
+
+  if (!Number.isFinite(changeAmount) || changeAmount === 0) {
+    uni.showToast({ title: '请输入非0积分', icon: 'none' })
+    return
+  }
+
+  if (!reason) {
+    uni.showToast({ title: '请填写修正原因', icon: 'none' })
+    return
+  }
+
+  adjustSaving.value = true
+  try {
+    await post(`/students/${studentId.value}/point-adjustments`, {
+      changeAmount,
+      reason
+    })
+    uni.showToast({ title: '修正成功', icon: 'success' })
+    adjustDialogVisible.value = false
+    fetchRewardOverview()
+  } catch (error) {
+    uni.showToast({ title: error.message || '修正失败', icon: 'none' })
+  } finally {
+    adjustSaving.value = false
+  }
 }
 
 const handleCreateGuardianInvite = async () => {
@@ -236,6 +364,136 @@ const handleDelete = () => {
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
+}
+
+.reward-section {
+  background-color: #FFFDF8;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.reward-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.reward-rank {
+  font-size: 24rpx;
+  color: #5F724C;
+  font-weight: bold;
+}
+
+.reward-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+  margin-bottom: 18rpx;
+}
+
+.reward-metric {
+  min-height: 112rpx;
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background-color: #FBF6EE;
+  box-sizing: border-box;
+}
+
+.metric-value {
+  display: block;
+  font-size: 32rpx;
+  line-height: 40rpx;
+  font-weight: bold;
+  color: #3F352B;
+  margin-bottom: 8rpx;
+}
+
+.metric-label {
+  font-size: 22rpx;
+  color: #8B8176;
+}
+
+.debt-box {
+  padding: 18rpx;
+  border-radius: 12rpx;
+  background-color: #E7EFE3;
+  margin-bottom: 18rpx;
+}
+
+.debt-box.active {
+  background-color: #F8E4DD;
+}
+
+.debt-title {
+  display: block;
+  font-size: 26rpx;
+  font-weight: bold;
+  color: #5F724C;
+}
+
+.debt-box.active .debt-title {
+  color: #A0523E;
+}
+
+.debt-list {
+  margin-top: 14rpx;
+}
+
+.debt-item {
+  padding: 14rpx 0;
+  border-top: 1rpx solid rgba(160, 82, 62, 0.18);
+}
+
+.debt-reason,
+.debt-detail,
+.debt-points {
+  display: block;
+}
+
+.debt-reason {
+  font-size: 24rpx;
+  color: #3F352B;
+  font-weight: bold;
+  margin-bottom: 4rpx;
+}
+
+.debt-detail {
+  font-size: 22rpx;
+  color: #6F6254;
+  line-height: 32rpx;
+}
+
+.debt-points {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: #A0523E;
+}
+
+.reward-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.btn-mall,
+.btn-adjust {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}
+
+.btn-mall {
+  background-color: #5F724C;
+  color: #FFFDF8;
+  border: none;
+}
+
+.btn-adjust {
+  background-color: #FFFDF8;
+  color: #A26B39;
+  border: 2rpx solid #A26B39;
 }
 
 .info-header {
@@ -456,5 +714,101 @@ const handleDelete = () => {
   border: 2rpx solid #A0523E;
   border-radius: 8rpx;
   font-size: 28rpx;
+}
+
+.dialog-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(63, 53, 43, 0.42);
+}
+
+.adjust-dialog {
+  width: 86%;
+  background-color: #FFFDF8;
+  border-radius: 18rpx;
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 26rpx;
+  border-bottom: 1rpx solid #E7D8C7;
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #3F352B;
+}
+
+.dialog-close {
+  font-size: 38rpx;
+  color: #8B8176;
+}
+
+.dialog-body {
+  padding: 26rpx;
+}
+
+.form-item {
+  margin-bottom: 24rpx;
+}
+
+.form-label {
+  display: block;
+  font-size: 26rpx;
+  color: #3F352B;
+  margin-bottom: 10rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 76rpx;
+  padding: 0 18rpx;
+  border: 2rpx solid #E7D8C7;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.form-textarea {
+  width: 100%;
+  height: 150rpx;
+  padding: 18rpx;
+  border: 2rpx solid #E7D8C7;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+  line-height: 38rpx;
+  box-sizing: border-box;
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 18rpx;
+  padding: 20rpx 26rpx 26rpx;
+}
+
+.btn-cancel,
+.btn-submit-adjust {
+  flex: 1;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}
+
+.btn-submit-adjust {
+  background-color: #5F724C;
+  color: #FFFDF8;
+  border: none;
 }
 </style>

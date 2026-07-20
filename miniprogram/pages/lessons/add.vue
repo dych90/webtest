@@ -78,6 +78,25 @@
         <text class="form-label">是否扣费</text>
         <switch :checked="form.isDeducted" @change="onDeductedChange" color="#5F724C" />
       </view>
+
+      <view class="reward-box">
+        <view class="form-item switch-item">
+          <view>
+            <text class="form-label">上课奖励</text>
+            <text class="form-hint">回课质量合格发放5星/5积分</text>
+          </view>
+          <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" color="#5F724C" />
+        </view>
+        <view class="form-item">
+          <text class="form-label">本周练习星</text>
+          <picker :value="practiceRewardIndex" :range="practiceRewardOptions" @change="onPracticeRewardChange">
+            <view class="form-picker">
+              <text>{{ practiceRewardOptions[practiceRewardIndex] }}</text>
+              <text class="picker-arrow">▼</text>
+            </view>
+          </picker>
+        </view>
+      </view>
       
       <view class="form-item">
         <text class="form-label">备注</text>
@@ -106,9 +125,13 @@ const courseTypes = ref([])
 const courseTypeIndex = ref(-1)
 const loading = ref(false)
 const lessonCountIndex = ref(1)
+const issueLessonReward = ref(true)
+const practiceRewardIndex = ref(0)
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+const practiceRewardOptions = Array.from({ length: 36 }, (_, index) => `${index}星`)
+const practiceRewardValues = Array.from({ length: 36 }, (_, index) => index)
 
 const form = reactive({
   studentId: '',
@@ -247,8 +270,31 @@ const onLessonCountChange = (e) => {
   form.lessonsConsumed = lessonCountValues[e.detail.value]
 }
 
+const onPracticeRewardChange = (e) => {
+  practiceRewardIndex.value = Number(e.detail.value) || 0
+}
+
 const handleCancel = () => {
   uni.navigateBack()
+}
+
+const settleLessonReward = async (lessonRecord) => {
+  if (!lessonRecord?._id) {
+    return ''
+  }
+
+  try {
+    const res = await post(`/lesson-records/${lessonRecord._id}/reward-settlements`, {
+      issueLessonReward: issueLessonReward.value,
+      practiceRewardValue: practiceRewardValues[practiceRewardIndex.value] || 0,
+      remark: '新增消课后结算'
+    })
+    const totalPoints = Number(res.data?.settlement?.totalPoints) || 0
+    return totalPoints > 0 ? `，奖励${totalPoints}分` : ''
+  } catch (error) {
+    console.error('奖励结算失败', error)
+    return '，积分未结算'
+  }
 }
 
 const handleSubmit = async () => {
@@ -279,8 +325,9 @@ const handleSubmit = async () => {
   }
   
   try {
-    await post('/lesson-records', submitData)
-    uni.showToast({ title: '添加成功', icon: 'success' })
+    const res = await post('/lesson-records', submitData)
+    const rewardText = await settleLessonReward(res.data)
+    uni.showToast({ title: `添加成功${rewardText}`, icon: 'success' })
     setTimeout(() => {
       uni.navigateBack()
     }, 1000)
@@ -370,6 +417,20 @@ const handleSubmit = async () => {
 
 .switch-item .form-label {
   margin-bottom: 0;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #8B8176;
+}
+
+.reward-box {
+  padding: 20rpx;
+  border-radius: 12rpx;
+  background-color: #FBF6EE;
+  margin-bottom: 30rpx;
 }
 
 .form-actions {

@@ -145,6 +145,14 @@
                 <text class="summary-label">剩余课时</text>
                 <text class="summary-value remaining">{{ reportData.remainingLessons }}</text>
               </view>
+              <view class="summary-item">
+                <text class="summary-label">成长等级</text>
+                <text class="summary-value growth">{{ reportData.growthLevel }}</text>
+              </view>
+              <view class="summary-item">
+                <text class="summary-label">可用积分</text>
+                <text class="summary-value points">{{ reportData.availablePoints }}</text>
+              </view>
             </view>
             
             <view class="report-details">
@@ -188,6 +196,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { onShow, onLoad } from '@dcloudio/uni-app'
 import { get, put } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
+import { formatGrowthLevel } from '@/utils/reward'
 
 const balances = ref([])
 const searchKeyword = ref('')
@@ -220,6 +229,9 @@ const reportData = reactive({
   missedLessons: 0,
   remainingLessons: 0,
   paymentType: 'prepaid',
+  growthLevel: '0星',
+  totalGrowthStars: 0,
+  availablePoints: 0,
   lessonDetails: []
 })
 
@@ -373,10 +385,13 @@ const onEndDateChange = (e) => {
 
 const handleGenerateReportData = async () => {
   try {
-    const res = await get('/lesson-records', {
-      studentId: reportForm.studentId,
-      accountOnly: true
-    })
+    const [res, rewardRes] = await Promise.all([
+      get('/lesson-records', {
+        studentId: reportForm.studentId,
+        accountOnly: true
+      }),
+      get(`/students/${reportForm.studentId}/reward-overview`)
+    ])
     
     const startDate = new Date(reportForm.startDate)
     startDate.setHours(0, 0, 0, 0)
@@ -427,6 +442,9 @@ const handleGenerateReportData = async () => {
     reportData.lessonDetails = lessonDetails
     reportData.remainingLessons = reportForm.remainingLessons
     reportData.paymentType = reportForm.paymentType
+    reportData.growthLevel = formatGrowthLevel(rewardRes.data?.growthOverview)
+    reportData.totalGrowthStars = rewardRes.data?.growthOverview?.totalGrowthStars || 0
+    reportData.availablePoints = rewardRes.data?.pointBalance?.availablePoints || 0
     
     reportDialogVisible.value = false
     reportDataVisible.value = true
@@ -456,7 +474,7 @@ const saveReportImage = () => {
   const width = 375
   const noteLineCount = reportData.lessonDetails
     .reduce((sum, lesson) => sum + getWrappedNoteLines(lesson.notes).length, 0)
-  const height = 600 + reportData.lessonDetails.length * 40 + noteLineCount * 18
+  const height = 680 + reportData.lessonDetails.length * 40 + noteLineCount * 18
   
   canvasWidth.value = width * dpr
   canvasHeight.value = height * dpr
@@ -477,32 +495,42 @@ const saveReportImage = () => {
   ctx.setFillStyle('#2C3E50')
   const summaryY = 100
   const summaryWidth = (width - 60) / 2
-  roundRect(ctx, 20, summaryY, summaryWidth - 10, 80, 8, '#2C3E50')
-  roundRect(ctx, summaryWidth + 30, summaryY, summaryWidth - 10, 80, 8, '#2C3E50')
-  
-  ctx.setFillStyle('#FFFDF8')
-  ctx.setFontSize(12)
-  ctx.setTextAlign('center')
-  ctx.fillText('已上课', 20 + (summaryWidth - 10) / 2, summaryY + 30)
-  ctx.setFontSize(28)
-  ctx.setFillStyle('#5F724C')
-  ctx.fillText(String(reportData.attendedLessons), 20 + (summaryWidth - 10) / 2, summaryY + 60)
-  
+  const summaryItems = [
+    { label: '已上课', value: String(reportData.attendedLessons), color: '#5F724C' }
+  ]
+
   if (reportData.paymentType === 'prepaid') {
+    summaryItems.push({ label: '剩余课时', value: String(reportData.remainingLessons), color: '#A26B39' })
+  }
+
+  summaryItems.push(
+    { label: '成长等级', value: reportData.growthLevel, color: '#FFFDF8', small: true },
+    { label: '可用积分', value: `${reportData.availablePoints}积分`, color: '#FFFDF8', small: true }
+  )
+
+  summaryItems.forEach((item, index) => {
+    const col = index % 2
+    const row = Math.floor(index / 2)
+    const x = col === 0 ? 20 : summaryWidth + 30
+    const y = summaryY + row * 90
+
+    roundRect(ctx, x, y, summaryWidth - 10, 80, 8, '#2C3E50')
     ctx.setFillStyle('#FFFDF8')
     ctx.setFontSize(12)
-    ctx.fillText('剩余课时', summaryWidth + 30 + (summaryWidth - 10) / 2, summaryY + 30)
-    ctx.setFontSize(28)
-    ctx.setFillStyle('#A26B39')
-    ctx.fillText(String(reportData.remainingLessons), summaryWidth + 30 + (summaryWidth - 10) / 2, summaryY + 60)
-  }
+    ctx.setTextAlign('center')
+    ctx.fillText(item.label, x + (summaryWidth - 10) / 2, y + 28)
+    ctx.setFontSize(item.small ? 16 : 28)
+    ctx.setFillStyle(item.color)
+    ctx.fillText(item.value, x + (summaryWidth - 10) / 2, y + 60)
+  })
   
+  const detailsTitleY = summaryY + Math.ceil(summaryItems.length / 2) * 90 + 30
   ctx.setFillStyle('#2C3E50')
   ctx.setFontSize(14)
   ctx.setTextAlign('left')
-  ctx.fillText('上课明细', 20, 220)
+  ctx.fillText('上课明细', 20, detailsTitleY)
   
-  let y = 250
+  let y = detailsTitleY + 30
   reportData.lessonDetails.forEach((lesson, index) => {
     if (y > height - 50) return
     const noteLines = getWrappedNoteLines(lesson.notes)
@@ -595,6 +623,8 @@ const copyReportText = () => {
   if (reportData.paymentType === 'prepaid') {
     text += `剩余课时：${reportData.remainingLessons} 课时\n`
   }
+  text += `成长等级：${reportData.growthLevel}\n`
+  text += `可用积分：${reportData.availablePoints} 积分\n`
   text += `\n上课明细：\n`
   
   reportData.lessonDetails.forEach((lesson, index) => {
@@ -996,9 +1026,9 @@ onLoad((options) => {
 }
 
 .report-summary {
-  display: flex;
-  justify-content: center;
-  gap: 40rpx;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24rpx;
   padding: 30rpx;
   background: linear-gradient(135deg, #2C3E50 0%, #1A252F 100%);
   border-radius: 12rpx;
@@ -1018,9 +1048,11 @@ onLoad((options) => {
 
 .summary-value {
   display: block;
-  font-size: 48rpx;
+  font-size: 40rpx;
+  line-height: 48rpx;
   font-weight: bold;
   color: #FFFDF8;
+  word-break: break-all;
 }
 
 .summary-value.attended {
@@ -1029,6 +1061,12 @@ onLoad((options) => {
 
 .summary-value.remaining {
   color: #A26B39;
+}
+
+.summary-value.growth,
+.summary-value.points {
+  color: #FFFDF8;
+  font-size: 30rpx;
 }
 
 .report-details {

@@ -86,6 +86,7 @@
             </view>
           </view>
           <view class="record-actions">
+            <button v-if="canManageRecord(record)" class="btn-reward" @click="openRewardSettlement(record)">积分</button>
             <button class="btn-edit" @click="handleEdit(record)">
               {{ canManageRecord(record) ? '编辑' : '查看' }}
             </button>
@@ -126,11 +127,46 @@
     <view class="add-btn" @click="handleAdd" v-if="activeTab === 'records'">
       <text>+</text>
     </view>
+
+    <view class="dialog-mask" v-if="rewardDialogVisible" @click="closeRewardDialog">
+      <view class="dialog-content" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">{{ pendingRewardCourse ? '确认上课并结算' : '奖励结算' }}</text>
+          <text class="dialog-close" @click="closeRewardDialog">×</text>
+        </view>
+        <view class="dialog-body">
+          <view class="attend-info">
+            <text class="attend-student">{{ rewardTargetName }}</text>
+            <text class="attend-course">{{ rewardTargetTime }}</text>
+          </view>
+          <view class="form-item notify-row">
+            <view>
+              <text class="form-label">上课奖励</text>
+              <text class="notify-tip">回课质量合格发放5星/5积分</text>
+            </view>
+            <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" :color="themeColors.primary" />
+          </view>
+          <view class="form-item">
+            <text class="form-label">本周练习星</text>
+            <picker :value="practiceRewardIndex" :range="practiceRewardOptions" @change="onPracticeRewardChange">
+              <view class="form-picker">
+                <text>{{ practiceRewardOptions[practiceRewardIndex] }}</text>
+                <text class="picker-arrow">▼</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+        <view class="dialog-footer">
+          <button class="btn-cancel" :disabled="rewardSaving" @click="closeRewardDialog">取消</button>
+          <button class="btn-confirm" :loading="rewardSaving" :disabled="rewardSaving" @click="confirmRewardSettlement">确认</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
@@ -146,6 +182,14 @@ const filteredCourses = ref([])
 const themeClass = ref(getThemeClass())
 const themeColors = ref(getCurrentTheme())
 const DEFAULT_PLANNED_LESSONS = 1
+const rewardDialogVisible = ref(false)
+const rewardSaving = ref(false)
+const pendingRewardCourse = ref(null)
+const rewardTargetRecord = ref(null)
+const issueLessonReward = ref(true)
+const practiceRewardIndex = ref(0)
+const practiceRewardOptions = Array.from({ length: 36 }, (_, index) => `${index}星`)
+const practiceRewardValues = Array.from({ length: 36 }, (_, index) => index)
 
 const getCoursePlannedLessons = (course) => {
   const plannedLessons = Number(course?.plannedLessons)
@@ -213,6 +257,22 @@ const getMediaSummary = (record) => {
 
   return parts.join('，')
 }
+
+const rewardTargetName = computed(() => {
+  if (pendingRewardCourse.value) {
+    return pendingRewardCourse.value.studentId?.name || '未知学生'
+  }
+
+  return rewardTargetRecord.value?.studentId?.name || '未知学生'
+})
+
+const rewardTargetTime = computed(() => {
+  if (pendingRewardCourse.value) {
+    return formatDateTime(pendingRewardCourse.value.startTime)
+  }
+
+  return formatDateTime(rewardTargetRecord.value?.courseStartTime || rewardTargetRecord.value?.recordDate)
+})
 
 const canManageRecord = (record) => record?.canManageRecord !== false
 
@@ -289,17 +349,92 @@ const handleAttend = async (course) => {
     return
   }
 
+  resetRewardDialog()
+  pendingRewardCourse.value = course
+  rewardDialogVisible.value = true
+}
+
+const resetRewardDialog = () => {
+  issueLessonReward.value = true
+  practiceRewardIndex.value = 0
+  pendingRewardCourse.value = null
+  rewardTargetRecord.value = null
+}
+
+const closeRewardDialog = () => {
+  if (rewardSaving.value) return
+  rewardDialogVisible.value = false
+}
+
+const onPracticeRewardChange = (event) => {
+  practiceRewardIndex.value = Number(event.detail.value) || 0
+}
+
+const openRewardSettlement = (record) => {
+  if (!canManageRecord(record)) {
+    uni.showToast({ title: '只能查看该记录', icon: 'none' })
+    return
+  }
+
+  resetRewardDialog()
+  rewardTargetRecord.value = record
+  rewardDialogVisible.value = true
+}
+
+const buildRewardPayload = () => ({
+  issueLessonReward: issueLessonReward.value,
+  practiceRewardValue: practiceRewardValues[practiceRewardIndex.value] || 0,
+  remark: '消课管理奖励结算'
+})
+
+const settleLessonRecordReward = async (lessonRecord) => {
+  if (!lessonRecord?._id) {
+    throw new Error('消课记录缺少ID')
+  }
+
+  const res = await post(`/lesson-records/${lessonRecord._id}/reward-settlements`, buildRewardPayload())
+  return Number(res.data?.settlement?.totalPoints) || 0
+}
+
+const confirmRewardSettlement = async () => {
+  if (rewardSaving.value) return
+
+  rewardSaving.value = true
+  try {
+    let totalPoints = 0
+
+    if (pendingRewardCourse.value) {
+      const lessonRecord = await createAttendRecord(pendingRewardCourse.value)
+      totalPoints = await settleLessonRecordReward(lessonRecord)
+    } else {
+      totalPoints = await settleLessonRecordReward(rewardTargetRecord.value)
+    }
+
+    uni.showToast({
+      title: totalPoints > 0 ? `奖励${totalPoints}分` : '已结算',
+      icon: 'success'
+    })
+    rewardDialogVisible.value = false
+    fetchRecords()
+    fetchPendingCourses()
+  } catch (error) {
+    uni.showToast({ title: error.message || '结算失败', icon: 'none' })
+  } finally {
+    rewardSaving.value = false
+  }
+}
+
+const createAttendRecord = async (course) => {
   try {
     await put(`/courses/${course._id}`, { status: 'completed' })
     
     const studentId = course.studentId?._id || course.studentId
     if (!studentId) {
-      uni.showToast({ title: '课程缺少学生信息', icon: 'none' })
-      return
+      throw new Error('课程缺少学生信息')
     }
 
     const courseTypeId = course.courseTypeId?._id || course.courseTypeId
-    await post('/lesson-records', {
+    const res = await post('/lesson-records', {
       studentId: studentId,
       courseId: course._id,
       courseTypeId: courseTypeId,
@@ -309,11 +444,9 @@ const handleAttend = async (course) => {
       isDeducted: true,
       notes: '从消课管理直接上课'
     })
-    uni.showToast({ title: '上课成功', icon: 'success' })
-    fetchRecords()
-    fetchPendingCourses()
+    return res.data
   } catch (error) {
-    uni.showToast({ title: error.message || '上课失败', icon: 'none' })
+    throw error
   }
 }
 
@@ -537,15 +670,23 @@ const refreshTheme = () => {
   border-top: 1rpx solid var(--theme-border);
 }
 
+.btn-reward,
 .btn-edit {
   flex: 1;
   height: 60rpx;
   line-height: 60rpx;
-  background-color: var(--theme-primary);
   color: #FFFDF8;
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
+}
+
+.btn-reward {
+  background-color: var(--theme-warning);
+}
+
+.btn-edit {
+  background-color: var(--theme-primary);
 }
 
 .btn-delete {
@@ -568,6 +709,132 @@ const refreshTheme = () => {
   font-size: 24rpx;
   border: none;
   border-radius: 8rpx;
+}
+
+.dialog-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(63, 53, 43, 0.42);
+}
+
+.dialog-content {
+  width: 86%;
+  max-width: 620rpx;
+  background-color: var(--theme-card);
+  border-radius: 18rpx;
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 26rpx;
+  border-bottom: 1rpx solid var(--theme-border);
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: var(--theme-text);
+}
+
+.dialog-close {
+  font-size: 38rpx;
+  color: var(--theme-muted);
+}
+
+.dialog-body {
+  padding: 26rpx;
+}
+
+.attend-info {
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+  border-radius: 12rpx;
+  background-color: var(--theme-bg-soft);
+}
+
+.attend-student,
+.attend-course {
+  display: block;
+}
+
+.attend-student {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: var(--theme-text);
+  margin-bottom: 6rpx;
+}
+
+.attend-course {
+  font-size: 24rpx;
+  color: var(--theme-muted);
+}
+
+.notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.notify-tip {
+  display: block;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  color: var(--theme-muted);
+}
+
+.form-picker {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 76rpx;
+  padding: 0 18rpx;
+  border: 2rpx solid var(--theme-border);
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}
+
+.picker-arrow {
+  font-size: 20rpx;
+  color: var(--theme-muted);
+}
+
+.dialog-footer {
+  display: flex;
+  gap: 18rpx;
+  padding: 20rpx 26rpx 26rpx;
+  border-top: 1rpx solid var(--theme-border);
+}
+
+.btn-cancel,
+.btn-confirm {
+  flex: 1;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 8rpx;
+  font-size: 26rpx;
+}
+
+.btn-cancel {
+  background-color: var(--theme-card);
+  color: var(--theme-muted);
+  border: 2rpx solid var(--theme-border);
+}
+
+.btn-confirm {
+  background-color: var(--theme-primary);
+  color: #FFFDF8;
+  border: none;
 }
 
 .add-btn {
