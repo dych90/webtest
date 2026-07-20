@@ -33,8 +33,40 @@ export const formatGrowthStarCount = (growth = {}) => {
   return formatRewardAmount(pointValue / GROWTH_POINTS_PER_DISPLAY_STAR)
 }
 
+export const getGrowthStarUnits = (growth = {}) => {
+  const pointValue = Math.max(0, getGrowthPointValue(growth))
+  const exactStarCount = pointValue / GROWTH_POINTS_PER_DISPLAY_STAR
+  const fullCount = Math.floor(exactStarCount)
+  const partialPercent = Math.round((exactStarCount - fullCount) * 100)
+  const stars = Array.from({ length: fullCount }, (_, index) => ({
+    key: `full-${index}`,
+    fillPercent: 100
+  }))
+
+  if (partialPercent > 0) {
+    stars.push({
+      key: `partial-${fullCount}`,
+      fillPercent: partialPercent
+    })
+  }
+
+  return stars
+}
+
 export const formatGrowthStarText = (growth = {}) => {
-  return `★×${formatGrowthStarCount(growth)}`
+  return `${formatGrowthStarCount(growth)}星`
+}
+
+export const formatGrowthPointValue = (growth = {}) => {
+  return formatRewardAmount(getGrowthPointValue(growth))
+}
+
+export const formatGrowthValueText = (growth = {}) => {
+  return `成长值：${formatGrowthPointValue(growth)}`
+}
+
+export const formatPointLabelText = (value) => {
+  return `积分：${formatRewardAmount(value)}`
 }
 
 export const getCrownText = (crownType) => {
@@ -60,7 +92,7 @@ export const formatGrowthLevel = (growth = {}) => {
   }
 
   if (starRemainder > 0 || parts.length === 0) {
-    parts.push(formatGrowthStarText(starRemainder))
+    parts.push(formatGrowthValueText(starRemainder))
   }
 
   return parts.join(' ')

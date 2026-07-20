@@ -229,7 +229,7 @@ const reportData = reactive({
   missedLessons: 0,
   remainingLessons: 0,
   paymentType: 'prepaid',
-  growthLevel: '★×0',
+  growthLevel: '成长值：0',
   totalGrowthStars: 0,
   availablePoints: 0,
   lessonDetails: []

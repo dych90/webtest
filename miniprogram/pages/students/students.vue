@@ -88,11 +88,19 @@
               {{ student.defaultCourseTypeId.name }}
             </text>
             <text class="detail-item" v-if="student.phone">{{ student.phone }}</text>
-            <view class="detail-item growth" v-if="student.rewardRanking">
+            <view class="detail-item growth" v-if="student.rewardRanking || student.pointRanking">
               <text class="growth-label">成长</text>
-              <text class="growth-star-mark">★</text>
-              <text class="growth-star-count">×{{ formatGrowthStarCount(student.rewardRanking) }}</text>
-              <text class="growth-level">· {{ formatGrowthLevel(student.rewardRanking) }}</text>
+              <view v-if="student.rewardRanking" class="growth-stars">
+                <view
+                  v-for="star in getGrowthStarUnits(student.rewardRanking)"
+                  :key="star.key"
+                  class="growth-star"
+                >
+                  <text class="growth-star-empty">★</text>
+                  <text class="growth-star-fill" :style="{ width: `${star.fillPercent}%` }">★</text>
+                </view>
+              </view>
+              <text class="growth-points">{{ formatPointLabelText(student.pointRanking?.availablePoints || 0) }}</text>
             </view>
           </view>
         </view>
@@ -114,7 +122,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/stores/user'
 import { get, post } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
-import { formatGrowthLevel, formatGrowthStarCount } from '@/utils/reward'
+import { formatPointLabelText, getGrowthStarUnits } from '@/utils/reward'
 
 const userStore = useUserStore()
 
@@ -138,16 +146,21 @@ const displayStudents = computed(() => {
 
 const fetchStudents = async () => {
   try {
-    const [studentRes, rankingRes] = await Promise.all([
+    const [studentRes, rankingRes, pointRankingRes] = await Promise.all([
       get('/students'),
-      get('/reward-rankings', { limit: 200 })
+      get('/reward-rankings', { limit: 200 }),
+      get('/reward-rankings', { limit: 200, rankingMode: 'points' })
     ])
     const rankingMap = new Map(
       (rankingRes.data?.items || []).map(item => [String(item.studentId), item])
     )
+    const pointRankingMap = new Map(
+      (pointRankingRes.data?.items || []).map(item => [String(item.studentId), item])
+    )
     const studentList = (studentRes.data || []).map(student => ({
       ...student,
-      rewardRanking: rankingMap.get(String(student._id)) || null
+      rewardRanking: rankingMap.get(String(student._id)) || null,
+      pointRanking: pointRankingMap.get(String(student._id)) || null
     }))
 
     students.value = studentList.sort((a, b) => {
@@ -404,25 +417,22 @@ onShow(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8rpx 8rpx 12rpx 12rpx;
-  border: 2rpx solid rgba(63, 53, 43, 0.18);
-  box-shadow: 0 4rpx 10rpx rgba(63, 53, 43, 0.12);
-  overflow: hidden;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
 }
 
 .crown-badge.gold {
-  background-color: #E2B84B;
-  color: #FFF7D9;
+  color: #E2B84B;
 }
 
 .crown-badge.silver {
-  background-color: #C7CDD3;
-  color: #F7FAFC;
+  color: #B9C0C8;
 }
 
 .crown-badge.bronze {
-  background-color: #B8793E;
-  color: #FFF0DD;
+  color: #B8793E;
 }
 
 .crown-icon {
@@ -580,18 +590,43 @@ onShow(() => {
 }
 
 .growth-label,
-.growth-level {
+.growth-points {
   color: #5F724C;
 }
 
-.growth-star-mark {
+.growth-stars {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2rpx;
+  max-width: 220rpx;
+}
+
+.growth-star {
+  position: relative;
+  width: 24rpx;
+  height: 24rpx;
+  flex-shrink: 0;
+}
+
+.growth-star-empty,
+.growth-star-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  font-size: 24rpx;
+  line-height: 24rpx;
+}
+
+.growth-star-empty {
+  color: #E3D2B8;
+}
+
+.growth-star-fill {
   color: #D59A24;
-  font-size: 26rpx;
-  line-height: 1;
-}
-
-.growth-star-count {
-  color: #5F724C;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .student-arrow {

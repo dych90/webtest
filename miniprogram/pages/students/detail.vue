@@ -64,8 +64,17 @@
         <text class="section-title">成长与积分</text>
         <view v-if="rewardOverview.growthOverview?.rankScore" class="reward-rank">
           <text>成长</text>
-          <text class="reward-rank-star">★</text>
-          <text>×{{ formatGrowthStarCount(rewardOverview.growthOverview) }}</text>
+          <view class="growth-stars">
+            <view
+              v-for="star in getGrowthStarUnits(rewardOverview.growthOverview)"
+              :key="star.key"
+              class="growth-star"
+            >
+              <text class="growth-star-empty">★</text>
+              <text class="growth-star-fill" :style="{ width: `${star.fillPercent}%` }">★</text>
+            </view>
+          </view>
+          <text class="reward-point-text">{{ formatPointLabelText(rewardOverview.pointBalance?.availablePoints || 0) }}</text>
         </view>
       </view>
       <view class="reward-grid">
@@ -209,7 +218,7 @@ import { computed, ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { get, post, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
-import { formatDebtText, formatGrowthLevel, formatGrowthStarCount } from '@/utils/reward'
+import { formatDebtText, formatGrowthLevel, formatPointLabelText, getGrowthStarUnits } from '@/utils/reward'
 
 const student = ref({})
 const studentId = ref('')
@@ -455,10 +464,43 @@ const handleDelete = () => {
   font-weight: bold;
 }
 
-.reward-rank-star {
+.growth-stars {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2rpx;
+  max-width: 260rpx;
+}
+
+.growth-star {
+  position: relative;
+  width: 24rpx;
+  height: 24rpx;
+  flex-shrink: 0;
+}
+
+.growth-star-empty,
+.growth-star-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
+  font-size: 24rpx;
+  line-height: 24rpx;
+}
+
+.growth-star-empty {
+  color: #E3D2B8;
+}
+
+.growth-star-fill {
   color: #D59A24;
-  font-size: 26rpx;
-  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.reward-point-text {
+  color: #5F724C;
 }
 
 .reward-grid {
