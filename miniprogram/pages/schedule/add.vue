@@ -2,6 +2,21 @@
   <view class="add-container">
     <view class="form-section">
       <view class="form-item">
+        <text class="form-label">我的身份 *</text>
+        <view class="role-switch">
+          <view
+            v-for="item in roleOptions"
+            :key="item.value"
+            class="role-option"
+            :class="{ active: form.participationRole === item.value }"
+            @click="setParticipationRole(item.value)"
+          >
+            <text>{{ item.label }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item" v-if="form.participationRole === 'teacher'">
         <text class="form-label">学生 *</text>
         <view class="student-picker" @click="showStudentPicker = true">
           <view class="form-picker">
@@ -11,7 +26,7 @@
         </view>
       </view>
       
-      <view class="form-item">
+      <view class="form-item" v-if="form.participationRole === 'teacher'">
         <text class="form-label">课程类型</text>
         <picker :value="courseTypeIndex >= 0 ? courseTypeIndex : 0" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
           <view class="form-picker">
@@ -19,6 +34,24 @@
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
+      </view>
+
+      <view class="form-item" v-if="form.participationRole === 'student'">
+        <text class="form-label">课程名称 *</text>
+        <input
+          class="form-input"
+          v-model="form.externalCourseName"
+          placeholder="例如：小提琴课、书法课"
+        />
+      </view>
+
+      <view class="form-item" v-if="form.participationRole === 'student'">
+        <text class="form-label">授课老师 *</text>
+        <input
+          class="form-input"
+          v-model="form.externalTeacherName"
+          placeholder="请输入老师姓名"
+        />
       </view>
       
       <view class="form-item">
@@ -57,7 +90,7 @@
         </view>
       </view>
 
-      <view class="form-item">
+      <view class="form-item" v-if="form.participationRole === 'teacher'">
         <text class="form-label">计划课时</text>
         <picker :value="plannedLessonIndex" :range="lessonCountOptions" @change="onPlannedLessonChange">
           <view class="form-picker">
@@ -199,10 +232,17 @@ const statusIndex = ref(0)
 const loading = ref(false)
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 const saveAsDefaultDuration = ref(false)
+const roleOptions = [
+  { label: '我授课', value: 'teacher' },
+  { label: '我上课', value: 'student' }
+]
 
 const form = reactive({
+  participationRole: 'teacher',
   studentId: '',
   courseTypeId: '',
+  externalTeacherName: '',
+  externalCourseName: '',
   date: '',
   startTime: '',
   duration: 60,
@@ -295,6 +335,18 @@ const toggleDefaultDuration = () => {
   saveAsDefaultDuration.value = !saveAsDefaultDuration.value
   if (saveAsDefaultDuration.value) {
     saveDefaultDuration()
+  }
+}
+
+const setParticipationRole = (role) => {
+  form.participationRole = role
+
+  if (role === 'student') {
+    form.studentId = ''
+    form.courseTypeId = ''
+    courseTypeIndex.value = -1
+    plannedLessonIndex.value = 1
+    form.plannedLessons = 1
   }
 }
 
@@ -428,11 +480,49 @@ const handleCancel = () => {
   uni.navigateBack()
 }
 
+const isLearningCourseForm = () => form.participationRole === 'student'
+
+const buildCoursePayload = (startTime, endTime, groupId = '') => {
+  const payload = {
+    participationRole: form.participationRole,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    plannedLessons: isLearningCourseForm() ? 1 : form.plannedLessons,
+    status: form.status,
+    notes: form.notes
+  }
+
+  if (groupId) {
+    payload.groupId = groupId
+  }
+
+  if (isLearningCourseForm()) {
+    payload.externalTeacherName = form.externalTeacherName.trim()
+    payload.externalCourseName = form.externalCourseName.trim()
+    return payload
+  }
+
+  payload.studentId = form.studentId
+  payload.courseTypeId = form.courseTypeId || undefined
+  return payload
+}
+
 const handleSubmit = async () => {
-  if (!form.studentId) {
+  if (!isLearningCourseForm() && !form.studentId) {
     uni.showToast({ title: '请选择学生', icon: 'none' })
     return
   }
+
+  if (isLearningCourseForm() && !form.externalCourseName.trim()) {
+    uni.showToast({ title: '请填写课程名称', icon: 'none' })
+    return
+  }
+
+  if (isLearningCourseForm() && !form.externalTeacherName.trim()) {
+    uni.showToast({ title: '请填写授课老师', icon: 'none' })
+    return
+  }
+
   if (!form.date || !form.startTime) {
     uni.showToast({ title: '请填写完整的上课时间', icon: 'none' })
     return
@@ -454,16 +544,7 @@ const handleSubmit = async () => {
         const startTime = new Date(`${dateStr}T${form.startTime}:00`)
         const endTime = new Date(startTime.getTime() + form.duration * 60000)
         
-        return post('/courses', {
-          studentId: form.studentId,
-          courseTypeId: form.courseTypeId || undefined,
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-          plannedLessons: form.plannedLessons,
-          status: form.status,
-          notes: form.notes,
-          groupId: groupId
-        })
+        return post('/courses', buildCoursePayload(startTime, endTime, groupId))
       })
       
       await Promise.all(promises)
@@ -472,15 +553,7 @@ const handleSubmit = async () => {
       const startTime = new Date(`${form.date}T${form.startTime}:00`)
       const endTime = new Date(startTime.getTime() + form.duration * 60000)
       
-      await post('/courses', {
-        studentId: form.studentId,
-        courseTypeId: form.courseTypeId || undefined,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        plannedLessons: form.plannedLessons,
-        status: form.status,
-        notes: form.notes
-      })
+      await post('/courses', buildCoursePayload(startTime, endTime))
       uni.showToast({ title: '添加成功', icon: 'success' })
     }
     
@@ -518,6 +591,31 @@ const handleSubmit = async () => {
   font-size: 28rpx;
   color: #3F352B;
   margin-bottom: 12rpx;
+}
+
+.role-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  padding: 8rpx;
+  background-color: #FBF6EE;
+  border-radius: 8rpx;
+}
+
+.role-option {
+  min-width: 0;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6rpx;
+  color: #6F6254;
+  font-size: 28rpx;
+}
+
+.role-option.active {
+  background-color: #5F724C;
+  color: #FFFDF8;
 }
 
 .form-input {

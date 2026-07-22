@@ -15,6 +15,25 @@ const rewardSettlementService = require('../services/rewardSettlementService')
 
 const PRACTICE_COURSE_TYPE_NAME = '陪练课'
 const DEFAULT_PLANNED_LESSONS = 1
+const COURSE_ROLE_TEACHER = 'teacher'
+const COURSE_ROLE_STUDENT = 'student'
+
+const normalizeParticipationRole = (value) => {
+  return value === COURSE_ROLE_STUDENT ? COURSE_ROLE_STUDENT : COURSE_ROLE_TEACHER
+}
+
+const isLearningCourse = (course) => {
+  return normalizeParticipationRole(course?.participationRole) === COURSE_ROLE_STUDENT
+}
+
+const shouldIncludeLearningCourses = (value) => {
+  return value === true || value === 'true' || value === '1'
+}
+
+const sanitizeOptionalText = (value) => {
+  if (value === undefined || value === null) return ''
+  return String(value).trim()
+}
 
 const normalizePlannedLessons = (value, fallback = DEFAULT_PLANNED_LESSONS) => {
   if (value === undefined || value === null || value === '') {
@@ -71,12 +90,20 @@ const canManageCourse = (course, user) => {
   return isSameId(getCourseOwnerId(course), user._id || user.id)
 }
 
+const canViewCourse = (course, user) => {
+  if (!course || !user) return false
+  if (isLearningCourse(course)) return canManageCourse(course, user)
+  return canViewStudent(course.studentId, user)
+}
+
 const attachCourseAccess = (course, user) => {
   const plainCourse = toPlainObject(course)
   if (!plainCourse) return plainCourse
 
   const manageCourse = canManageCourse(plainCourse, user)
-  const relationType = getStudentRelationType(plainCourse.studentId, user)
+  const relationType = isLearningCourse(plainCourse)
+    ? 'learning'
+    : getStudentRelationType(plainCourse.studentId, user)
   return {
     ...plainCourse,
     canManageCourse: manageCourse,
@@ -118,6 +145,7 @@ const attachLessonRecordsToCourses = async (courses = [], user) => {
 const getCourses = async (req, res) => {
   try {
     const { studentId, startTime, endTime, teacherId } = req.query
+    const includeLearningCourses = shouldIncludeLearningCourses(req.query.includeLearningCourses)
     const user = await User.findById(req.userId)
     
     console.log('课程查询参数:', req.query)
@@ -138,15 +166,36 @@ const getCourses = async (req, res) => {
           })
         }
         filter.studentId = studentId
+        filter.participationRole = { $ne: COURSE_ROLE_STUDENT }
       } else {
-        filter.studentId = { $in: accessibleStudentIds }
+        const accessFilters = [
+          {
+            studentId: { $in: accessibleStudentIds },
+            participationRole: { $ne: COURSE_ROLE_STUDENT }
+          }
+        ]
+
+        if (includeLearningCourses) {
+          accessFilters.push({
+            teacherId: req.userId,
+            participationRole: COURSE_ROLE_STUDENT
+          })
+        }
+
+        filter.$or = accessFilters
       }
     } else if (user && user.role === 'admin' && teacherId) {
       filter.teacherId = teacherId
+      if (!includeLearningCourses) {
+        filter.participationRole = { $ne: COURSE_ROLE_STUDENT }
+      }
     }
     
     if (studentId && !filter.studentId) {
       filter.studentId = studentId
+      filter.participationRole = { $ne: COURSE_ROLE_STUDENT }
+    } else if (!studentId && user?.role === 'admin' && !includeLearningCourses) {
+      filter.participationRole = { $ne: COURSE_ROLE_STUDENT }
     }
     
     if (startTime && endTime) {
@@ -191,7 +240,7 @@ const getCourseById = async (req, res) => {
       return res.status(404).json({ message: '课程不存在' })
     }
     
-    if (!canViewStudent(course.studentId, user)) {
+    if (!canViewCourse(course, user)) {
       return res.status(403).json({ message: '无权限查看此课程' })
     }
     
@@ -210,22 +259,43 @@ const getCourseById = async (req, res) => {
 const createCourse = async (req, res) => {
   try {
     const user = await User.findById(req.userId)
-    const student = await Student.findById(req.body.studentId)
+    const participationRole = normalizeParticipationRole(req.body.participationRole)
+    const isStudentSideCourse = participationRole === COURSE_ROLE_STUDENT
+    let student = null
+    let courseTypeId = req.body.courseTypeId
 
-    if (!student) {
-      return res.status(404).json({ message: '学生不存在' })
+    if (isStudentSideCourse) {
+      if (!sanitizeOptionalText(req.body.externalTeacherName)) {
+        return res.status(400).json({ message: '请填写授课老师' })
+      }
+
+      if (!sanitizeOptionalText(req.body.externalCourseName)) {
+        return res.status(400).json({ message: '请填写课程名称' })
+      }
+
+      courseTypeId = null
+    } else {
+      student = await Student.findById(req.body.studentId)
+
+      if (!student) {
+        return res.status(404).json({ message: '学生不存在' })
+      }
+
+      if (user.role !== 'admin' && !canViewStudent(student, user)) {
+        return res.status(403).json({ message: '无权限为此学生创建课程' })
+      }
+
+      courseTypeId = await resolveCourseTypeForTeacher(student, user, req.body.courseTypeId)
     }
-
-    if (user.role !== 'admin' && !canViewStudent(student, user)) {
-      return res.status(403).json({ message: '无权限为此学生创建课程' })
-    }
-
-    const courseTypeId = await resolveCourseTypeForTeacher(student, user, req.body.courseTypeId)
     
     const courseData = {
       ...req.body,
+      studentId: isStudentSideCourse ? null : req.body.studentId,
       courseTypeId,
       plannedLessons: normalizePlannedLessons(req.body.plannedLessons),
+      participationRole,
+      externalTeacherName: isStudentSideCourse ? sanitizeOptionalText(req.body.externalTeacherName) : '',
+      externalCourseName: isStudentSideCourse ? sanitizeOptionalText(req.body.externalCourseName) : '',
       teacherId: user.role === 'admin' && req.body.teacherId ? req.body.teacherId : req.userId,
       groupId: req.body.groupId || null
     }
@@ -261,18 +331,47 @@ const updateCourse = async (req, res) => {
     console.log('更新课程数据:', req.body)
     
     const updateData = { ...req.body }
-    const nextStudentId = updateData.studentId || course.studentId
-    const student = await Student.findById(nextStudentId)
+    const nextParticipationRole = normalizeParticipationRole(updateData.participationRole || course.participationRole)
+    const isStudentSideCourse = nextParticipationRole === COURSE_ROLE_STUDENT
 
-    if (!student) {
-      return res.status(404).json({ message: '学生不存在' })
+    updateData.participationRole = nextParticipationRole
+
+    if (isStudentSideCourse) {
+      const nextExternalTeacherName = Object.prototype.hasOwnProperty.call(req.body, 'externalTeacherName')
+        ? sanitizeOptionalText(req.body.externalTeacherName)
+        : sanitizeOptionalText(course.externalTeacherName)
+      const nextExternalCourseName = Object.prototype.hasOwnProperty.call(req.body, 'externalCourseName')
+        ? sanitizeOptionalText(req.body.externalCourseName)
+        : sanitizeOptionalText(course.externalCourseName)
+
+      if (!nextExternalTeacherName) {
+        return res.status(400).json({ message: '请填写授课老师' })
+      }
+
+      if (!nextExternalCourseName) {
+        return res.status(400).json({ message: '请填写课程名称' })
+      }
+
+      updateData.studentId = null
+      updateData.courseTypeId = null
+      updateData.externalTeacherName = nextExternalTeacherName
+      updateData.externalCourseName = nextExternalCourseName
+    } else {
+      const nextStudentId = updateData.studentId || course.studentId
+      const student = await Student.findById(nextStudentId)
+
+      if (!student) {
+        return res.status(404).json({ message: '学生不存在' })
+      }
+
+      if (user.role !== 'admin' && !canViewStudent(student, user)) {
+        return res.status(403).json({ message: '无权限将课程分配给此学生' })
+      }
+
+      updateData.courseTypeId = await resolveCourseTypeForTeacher(student, user, updateData.courseTypeId || course.courseTypeId)
+      updateData.externalTeacherName = ''
+      updateData.externalCourseName = ''
     }
-
-    if (user.role !== 'admin' && !canViewStudent(student, user)) {
-      return res.status(403).json({ message: '无权限将课程分配给此学生' })
-    }
-
-    updateData.courseTypeId = await resolveCourseTypeForTeacher(student, user, updateData.courseTypeId || course.courseTypeId)
     if (Object.prototype.hasOwnProperty.call(req.body, 'plannedLessons')) {
       updateData.plannedLessons = normalizePlannedLessons(
         req.body.plannedLessons,
@@ -368,7 +467,18 @@ const updateCoursesByGroup = async (req, res) => {
       filter.teacherId = req.userId
     }
     
-    const { studentId, courseTypeId, startTime, endTime, status, notes, plannedLessons } = req.body
+    const {
+      studentId,
+      courseTypeId,
+      startTime,
+      endTime,
+      status,
+      notes,
+      plannedLessons,
+      participationRole,
+      externalTeacherName,
+      externalCourseName
+    } = req.body
     
     const updateData = {}
     if (studentId !== undefined) updateData.studentId = studentId
@@ -378,6 +488,9 @@ const updateCoursesByGroup = async (req, res) => {
     if (status !== undefined) updateData.status = status
     if (notes !== undefined) updateData.notes = notes
     if (plannedLessons !== undefined) updateData.plannedLessons = normalizePlannedLessons(plannedLessons)
+    if (participationRole !== undefined) updateData.participationRole = normalizeParticipationRole(participationRole)
+    if (externalTeacherName !== undefined) updateData.externalTeacherName = sanitizeOptionalText(externalTeacherName)
+    if (externalCourseName !== undefined) updateData.externalCourseName = sanitizeOptionalText(externalCourseName)
     
     const result = await Course.updateMany(filter, updateData)
     
@@ -472,7 +585,9 @@ const rescheduleCourseGroup = async (req, res) => {
       studentId,
       courseTypeId,
       notes,
-      plannedLessons
+      plannedLessons,
+      externalTeacherName,
+      externalCourseName
     } = req.body
     
     if (!newStartDate || !newEndDate || !newStartTime || !duration) {
@@ -493,6 +608,14 @@ const rescheduleCourseGroup = async (req, res) => {
     }
     
     const firstCourse = allGroupCourses[0]
+    const groupParticipationRole = normalizeParticipationRole(firstCourse.participationRole)
+    const groupIsLearningCourse = groupParticipationRole === COURSE_ROLE_STUDENT
+    const nextExternalTeacherName = externalTeacherName !== undefined
+      ? sanitizeOptionalText(externalTeacherName)
+      : sanitizeOptionalText(firstCourse.externalTeacherName)
+    const nextExternalCourseName = externalCourseName !== undefined
+      ? sanitizeOptionalText(externalCourseName)
+      : sanitizeOptionalText(firstCourse.externalCourseName)
     const plannedLessonsForGroup = plannedLessons === undefined
       ? undefined
       : normalizePlannedLessons(plannedLessons)
@@ -552,23 +675,29 @@ const rescheduleCourseGroup = async (req, res) => {
         await Course.findByIdAndUpdate(course._id, {
           startTime,
           endTime,
-          studentId: studentId || course.studentId,
-          courseTypeId: courseTypeId || course.courseTypeId,
+          studentId: groupIsLearningCourse ? null : (studentId || course.studentId),
+          courseTypeId: groupIsLearningCourse ? null : (courseTypeId || course.courseTypeId),
           notes: notes !== undefined ? notes : course.notes,
+          participationRole: groupParticipationRole,
+          externalTeacherName: groupIsLearningCourse ? nextExternalTeacherName : '',
+          externalCourseName: groupIsLearningCourse ? nextExternalCourseName : '',
           ...(plannedLessonsForGroup === undefined ? {} : { plannedLessons: plannedLessonsForGroup }),
           reminderSent: false
         })
         updatedCount++
       } else {
         const courseData = {
-          studentId: studentId || firstCourse.studentId,
-          courseTypeId: courseTypeId || firstCourse.courseTypeId,
+          studentId: groupIsLearningCourse ? null : (studentId || firstCourse.studentId),
+          courseTypeId: groupIsLearningCourse ? null : (courseTypeId || firstCourse.courseTypeId),
           teacherId: teacherId,
           startTime,
           endTime,
           status: 'normal',
           groupId: groupId,
           notes: notes !== undefined ? notes : firstCourse.notes,
+          participationRole: groupParticipationRole,
+          externalTeacherName: groupIsLearningCourse ? nextExternalTeacherName : '',
+          externalCourseName: groupIsLearningCourse ? nextExternalCourseName : '',
           plannedLessons: plannedLessonsForGroup === undefined
             ? normalizePlannedLessons(firstCourse.plannedLessons)
             : plannedLessonsForGroup,

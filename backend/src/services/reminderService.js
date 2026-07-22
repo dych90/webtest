@@ -216,7 +216,8 @@ const checkAndSendReminders = async () => {
         $gte: nowFloored,
         $lte: oneHourLaterCeiled
       },
-      status: 'normal'
+      status: 'normal',
+      participationRole: { $ne: 'student' }
     }).populate('studentId').populate('teacherId').populate('courseTypeId')
 
     console.log(`时间范围内共有 ${allCoursesInHour.length} 节课程(status=normal)`)
@@ -234,6 +235,7 @@ const checkAndSendReminders = async () => {
         $lte: oneHourLaterCeiled
       },
       status: 'normal',
+      participationRole: { $ne: 'student' },
       $or: [
         { reminderSent: false },
         { reminderSent: { $exists: false } }
@@ -351,7 +353,8 @@ const sendMorningDailyReminder = async () => {
         $gte: todayStart,
         $lt: todayEnd
       },
-      status: 'normal'
+      status: 'normal',
+      participationRole: { $ne: 'student' }
     }).populate('teacherId').populate('studentId').populate('courseTypeId')
 
     const teachersToRemind = await buildTeacherDailyReminderMap(courses)
@@ -438,7 +441,8 @@ const sendEveningDailyReminder = async () => {
         $gte: todayStart,
         $lt: todayEnd
       },
-      status: 'completed'
+      status: 'completed',
+      participationRole: { $ne: 'student' }
     }).populate('teacherId').populate('studentId').populate('courseTypeId')
 
     const tomorrowCourses = await Course.find({
@@ -446,7 +450,8 @@ const sendEveningDailyReminder = async () => {
         $gte: tomorrowStart,
         $lt: tomorrowEnd
       },
-      status: 'normal'
+      status: 'normal',
+      participationRole: { $ne: 'student' }
     }).populate('teacherId').populate('studentId').populate('courseTypeId')
 
     console.log(`晚上提醒：找到 ${todayCompletedCourses.length} 节今日已上课程(status=completed)`)

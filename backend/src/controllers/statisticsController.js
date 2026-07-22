@@ -182,7 +182,9 @@ const getStatistics = async (req, res) => {
     const totalRevenue = payments.reduce((sum, p) => sum + toNumber(p.amount), 0)
     const totalLessonsSold = payments.reduce((sum, p) => sum + toNumber(p.totalLessons), 0)
     
-    const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
+    const courseQuery = accountTeacherId
+      ? { teacherId: accountTeacherId, participationRole: { $ne: 'student' } }
+      : { participationRole: { $ne: 'student' } }
     const courses = await Course.find(courseQuery)
       .populate('studentId', 'teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId')
       .populate('courseTypeId', 'name duration')
@@ -332,7 +334,9 @@ const getChartStatistics = async (req, res) => {
       .populate('courseId', 'startTime')
       .populate('courseTypeId', 'name duration')
 
-    const courseQuery = accountTeacherId ? { teacherId: accountTeacherId } : {}
+    const courseQuery = accountTeacherId
+      ? { teacherId: accountTeacherId, participationRole: { $ne: 'student' } }
+      : { participationRole: { $ne: 'student' } }
     const courses = await Course.find(courseQuery)
       .populate('studentId', 'teacherId paymentType currentPrice priceEffectiveDate practiceTeacherId')
       .populate('courseTypeId', 'name duration')

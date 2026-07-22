@@ -2,20 +2,20 @@
   <view class="detail-container">
     <view class="info-section">
       <view class="info-header">
-        <text class="info-title">课程详情</text>
+        <text class="info-title">{{ courseDetailTitle }}</text>
         <text class="info-status" :class="statusClass">{{ statusText }}</text>
       </view>
       
       <view class="info-list">
         <view class="info-item">
-          <text class="info-label">学生</text>
-          <text class="info-value">{{ formatStudentName(course.studentId?.name) }}</text>
+          <text class="info-label">{{ coursePersonLabel }}</text>
+          <text class="info-value">{{ coursePersonName }}</text>
         </view>
         <view class="info-item">
-          <text class="info-label">课程类型</text>
-          <text class="info-value">{{ course.courseTypeId?.name || '未设置' }}</text>
+          <text class="info-label">{{ courseSubjectLabel }}</text>
+          <text class="info-value">{{ courseSubjectName }}</text>
         </view>
-        <view class="info-item">
+        <view class="info-item" v-if="!isLearningCourse">
           <text class="info-label">计划课时</text>
           <text class="info-value">{{ getCoursePlannedLessons(course) }}</text>
         </view>
@@ -38,7 +38,7 @@
       </view>
     </view>
 
-    <view class="record-section" v-if="course.lessonRecord">
+    <view class="record-section" v-if="!isLearningCourse && course.lessonRecord">
       <view class="record-header">
         <text class="record-title">消课记录</text>
         <button class="btn-record-detail" @click="goEditLessonRecord">
@@ -62,14 +62,14 @@
       <button 
         class="btn-attend" 
         @click="handleAttend" 
-        v-if="course.status === 'normal'"
+        v-if="canAttendCourse && course.status === 'normal'"
       >
         上课
       </button>
       <button 
         class="btn-cancel-attend" 
         @click="handleCancelAttend" 
-        v-if="course.status === 'completed'"
+        v-if="canAttendCourse && course.status === 'completed'"
       >
         取消上课
       </button>
@@ -116,7 +116,7 @@
           <text class="dialog-close" @click="editDialogVisible = false">×</text>
         </view>
         <view class="dialog-body" @click.stop>
-          <view class="form-item">
+          <view class="form-item" v-if="editForm.participationRole === 'teacher'">
             <text class="form-label">学生</text>
             <view class="student-picker" @click="openStudentPicker">
               <view class="form-picker">
@@ -125,7 +125,7 @@
               </view>
             </view>
           </view>
-          <view class="form-item">
+          <view class="form-item" v-if="editForm.participationRole === 'teacher'">
             <text class="form-label">课程类型</text>
             <picker :value="courseTypeIndex" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
               <view class="form-picker">
@@ -161,7 +161,23 @@
               </view>
             </picker>
           </view>
-          <view class="form-item">
+          <view class="form-item" v-if="editForm.participationRole === 'student'">
+            <text class="form-label">课程名称</text>
+            <input
+              class="form-input"
+              v-model="editForm.externalCourseName"
+              placeholder="例如：小提琴课、书法课"
+            />
+          </view>
+          <view class="form-item" v-if="editForm.participationRole === 'student'">
+            <text class="form-label">授课老师</text>
+            <input
+              class="form-input"
+              v-model="editForm.externalTeacherName"
+              placeholder="请输入老师姓名"
+            />
+          </view>
+          <view class="form-item" v-if="editForm.participationRole === 'teacher'">
             <text class="form-label">计划课时</text>
             <picker :value="plannedLessonIndex" :range="lessonCountOptions" @change="onPlannedLessonChange">
               <view class="form-picker">
@@ -439,8 +455,11 @@ const DEFAULT_PLANNED_LESSONS = 1
 const plannedLessonIndex = ref(1)
 
 const editForm = ref({
+  participationRole: 'teacher',
   studentId: '',
   courseTypeId: '',
+  externalTeacherName: '',
+  externalCourseName: '',
   date: '',
   startTime: '',
   duration: 60,
@@ -504,11 +523,36 @@ const statusClass = computed(() => {
 })
 
 const canManageCourse = computed(() => Boolean(course.value?._id) && course.value.canManageCourse !== false)
+const isLearningCourse = computed(() => course.value?.participationRole === 'student')
+const canAttendCourse = computed(() => canManageCourse.value && !isLearningCourse.value)
 const showCourseTeacher = computed(() => Boolean(course.value?.teacherId?.name && !canManageCourse.value))
+const courseDetailTitle = computed(() => isLearningCourse.value ? '上课详情' : '课程详情')
+const coursePersonLabel = computed(() => isLearningCourse.value ? '授课老师' : '学生')
+const courseSubjectLabel = computed(() => isLearningCourse.value ? '课程名称' : '课程类型')
+const coursePersonName = computed(() => {
+  if (isLearningCourse.value) {
+    return course.value?.externalTeacherName || '未设置老师'
+  }
+
+  return formatStudentName(course.value?.studentId?.name)
+})
+const courseSubjectName = computed(() => {
+  if (isLearningCourse.value) {
+    return course.value?.externalCourseName || '未设置课程'
+  }
+
+  return course.value?.courseTypeId?.name || '未设置'
+})
 
 const ensureCanManageCourse = () => {
   if (canManageCourse.value) return true
   uni.showToast({ title: '只能查看该课程', icon: 'none' })
+  return false
+}
+
+const ensureCanAttendCourse = () => {
+  if (canAttendCourse.value) return true
+  uni.showToast({ title: '这条记录是自己上课，不走消课流程', icon: 'none' })
   return false
 }
 
@@ -655,7 +699,7 @@ const fetchCourseTypes = async () => {
 
 const fetchAllCourses = async () => {
   try {
-    const res = await get('/courses')
+    const res = await get('/courses', { includeLearningCourses: true })
     allCourses.value = res.data || []
   } catch (error) {
     console.error('获取课程列表失败', error)
@@ -817,8 +861,11 @@ const handleEdit = async () => {
   }
   
   editForm.value = {
+    participationRole: course.value.participationRole || 'teacher',
     studentId: course.value.studentId?._id || '',
     courseTypeId: course.value.courseTypeId?._id || '',
+    externalTeacherName: course.value.externalTeacherName || '',
+    externalCourseName: course.value.externalCourseName || '',
     date: formatDate(startTime),
     startTime: formatTime(startTime),
     duration: duration,
@@ -839,24 +886,58 @@ const handleEdit = async () => {
   editDialogVisible.value = true
 }
 
+const isEditingLearningCourse = () => editForm.value.participationRole === 'student'
+
+const buildEditCoursePayload = (startTime, endTime, extra = {}) => {
+  const payload = {
+    participationRole: editForm.value.participationRole,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    plannedLessons: isEditingLearningCourse() ? DEFAULT_PLANNED_LESSONS : editForm.value.plannedLessons,
+    notes: editForm.value.notes,
+    ...extra
+  }
+
+  if (isEditingLearningCourse()) {
+    payload.studentId = null
+    payload.courseTypeId = null
+    payload.externalTeacherName = editForm.value.externalTeacherName.trim()
+    payload.externalCourseName = editForm.value.externalCourseName.trim()
+    return payload
+  }
+
+  payload.studentId = editForm.value.studentId || null
+  payload.courseTypeId = editForm.value.courseTypeId || null
+  payload.externalTeacherName = ''
+  payload.externalCourseName = ''
+  return payload
+}
+
 const handleSaveEdit = async () => {
   if (!ensureCanManageCourse()) return
 
   try {
+    if (!isEditingLearningCourse() && !editForm.value.studentId) {
+      uni.showToast({ title: '请选择学生', icon: 'none' })
+      return
+    }
+
+    if (isEditingLearningCourse() && !editForm.value.externalCourseName.trim()) {
+      uni.showToast({ title: '请填写课程名称', icon: 'none' })
+      return
+    }
+
+    if (isEditingLearningCourse() && !editForm.value.externalTeacherName.trim()) {
+      uni.showToast({ title: '请填写授课老师', icon: 'none' })
+      return
+    }
+
     const [hours, minutes] = editForm.value.startTime.split(':').map(Number)
     const startDate = new Date(editForm.value.date)
     startDate.setHours(hours, minutes, 0, 0)
     
     const endDate = new Date(startDate.getTime() + editForm.value.duration * 60000)
-    
-    const updateData = {
-      studentId: editForm.value.studentId || null,
-      courseTypeId: editForm.value.courseTypeId || null,
-      startTime: startDate.toISOString(),
-      endTime: endDate.toISOString(),
-      plannedLessons: editForm.value.plannedLessons,
-      notes: editForm.value.notes
-    }
+    const updateData = buildEditCoursePayload(startDate, endDate)
     
     if (applyToGroup.value && course.value.groupId) {
       const groupCourses = allCourses.value.filter(c => c.groupId === course.value.groupId)
@@ -871,14 +952,7 @@ const handleSaveEdit = async () => {
         newStartTime.setMinutes(parseInt(minutes))
         const newEndTime = new Date(newStartTime.getTime() + editForm.value.duration * 60000)
         
-        return put(`/courses/${courseItem._id}`, {
-          studentId: editForm.value.studentId || null,
-          courseTypeId: editForm.value.courseTypeId || null,
-          startTime: newStartTime.toISOString(),
-          endTime: newEndTime.toISOString(),
-          plannedLessons: editForm.value.plannedLessons,
-          notes: editForm.value.notes
-        })
+        return put(`/courses/${courseItem._id}`, buildEditCoursePayload(newStartTime, newEndTime))
       })
       
       await Promise.all(updatePromises)
@@ -892,15 +966,7 @@ const handleSaveEdit = async () => {
           const courseStartTime = new Date(`${dateStr}T${editForm.value.startTime}:00`)
           const courseEndTime = new Date(courseStartTime.getTime() + editForm.value.duration * 60000)
           
-          return post('/courses', {
-            studentId: editForm.value.studentId || undefined,
-            courseTypeId: editForm.value.courseTypeId || undefined,
-            startTime: courseStartTime.toISOString(),
-            endTime: courseEndTime.toISOString(),
-            plannedLessons: editForm.value.plannedLessons,
-            status: 'normal',
-            notes: editForm.value.notes
-          })
+          return post('/courses', buildEditCoursePayload(courseStartTime, courseEndTime, { status: 'normal' }))
         })
         
         await Promise.all(promises)
@@ -975,7 +1041,7 @@ const handleReschedule = async () => {
 }
 
 const handleAttend = async () => {
-  if (!ensureCanManageCourse()) return
+  if (!ensureCanAttendCourse()) return
 
   if (!course.value.courseTypeId?._id && !course.value.courseTypeId) {
     uni.showModal({
@@ -1000,14 +1066,14 @@ const onLessonCountChange = (e) => {
 }
 
 const confirmAttendFromDialog = async () => {
-  if (!ensureCanManageCourse()) return
+  if (!ensureCanAttendCourse()) return
 
   attendDialogVisible.value = false
   await doAttend(lessonCountValues[lessonCountIndex.value])
 }
 
 const doAttend = async (lessonsConsumed = 1) => {
-  if (!ensureCanManageCourse()) return
+  if (!ensureCanAttendCourse()) return
 
   try {
     await put(`/courses/${courseId.value}`, { status: 'completed' })
@@ -1039,7 +1105,7 @@ const doAttend = async (lessonsConsumed = 1) => {
 }
 
 const handleCancelAttend = async () => {
-  if (!ensureCanManageCourse()) return
+  if (!ensureCanAttendCourse()) return
 
   uni.showModal({
     title: '提示',
@@ -1454,6 +1520,16 @@ const handleDeleteGroup = async () => {
   font-size: 28rpx;
   color: #3F352B;
   margin-bottom: 12rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
 }
 
 .form-picker {

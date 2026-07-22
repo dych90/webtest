@@ -94,10 +94,10 @@
               <text class="time">{{ formatTime(course.startTime) }}</text>
             </view>
             <view class="course-info">
-              <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
+              <text class="student-name">{{ getCoursePersonName(course) }}</text>
               <view class="course-meta-row">
-                <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
-                <text class="course-lesson-count">{{ formatCourseLessonCount(course) }}</text>
+                <text class="course-type">{{ getCourseSubjectName(course) }}</text>
+                <text v-if="!isLearningCourse(course)" class="course-lesson-count">{{ formatCourseLessonCount(course) }}</text>
                 <text class="course-role-tag" :class="getCourseRoleClass(course)">{{ getCourseRoleText(course) }}</text>
               </view>
               <text v-if="shouldShowCourseTeacher(course)" class="course-teacher">{{ getCourseTeacherText(course) }}</text>
@@ -118,14 +118,14 @@
                 {{ getStatusText(course.status) }}
               </text>
               <button
-                v-if="canManageCourse(course) && course.status === 'normal'"
+                v-if="canAttendCourse(course) && course.status === 'normal'"
                 class="btn-attend"
                 @click.stop="handleAttendCourse(course)"
               >
                 上课
               </button>
               <button
-                v-if="canManageCourse(course) && course.status === 'completed'"
+                v-if="canAttendCourse(course) && course.status === 'completed'"
                 class="btn-cancel-attend"
                 @click.stop="handleCancelAttendCourse(course)"
               >
@@ -369,7 +369,13 @@ const formatCourseLessonCount = (course) => {
   return `${formatLessonCount(getCoursePlannedLessons(course))}节课`
 }
 
+const isLearningCourse = (course) => course?.participationRole === 'student'
+
 const formatCourseSectionLessonCount = (courses = []) => {
+  if (courses.length > 0 && courses.every(isLearningCourse)) {
+    return formatLessonCount(courses.length)
+  }
+
   const totalLessons = courses.reduce((total, course) => total + getCoursePlannedLessons(course), 0)
   return formatLessonCount(Math.round((totalLessons + Number.EPSILON) * 100) / 100)
 }
@@ -416,6 +422,22 @@ const formatTime = (dateStr) => {
 const formatStudentName = (name) => {
   if (!name) return '未分配'
   return name.replace(/（/g, '(').replace(/）/g, ')')
+}
+
+const getCoursePersonName = (course) => {
+  if (isLearningCourse(course)) {
+    return course?.externalTeacherName || '未设置老师'
+  }
+
+  return formatStudentName(course?.studentId?.name)
+}
+
+const getCourseSubjectName = (course) => {
+  if (isLearningCourse(course)) {
+    return course?.externalCourseName || '未设置课程'
+  }
+
+  return course?.courseTypeId?.name || '未设置'
 }
 
 const getStatusText = (status) => {
@@ -506,7 +528,8 @@ const fetchDayCourses = async () => {
     
     const res = await get('/courses', {
       startTime: startOfDay.toISOString(),
-      endTime: endOfDay.toISOString()
+      endTime: endOfDay.toISOString(),
+      includeLearningCourses: true
     })
     
     todayCourses.value = res.data || []
@@ -528,10 +551,15 @@ const fetchStatistics = async () => {
 }
 
 const canManageCourse = (course) => course?.canManageCourse !== false
+const canAttendCourse = (course) => canManageCourse(course) && !isLearningCourse(course)
 
 const getCourseRoleText = (course) => {
+  if (isLearningCourse(course)) {
+    return '我上课'
+  }
+
   if (canManageCourse(course)) {
-    return course?.courseRelationType === 'practice' ? '我的陪练课' : '我的课'
+    return course?.courseRelationType === 'practice' ? '我的陪练课' : '我的授课'
   }
 
   if (course?.courseRelationType === 'owner') {
@@ -544,6 +572,10 @@ const getCourseRoleText = (course) => {
 }
 
 const getCourseRoleClass = (course) => {
+  if (isLearningCourse(course)) {
+    return 'course-role-learning'
+  }
+
   if (canManageCourse(course)) {
     return course?.courseRelationType === 'practice' ? 'course-role-my-practice' : 'course-role-mine'
   }
@@ -569,11 +601,13 @@ const getSharedCoursesTitle = (items = []) => {
 }
 
 const todayCourseSections = computed(() => {
-  const myCourses = todayCourses.value.filter(course => canManageCourse(course))
+  const teachingCourses = todayCourses.value.filter(course => canManageCourse(course) && !isLearningCourse(course))
+  const learningCourses = todayCourses.value.filter(course => isLearningCourse(course))
   const sharedCourses = todayCourses.value.filter(course => !canManageCourse(course))
 
   return [
-    { key: 'mine', title: '我的课程', items: myCourses },
+    { key: 'teaching', title: '我的授课', items: teachingCourses },
+    { key: 'learning', title: '我上的课', items: learningCourses },
     { key: 'shared', title: getSharedCoursesTitle(sharedCourses), items: sharedCourses }
   ].filter(section => section.items.length > 0)
 })
@@ -596,7 +630,12 @@ const getCourseTeacherText = (course) => {
 }
 
 const handleAttendCourse = async (course) => {
-  if (!canManageCourse(course)) {
+  if (isLearningCourse(course)) {
+    uni.showToast({ title: '这条记录是自己上课，不走消课流程', icon: 'none' })
+    return
+  }
+
+  if (!canAttendCourse(course)) {
     uni.showToast({ title: '只能查看该课程', icon: 'none' })
     return
   }
@@ -863,7 +902,12 @@ const settleLessonReward = async (lessonRecord) => {
 }
 
 const handleCancelAttendCourse = async (course) => {
-  if (!canManageCourse(course)) {
+  if (isLearningCourse(course)) {
+    uni.showToast({ title: '这条记录是自己上课，不走消课流程', icon: 'none' })
+    return
+  }
+
+  if (!canAttendCourse(course)) {
     uni.showToast({ title: '只能查看该课程', icon: 'none' })
     return
   }
@@ -1195,6 +1239,10 @@ onUnmounted(() => {
   border-left-color: var(--theme-warning);
 }
 
+.course-item.course-role-learning {
+  border-left-color: #4C6F72;
+}
+
 .course-index {
   width: 40rpx;
   height: 40rpx;
@@ -1283,6 +1331,11 @@ onUnmounted(() => {
 .course-role-tag.course-role-shared {
   color: var(--theme-warning);
   background-color: var(--theme-warning-soft);
+}
+
+.course-role-tag.course-role-learning {
+  color: #4C6F72;
+  background-color: #E4F0EE;
 }
 
 .lesson-record-preview {
@@ -2069,6 +2122,10 @@ onUnmounted(() => {
   border-left-color: #a26b39;
 }
 
+.course-item.course-role-learning {
+  border-left-color: #4C6F72;
+}
+
 .course-index {
   width: 42rpx;
   height: 42rpx;
@@ -2142,6 +2199,11 @@ onUnmounted(() => {
 .course-role-tag.course-role-shared {
   color: #a26b39;
   background: rgba(217, 155, 82, 0.16);
+}
+
+.course-role-tag.course-role-learning {
+  color: #4C6F72;
+  background: rgba(76, 111, 114, 0.16);
 }
 
 .course-teacher {

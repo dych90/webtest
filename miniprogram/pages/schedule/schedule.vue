@@ -172,7 +172,7 @@
                 <view v-if="isPendingOverdueCourse(course)" class="week-calendar-overdue-mark">!</view>
                 <text class="week-calendar-time">{{ formatTime(course.startTime) }}</text>
                 <text class="week-calendar-role">{{ getCourseRoleText(course) }}</text>
-                <text class="week-calendar-name">{{ formatStudentName(course.studentId?.name) }}</text>
+                <text class="week-calendar-name">{{ getCoursePersonName(course) }}</text>
               </view>
             </view>
           </view>
@@ -223,10 +223,10 @@
                   <text>{{ formatTime(course.startTime) }} - {{ formatTime(course.endTime) }}</text>
                 </view>
                 <view class="course-main">
-                  <text class="student-name">{{ formatStudentName(course.studentId?.name) }}</text>
+                  <text class="student-name">{{ getCoursePersonName(course) }}</text>
                   <view class="course-meta-row">
-                    <text class="course-type">{{ course.courseTypeId?.name || '未设置' }}</text>
-                    <text class="course-lesson-count">{{ formatCourseLessonCount(course) }}</text>
+                    <text class="course-type">{{ getCourseSubjectName(course) }}</text>
+                    <text v-if="!isLearningCourse(course)" class="course-lesson-count">{{ formatCourseLessonCount(course) }}</text>
                     <text class="course-role-tag" :class="getCourseRoleClass(course)">{{ getCourseRoleText(course) }}</text>
                   </view>
                 </view>
@@ -464,11 +464,13 @@ const dayCourses = computed(() => {
 })
 
 const dayCourseSections = computed(() => {
-  const myCourses = dayCourses.value.filter(course => isOwnCourse(course))
+  const teachingCourses = dayCourses.value.filter(course => isOwnCourse(course) && !isLearningCourse(course))
+  const learningCourses = dayCourses.value.filter(course => isLearningCourse(course))
   const sharedCourses = dayCourses.value.filter(course => !isOwnCourse(course))
 
   return [
-    { key: 'mine', title: '我的课程', items: myCourses },
+    { key: 'teaching', title: '我的授课', items: teachingCourses },
+    { key: 'learning', title: '我上的课', items: learningCourses },
     { key: 'shared', title: getSharedCoursesTitle(sharedCourses), items: sharedCourses }
   ].filter(section => section.items.length > 0)
 })
@@ -554,6 +556,26 @@ function formatStudentName(name) {
   return name.replace(/（/g, '(').replace(/）/g, ')')
 }
 
+function isLearningCourse(course) {
+  return course?.participationRole === 'student'
+}
+
+function getCoursePersonName(course) {
+  if (isLearningCourse(course)) {
+    return course?.externalTeacherName || '未设置老师'
+  }
+
+  return formatStudentName(course?.studentId?.name)
+}
+
+function getCourseSubjectName(course) {
+  if (isLearningCourse(course)) {
+    return course?.externalCourseName || '未设置课程'
+  }
+
+  return course?.courseTypeId?.name || '未设置'
+}
+
 function getCoursePlannedLessons(course) {
   const plannedLessons = Number(course?.plannedLessons)
   if (!Number.isFinite(plannedLessons) || plannedLessons <= 0) {
@@ -590,8 +612,12 @@ function isOwnCourse(course) {
 }
 
 function getCourseRoleText(course) {
+  if (isLearningCourse(course)) {
+    return '我上课'
+  }
+
   if (isOwnCourse(course)) {
-    return course?.courseRelationType === 'practice' ? '我的陪练课' : '我的课'
+    return course?.courseRelationType === 'practice' ? '我的陪练课' : '我的授课'
   }
 
   if (course?.courseRelationType === 'owner') {
@@ -604,6 +630,10 @@ function getCourseRoleText(course) {
 }
 
 function getCourseRoleClass(course) {
+  if (isLearningCourse(course)) {
+    return 'course-role-learning'
+  }
+
   if (isOwnCourse(course)) {
     return course?.courseRelationType === 'practice' ? 'course-role-my-practice' : 'course-role-mine'
   }
@@ -672,6 +702,7 @@ function getWeekImageSummaryText() {
 
 function getCourseImageColor(course) {
   if (course?.status === 'cancelled') return '#8B8176'
+  if (isLearningCourse(course)) return '#4C6F72'
   if (isOwnCourse(course)) {
     return course?.courseRelationType === 'practice' ? '#6F6254' : '#5F724C'
   }
@@ -683,7 +714,7 @@ function getCourseImageRoleText(course) {
     ? '已完成'
     : (course?.status === 'cancelled' ? '已取消' : getCourseRoleText(course))
 
-  const courseType = course?.courseTypeId?.name || ''
+  const courseType = getCourseSubjectName(course)
   return courseType ? `${statusText} · ${courseType}` : statusText
 }
 
@@ -767,10 +798,11 @@ async function drawWeekScheduleImage() {
   drawText(ctx, getWeekImageSummaryText(), width / 2, headerTop + 78, 22, '#8B8176', 'center')
 
   const legendY = headerTop + 126
-  drawLegendItem(ctx, margin, legendY, '#5F724C', '我的课')
-  drawLegendItem(ctx, margin + 185, legendY, '#6F6254', '我的陪练课')
-  drawLegendItem(ctx, margin + 420, legendY, '#A26B39', '互通课程')
-  drawLegendItem(ctx, margin + 650, legendY, '#8B8176', '已取消')
+  drawLegendItem(ctx, margin, legendY, '#5F724C', '我的授课')
+  drawLegendItem(ctx, margin + 180, legendY, '#4C6F72', '我上课')
+  drawLegendItem(ctx, margin + 335, legendY, '#6F6254', '我的陪练课')
+  drawLegendItem(ctx, margin + 570, legendY, '#A26B39', '互通课程')
+  drawLegendItem(ctx, margin + 790, legendY, '#8B8176', '已取消')
 
   drawRoundRect(ctx, margin, gridTop, width - margin * 2, dayHeaderHeight, 12, '#FBF6EE')
   drawLine(ctx, margin + timeColumnWidth, gridTop, margin + timeColumnWidth, gridTop + dayHeaderHeight, '#E7D8C7')
@@ -817,7 +849,7 @@ async function drawWeekScheduleImage() {
           }
           drawText(ctx, formatTime(course.startTime), cardX + 10, cardY + 21, 18, '#F5EFE7')
           drawText(ctx, ellipsizeText(getCourseImageRoleText(course), maxChars), cardX + 10, cardY + 42, 17, '#E7D8C7')
-          drawText(ctx, ellipsizeText(formatStudentName(course.studentId?.name), maxChars), cardX + 10, cardY + 61, 21, '#FFFDF8')
+          drawText(ctx, ellipsizeText(getCoursePersonName(course), maxChars), cardX + 10, cardY + 61, 21, '#FFFDF8')
         })
       })
 
@@ -1004,7 +1036,8 @@ const fetchCourses = async () => {
     
     const res = await get('/courses', {
       startTime: start.toISOString(),
-      endTime: end.toISOString()
+      endTime: end.toISOString(),
+      includeLearningCourses: true
     })
     
     courses.value = res.data || []
@@ -1485,6 +1518,10 @@ onShow(() => {
   background-color: #6F6254;
 }
 
+.week-calendar-course.course-role-learning {
+  background-color: #4C6F72;
+}
+
 .week-calendar-course.completed {
   background-color: #5F724C;
 }
@@ -1497,6 +1534,10 @@ onShow(() => {
 
 .week-calendar-course.completed.course-role-my-practice {
   background-color: #6F6254;
+}
+
+.week-calendar-course.completed.course-role-learning {
+  background-color: #4C6F72;
 }
 
 .week-calendar-course.cancelled {
@@ -1666,6 +1707,10 @@ onShow(() => {
   background-color: #6F6254;
 }
 
+.course-item.course-role-learning .timeline-dot {
+  background-color: #4C6F72;
+}
+
 .course-item.cancelled .timeline-dot {
   background-color: #A0523E;
 }
@@ -1696,6 +1741,10 @@ onShow(() => {
 
 .course-item.course-role-my-practice .course-content {
   border-left-color: #6F6254;
+}
+
+.course-item.course-role-learning .course-content {
+  border-left-color: #4C6F72;
 }
 
 .course-time {
@@ -1768,6 +1817,11 @@ onShow(() => {
 .course-role-tag.course-role-shared {
   color: #A26B39;
   background-color: #F6E8C9;
+}
+
+.course-role-tag.course-role-learning {
+  color: #4C6F72;
+  background-color: #E4F0EE;
 }
 
 .course-teacher {

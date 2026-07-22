@@ -1,8 +1,11 @@
 const mongoose = require('mongoose')
 
 const courseSchema = new mongoose.Schema({
-  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' },
   courseTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'CourseType' },
+  participationRole: { type: String, default: 'teacher', enum: ['teacher', 'student'] },
+  externalTeacherName: { type: String, trim: true },
+  externalCourseName: { type: String, trim: true },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
   plannedLessons: { type: Number, default: 1 },
