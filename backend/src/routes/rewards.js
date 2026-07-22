@@ -8,6 +8,7 @@ router.get('/students/:id/reward-overview', authenticateToken, rewardController.
 router.get('/students/:id/point-debt', authenticateToken, rewardController.getStudentPointDebt)
 router.get('/students/:id/point-records', authenticateToken, rewardController.getStudentPointRecords)
 router.post('/students/:id/point-adjustments', authenticateToken, rewardController.createManualPointAdjustment)
+router.post('/students/:id/growth-adjustments', authenticateToken, rewardController.createManualGrowthAdjustment)
 router.get('/reward-catalogs', authenticateToken, rewardController.getRewardCatalogs)
 router.post('/reward-catalogs', authenticateToken, rewardController.createRewardCatalog)
 router.put('/reward-catalogs/:id', authenticateToken, rewardController.updateRewardCatalog)

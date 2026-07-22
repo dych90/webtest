@@ -104,6 +104,7 @@
       <view class="reward-actions">
         <button class="btn-mall" @click="goToRewardMall">积分商城</button>
         <button class="btn-adjust" v-if="canManageStudent" @click="openAdjustDialog">积分修正</button>
+        <button class="btn-growth-adjust" v-if="canManageStudent" @click="openGrowthAdjustDialog">成长修正</button>
       </view>
       <view class="point-record-section">
         <view class="point-record-header">
@@ -210,6 +211,29 @@
         </view>
       </view>
     </view>
+
+    <view class="dialog-mask" v-if="growthAdjustDialogVisible" @click="closeGrowthAdjustDialog">
+      <view class="adjust-dialog" @click.stop>
+        <view class="dialog-header">
+          <text class="dialog-title">成长修正</text>
+          <text class="dialog-close" @click="closeGrowthAdjustDialog">×</text>
+        </view>
+        <view class="dialog-body">
+          <view class="form-item">
+            <text class="form-label">调整成长值</text>
+            <input class="form-input" v-model="growthAdjustForm.changeAmount" placeholder="例如 -5 或 10" />
+          </view>
+          <view class="form-item">
+            <text class="form-label">修正原因</text>
+            <textarea class="form-textarea" v-model="growthAdjustForm.reason" placeholder="必须填写原因" />
+          </view>
+        </view>
+        <view class="dialog-footer">
+          <button class="btn-cancel" @click="closeGrowthAdjustDialog" :disabled="growthAdjustSaving">取消</button>
+          <button class="btn-submit-adjust" @click="submitGrowthAdjustment" :loading="growthAdjustSaving" :disabled="growthAdjustSaving">保存</button>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -229,6 +253,12 @@ const pointRecords = ref([])
 const adjustDialogVisible = ref(false)
 const adjustSaving = ref(false)
 const adjustForm = ref({
+  changeAmount: '',
+  reason: ''
+})
+const growthAdjustDialogVisible = ref(false)
+const growthAdjustSaving = ref(false)
+const growthAdjustForm = ref({
   changeAmount: '',
   reason: ''
 })
@@ -356,6 +386,19 @@ const closeAdjustDialog = () => {
   adjustDialogVisible.value = false
 }
 
+const openGrowthAdjustDialog = () => {
+  growthAdjustForm.value = {
+    changeAmount: '',
+    reason: ''
+  }
+  growthAdjustDialogVisible.value = true
+}
+
+const closeGrowthAdjustDialog = () => {
+  if (growthAdjustSaving.value) return
+  growthAdjustDialogVisible.value = false
+}
+
 const submitPointAdjustment = async () => {
   const changeAmount = Number(adjustForm.value.changeAmount)
   const reason = adjustForm.value.reason.trim()
@@ -385,6 +428,37 @@ const submitPointAdjustment = async () => {
     uni.showToast({ title: error.message || '修正失败', icon: 'none' })
   } finally {
     adjustSaving.value = false
+  }
+}
+
+const submitGrowthAdjustment = async () => {
+  const changeAmount = Number(growthAdjustForm.value.changeAmount)
+  const reason = growthAdjustForm.value.reason.trim()
+
+  if (!Number.isFinite(changeAmount) || changeAmount === 0) {
+    uni.showToast({ title: '请输入非0成长值', icon: 'none' })
+    return
+  }
+
+  if (!reason) {
+    uni.showToast({ title: '请填写修正原因', icon: 'none' })
+    return
+  }
+
+  growthAdjustSaving.value = true
+  try {
+    await post(`/students/${studentId.value}/growth-adjustments`, {
+      changeAmount,
+      reason
+    })
+    emitRewardStateChanged({ source: 'student-growth-adjustment', studentId: studentId.value })
+    uni.showToast({ title: '修正成功', icon: 'success' })
+    growthAdjustDialogVisible.value = false
+    fetchRewardOverview()
+  } catch (error) {
+    uni.showToast({ title: error.message || '修正失败', icon: 'none' })
+  } finally {
+    growthAdjustSaving.value = false
   }
 }
 
@@ -596,7 +670,8 @@ const handleDelete = () => {
 }
 
 .btn-mall,
-.btn-adjust {
+.btn-adjust,
+.btn-growth-adjust {
   flex: 1;
   height: 72rpx;
   line-height: 72rpx;
@@ -614,6 +689,12 @@ const handleDelete = () => {
   background-color: #FFFDF8;
   color: #A26B39;
   border: 2rpx solid #A26B39;
+}
+
+.btn-growth-adjust {
+  background-color: #FFFDF8;
+  color: #5F724C;
+  border: 2rpx solid #5F724C;
 }
 
 .point-record-section {

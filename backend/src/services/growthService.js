@@ -7,6 +7,15 @@ const {
 const { toObjectId, toInteger, toAmount, normalizeAmount, toDate } = require('./rewardCommon')
 const { getActivePointRuleConfig, DEFAULT_POINT_RULE_CONFIG } = require('./rewardRuleService')
 
+const normalizeAuditReason = (reason, fieldName = 'reason') => {
+  const normalizedReason = (reason || '').toString().trim()
+  if (!normalizedReason) {
+    throw new Error(`${fieldName} is required`)
+  }
+
+  return normalizedReason
+}
+
 const ensureGrowthSummary = async ({ studentId, teacherId }) => {
   const normalizedStudentId = toObjectId(studentId, 'studentId')
   const normalizedTeacherId = toObjectId(teacherId, 'teacherId')
@@ -128,6 +137,39 @@ const applyGrowthChange = async (params) => {
   }
 }
 
+const applyManualGrowthAdjustment = async ({
+  studentId,
+  teacherId,
+  changeAmount,
+  reason,
+  adjustedBy,
+  adjustedAt = new Date()
+}) => {
+  const normalizedChangeAmount = toAmount(changeAmount, 'changeAmount')
+  if (normalizedChangeAmount === 0) {
+    throw new Error('changeAmount must not be 0')
+  }
+
+  const normalizedReason = normalizeAuditReason(reason, 'adjustment reason')
+  const currentSummary = await ensureGrowthSummary({ studentId, teacherId })
+  const nextTotalGrowthStars = normalizeAmount((Number(currentSummary.totalGrowthStars) || 0) + normalizedChangeAmount)
+
+  if (nextTotalGrowthStars < 0) {
+    throw new Error('growthStars cannot be negative')
+  }
+
+  return applyGrowthChange({
+    studentId,
+    teacherId,
+    changeAmount: normalizedChangeAmount,
+    businessType: 'manual_adjust',
+    occurredAt: adjustedAt,
+    createdByType: 'teacher',
+    createdById: adjustedBy,
+    remark: normalizedReason
+  })
+}
+
 const deriveGrowthBreakdown = (totalGrowthStars, ruleConfig = DEFAULT_POINT_RULE_CONFIG) => {
   const safeTotalGrowthStars = normalizeAmount(Math.max(0, Number(totalGrowthStars) || 0))
   const starsToMoon = ruleConfig.growthStarsToMoon || DEFAULT_POINT_RULE_CONFIG.growthStarsToMoon
@@ -239,6 +281,7 @@ module.exports = {
   createGrowthLedgerEntry,
   rebuildGrowthSummary,
   applyGrowthChange,
+  applyManualGrowthAdjustment,
   deriveGrowthBreakdown,
   getGrowthOverview,
   isGrowthGateSatisfied,

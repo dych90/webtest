@@ -375,6 +375,51 @@ const createManualPointAdjustment = async (req, res) => {
   }
 }
 
+const createManualGrowthAdjustment = async (req, res) => {
+  try {
+    const user = await getRequestUser(req)
+    const student = await getAccessibleStudent({
+      studentId: req.params.id,
+      user
+    })
+    const teacherId = resolveTeacherScope({
+      user,
+      student,
+      teacherId: req.body.teacherId || req.query.teacherId
+    })
+
+    const result = await growthService.applyManualGrowthAdjustment({
+      studentId: student._id,
+      teacherId,
+      changeAmount: req.body.changeAmount,
+      reason: req.body.reason,
+      adjustedBy: user._id,
+      adjustedAt: req.body.adjustedAt || new Date()
+    })
+    const ruleConfig = await getActivePointRuleConfig()
+    const growthOverview = await growthService.getGrowthOverview({
+      studentId: student._id,
+      teacherId,
+      ruleConfig
+    })
+
+    res.status(201).json({
+      message: 'manual growth adjustment created successfully',
+      data: {
+        studentId: student._id,
+        studentName: student.name,
+        teacherId,
+        ledger: result.ledger,
+        growthSummary: result.summary,
+        growthOverview
+      }
+    })
+  } catch (error) {
+    console.error('createManualGrowthAdjustment error:', error)
+    res.status(getErrorStatus(error)).json({ message: error.message || 'server error' })
+  }
+}
+
 const buildRewardCatalogScopeQuery = ({ teacherId, includeGlobal = false }) => {
   if (!teacherId) {
     return {}
@@ -874,6 +919,7 @@ module.exports = {
   getStudentPointDebt,
   getStudentPointRecords,
   createManualPointAdjustment,
+  createManualGrowthAdjustment,
   getRewardCatalogs,
   createRewardCatalog,
   updateRewardCatalog,
