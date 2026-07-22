@@ -125,11 +125,11 @@
               </view>
             </view>
           </view>
-          <view class="form-item" v-if="editForm.participationRole === 'teacher'">
-            <text class="form-label">课程类型</text>
-            <picker :value="courseTypeIndex" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
+          <view class="form-item">
+            <text class="form-label">{{ editForm.participationRole === 'student' ? '课程类型 *' : '课程类型' }}</text>
+            <picker :value="courseTypeIndex" :range="visibleCourseTypes" range-key="name" @change="onCourseTypeChange">
               <view class="form-picker">
-                <text>{{ courseTypes[courseTypeIndex]?.name || '请选择课程类型' }}</text>
+                <text :class="{ placeholder: !editForm.courseTypeId }">{{ selectedEditCourseTypeName }}</text>
                 <text class="picker-arrow">▼</text>
               </view>
             </picker>
@@ -160,14 +160,6 @@
                 <text class="picker-arrow">▼</text>
               </view>
             </picker>
-          </view>
-          <view class="form-item" v-if="editForm.participationRole === 'student'">
-            <text class="form-label">课程名称</text>
-            <input
-              class="form-input"
-              v-model="editForm.externalCourseName"
-              placeholder="例如：小提琴课、书法课"
-            />
           </view>
           <view class="form-item" v-if="editForm.participationRole === 'student'">
             <text class="form-label">授课老师</text>
@@ -443,7 +435,7 @@ const students = ref([])
 const filteredStudents = ref([])
 const studentSearchText = ref('')
 const showStudentPicker = ref(false)
-const courseTypes = ref([{ name: '请选择课程类型', _id: '' }])
+const courseTypes = ref([])
 const courseTypeIndex = ref(0)
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 
@@ -486,6 +478,10 @@ const attendDialogVisible = ref(false)
 const lessonCountIndex = ref(1)
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+
+const getCourseTypeRole = (type) => {
+  return type?.participationRole === 'student' ? 'student' : 'teacher'
+}
 
 const getCoursePlannedLessons = (courseItem) => {
   const plannedLessons = Number(courseItem?.plannedLessons)
@@ -538,10 +534,31 @@ const coursePersonName = computed(() => {
 })
 const courseSubjectName = computed(() => {
   if (isLearningCourse.value) {
-    return course.value?.externalCourseName || '未设置课程'
+    return course.value?.courseTypeId?.name || course.value?.externalCourseName || '未设置课程'
   }
 
   return course.value?.courseTypeId?.name || '未设置'
+})
+
+const editableCourseTypes = computed(() => {
+  return courseTypes.value.filter(type => getCourseTypeRole(type) === editForm.value.participationRole)
+})
+
+const visibleCourseTypes = computed(() => {
+  return [{ name: '请选择课程类型', _id: '' }, ...editableCourseTypes.value]
+})
+
+const selectedEditCourseType = computed(() => {
+  if (!editForm.value.courseTypeId) return null
+  return editableCourseTypes.value.find(type => type._id === editForm.value.courseTypeId) || null
+})
+
+const selectedEditCourseTypeName = computed(() => {
+  if (selectedEditCourseType.value) {
+    return selectedEditCourseType.value.name
+  }
+
+  return editForm.value.participationRole === 'student' ? '请选择我上课类型' : '请选择课程类型'
 })
 
 const ensureCanManageCourse = () => {
@@ -686,14 +703,27 @@ const fetchStudents = async () => {
 
 const fetchCourseTypes = async () => {
   try {
-    const res = await get('/course-types')
-    courseTypes.value = [{ name: '请选择课程类型', _id: '' }, ...(res.data || [])]
-    
-    const courseTypeId = (course.value.courseTypeId?._id || course.value.courseTypeId || '').toString()
-    const idx = courseTypes.value.findIndex(t => (t._id || '').toString() === courseTypeId)
-    courseTypeIndex.value = idx >= 0 ? idx : 0
+    const res = await get('/course-types', { includeAll: true })
+    courseTypes.value = res.data || []
+    syncCourseTypeIndex()
   } catch (error) {
     console.error('获取课程类型列表失败', error)
+  }
+}
+
+const syncCourseTypeIndex = () => {
+  const courseTypeId = (editForm.value.courseTypeId || course.value.courseTypeId?._id || course.value.courseTypeId || '').toString()
+  const idx = visibleCourseTypes.value.findIndex(t => (t._id || '').toString() === courseTypeId)
+  courseTypeIndex.value = idx >= 0 ? idx : 0
+}
+
+const applyEditCourseTypeDuration = (courseType) => {
+  if (!courseType?.duration) return
+
+  const idx = durationValues.indexOf(Number(courseType.duration))
+  if (idx >= 0) {
+    durationIndex.value = idx
+    editForm.value.duration = durationValues[idx]
   }
 }
 
@@ -776,7 +806,9 @@ const selectStudent = (student) => {
 
 const onCourseTypeChange = (e) => {
   courseTypeIndex.value = e.detail.value
-  editForm.value.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
+  const courseType = visibleCourseTypes.value[e.detail.value]
+  editForm.value.courseTypeId = courseType?._id || ''
+  applyEditCourseTypeDuration(courseType)
 }
 
 const onDateChange = (e) => {
@@ -865,7 +897,7 @@ const handleEdit = async () => {
     studentId: course.value.studentId?._id || '',
     courseTypeId: course.value.courseTypeId?._id || '',
     externalTeacherName: course.value.externalTeacherName || '',
-    externalCourseName: course.value.externalCourseName || '',
+    externalCourseName: course.value.externalCourseName || course.value.courseTypeId?.name || '',
     date: formatDate(startTime),
     startTime: formatTime(startTime),
     duration: duration,
@@ -882,6 +914,7 @@ const handleEdit = async () => {
   const durIdx = durationValues.findIndex(d => d === duration)
   durationIndex.value = durIdx >= 0 ? durIdx : 3
   plannedLessonIndex.value = getLessonCountIndexByValue(editForm.value.plannedLessons)
+  syncCourseTypeIndex()
   
   editDialogVisible.value = true
 }
@@ -900,9 +933,9 @@ const buildEditCoursePayload = (startTime, endTime, extra = {}) => {
 
   if (isEditingLearningCourse()) {
     payload.studentId = null
-    payload.courseTypeId = null
+    payload.courseTypeId = editForm.value.courseTypeId || null
     payload.externalTeacherName = editForm.value.externalTeacherName.trim()
-    payload.externalCourseName = editForm.value.externalCourseName.trim()
+    payload.externalCourseName = selectedEditCourseType.value?.name || editForm.value.externalCourseName.trim()
     return payload
   }
 
@@ -922,8 +955,8 @@ const handleSaveEdit = async () => {
       return
     }
 
-    if (isEditingLearningCourse() && !editForm.value.externalCourseName.trim()) {
-      uni.showToast({ title: '请填写课程名称', icon: 'none' })
+    if (isEditingLearningCourse() && !editForm.value.courseTypeId) {
+      uni.showToast({ title: '请选择我上课的课程类型', icon: 'none' })
       return
     }
 

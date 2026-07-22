@@ -50,8 +50,11 @@ const normalizePlannedLessons = (value, fallback = DEFAULT_PLANNED_LESSONS) => {
 
 const getOrCreatePracticeCourseType = async () => {
   return CourseType.findOneAndUpdate(
-    { name: PRACTICE_COURSE_TYPE_NAME },
+    { name: PRACTICE_COURSE_TYPE_NAME, participationRole: { $ne: COURSE_ROLE_STUDENT } },
     {
+      $set: {
+        participationRole: COURSE_ROLE_TEACHER
+      },
       $setOnInsert: {
         name: PRACTICE_COURSE_TYPE_NAME,
         duration: 60,
@@ -64,16 +67,52 @@ const getOrCreatePracticeCourseType = async () => {
 }
 
 const resolveCourseTypeForTeacher = async (student, user, requestedCourseTypeId) => {
-  if (user?.role === 'admin') {
-    return requestedCourseTypeId
-  }
+  let courseTypeId = requestedCourseTypeId
 
-  if (getStudentRelationType(student, user) === 'practice') {
+  if (user?.role !== 'admin' && getStudentRelationType(student, user) === 'practice') {
     const practiceCourseType = await getOrCreatePracticeCourseType()
-    return practiceCourseType._id
+    courseTypeId = practiceCourseType._id
   }
 
-  return requestedCourseTypeId
+  if (!courseTypeId) {
+    return courseTypeId
+  }
+
+  const courseType = await CourseType.findById(courseTypeId)
+  if (!courseType) {
+    const error = new Error('课程类型不存在')
+    error.statusCode = 404
+    throw error
+  }
+
+  if (normalizeParticipationRole(courseType.participationRole) === COURSE_ROLE_STUDENT) {
+    const error = new Error('请选择我授课的课程类型')
+    error.statusCode = 400
+    throw error
+  }
+
+  return courseType._id
+}
+
+const resolveCourseTypeForLearning = async (requestedCourseTypeId) => {
+  if (!requestedCourseTypeId) {
+    return null
+  }
+
+  const courseType = await CourseType.findById(requestedCourseTypeId)
+  if (!courseType) {
+    const error = new Error('课程类型不存在')
+    error.statusCode = 404
+    throw error
+  }
+
+  if (normalizeParticipationRole(courseType.participationRole) !== COURSE_ROLE_STUDENT) {
+    const error = new Error('请选择我上课的课程类型')
+    error.statusCode = 400
+    throw error
+  }
+
+  return courseType
 }
 
 const toPlainObject = (doc) => {
@@ -121,7 +160,7 @@ const attachLessonRecordsToCourses = async (courses = [], user) => {
   const lessonRecords = await LessonRecord.find({ courseId: { $in: courseIds } })
     .sort({ recordDate: -1, createdAt: -1 })
     .select('courseTypeId courseId lessonsConsumed lessonContent mediaItems isDeducted isGiftLesson recordDate courseStartTime createdAt')
-    .populate('courseTypeId', 'name duration')
+    .populate('courseTypeId', 'name duration participationRole')
 
   const recordMap = {}
   lessonRecords.forEach(record => {
@@ -210,7 +249,7 @@ const getCourses = async (req, res) => {
     const courses = await Course.find(filter)
       .sort({ startTime: 1 })
       .populate('studentId', 'name phone teacherId practiceTeacherId')
-      .populate('courseTypeId', 'name duration')
+      .populate('courseTypeId', 'name duration participationRole')
       .populate('teacherId', 'name username')
     
     console.log('查询到的课程数量:', courses.length)
@@ -233,7 +272,7 @@ const getCourseById = async (req, res) => {
     
     const course = await Course.findById(id)
       .populate('studentId', 'name phone teacherId practiceTeacherId')
-      .populate('courseTypeId', 'name duration')
+      .populate('courseTypeId', 'name duration participationRole')
       .populate('teacherId', 'name username')
     
     if (!course) {
@@ -269,11 +308,15 @@ const createCourse = async (req, res) => {
         return res.status(400).json({ message: '请填写授课老师' })
       }
 
-      if (!sanitizeOptionalText(req.body.externalCourseName)) {
+      const learningCourseType = await resolveCourseTypeForLearning(req.body.courseTypeId)
+      const externalCourseName = sanitizeOptionalText(req.body.externalCourseName) || learningCourseType?.name || ''
+
+      if (!externalCourseName) {
         return res.status(400).json({ message: '请填写课程名称' })
       }
 
-      courseTypeId = null
+      courseTypeId = learningCourseType?._id || null
+      req.body.externalCourseName = externalCourseName
     } else {
       student = await Student.findById(req.body.studentId)
 
@@ -308,6 +351,9 @@ const createCourse = async (req, res) => {
     })
   } catch (error) {
     console.error('创建课程错误:', error)
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message })
+    }
     res.status(500).json({ message: '服务器错误' })
   }
 }
@@ -343,19 +389,24 @@ const updateCourse = async (req, res) => {
       const nextExternalCourseName = Object.prototype.hasOwnProperty.call(req.body, 'externalCourseName')
         ? sanitizeOptionalText(req.body.externalCourseName)
         : sanitizeOptionalText(course.externalCourseName)
+      const nextCourseTypeId = Object.prototype.hasOwnProperty.call(req.body, 'courseTypeId')
+        ? req.body.courseTypeId
+        : course.courseTypeId
+      const learningCourseType = await resolveCourseTypeForLearning(nextCourseTypeId)
+      const resolvedExternalCourseName = nextExternalCourseName || learningCourseType?.name || ''
 
       if (!nextExternalTeacherName) {
         return res.status(400).json({ message: '请填写授课老师' })
       }
 
-      if (!nextExternalCourseName) {
+      if (!resolvedExternalCourseName) {
         return res.status(400).json({ message: '请填写课程名称' })
       }
 
       updateData.studentId = null
-      updateData.courseTypeId = null
+      updateData.courseTypeId = learningCourseType?._id || null
       updateData.externalTeacherName = nextExternalTeacherName
-      updateData.externalCourseName = nextExternalCourseName
+      updateData.externalCourseName = resolvedExternalCourseName
     } else {
       const nextStudentId = updateData.studentId || course.studentId
       const student = await Student.findById(nextStudentId)
@@ -394,6 +445,9 @@ const updateCourse = async (req, res) => {
     })
   } catch (error) {
     console.error('更新课程错误:', error)
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message })
+    }
     res.status(500).json({ message: '服务器错误' })
   }
 }
@@ -613,13 +667,28 @@ const rescheduleCourseGroup = async (req, res) => {
     const nextExternalTeacherName = externalTeacherName !== undefined
       ? sanitizeOptionalText(externalTeacherName)
       : sanitizeOptionalText(firstCourse.externalTeacherName)
-    const nextExternalCourseName = externalCourseName !== undefined
+    let nextExternalCourseName = externalCourseName !== undefined
       ? sanitizeOptionalText(externalCourseName)
       : sanitizeOptionalText(firstCourse.externalCourseName)
     const plannedLessonsForGroup = plannedLessons === undefined
       ? undefined
       : normalizePlannedLessons(plannedLessons)
     const teacherId = firstCourse.teacherId?._id || firstCourse.teacherId
+    const learningCourseTypeForGroup = groupIsLearningCourse
+      ? await resolveCourseTypeForLearning(courseTypeId || firstCourse.courseTypeId)
+      : null
+
+    if (groupIsLearningCourse) {
+      nextExternalCourseName = nextExternalCourseName || learningCourseTypeForGroup?.name || ''
+
+      if (!nextExternalTeacherName) {
+        return res.status(400).json({ message: '请填写授课老师' })
+      }
+
+      if (!nextExternalCourseName) {
+        return res.status(400).json({ message: '请填写课程名称' })
+      }
+    }
     
     let startIndex = 0
     if (fromCourseId) {
@@ -676,7 +745,9 @@ const rescheduleCourseGroup = async (req, res) => {
           startTime,
           endTime,
           studentId: groupIsLearningCourse ? null : (studentId || course.studentId),
-          courseTypeId: groupIsLearningCourse ? null : (courseTypeId || course.courseTypeId),
+          courseTypeId: groupIsLearningCourse
+            ? (courseTypeId ? learningCourseTypeForGroup?._id || null : course.courseTypeId)
+            : (courseTypeId || course.courseTypeId),
           notes: notes !== undefined ? notes : course.notes,
           participationRole: groupParticipationRole,
           externalTeacherName: groupIsLearningCourse ? nextExternalTeacherName : '',
@@ -688,7 +759,9 @@ const rescheduleCourseGroup = async (req, res) => {
       } else {
         const courseData = {
           studentId: groupIsLearningCourse ? null : (studentId || firstCourse.studentId),
-          courseTypeId: groupIsLearningCourse ? null : (courseTypeId || firstCourse.courseTypeId),
+          courseTypeId: groupIsLearningCourse
+            ? (courseTypeId ? learningCourseTypeForGroup?._id || null : firstCourse.courseTypeId)
+            : (courseTypeId || firstCourse.courseTypeId),
           teacherId: teacherId,
           startTime,
           endTime,
@@ -726,6 +799,9 @@ const rescheduleCourseGroup = async (req, res) => {
     })
   } catch (error) {
     console.error('批量修改课程组时间错误:', error)
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message })
+    }
     res.status(500).json({ message: '服务器错误' })
   }
 }

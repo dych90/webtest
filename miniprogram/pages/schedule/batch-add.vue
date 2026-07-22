@@ -2,6 +2,21 @@
   <view class="batch-add-container">
     <view class="form-section">
       <view class="form-item">
+        <text class="form-label">我的身份 *</text>
+        <view class="role-switch">
+          <view
+            v-for="item in roleOptions"
+            :key="item.value"
+            class="role-option"
+            :class="{ active: form.participationRole === item.value }"
+            @click="setParticipationRole(item.value)"
+          >
+            <text>{{ item.label }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item" v-if="form.participationRole === 'teacher'">
         <text class="form-label">学生 *</text>
         <view class="student-picker" @click="showStudentPicker = true">
           <view class="form-picker">
@@ -12,13 +27,22 @@
       </view>
       
       <view class="form-item">
-        <text class="form-label">课程类型</text>
-        <picker :value="courseTypeIndex >= 0 ? courseTypeIndex : 0" :range="courseTypes" range-key="name" @change="onCourseTypeChange">
+        <text class="form-label">{{ isLearningCourseForm() ? '课程类型 *' : '课程类型' }}</text>
+        <picker :value="courseTypeIndex >= 0 ? courseTypeIndex : 0" :range="visibleCourseTypes" range-key="name" @change="onCourseTypeChange">
           <view class="form-picker">
-            <text>{{ courseTypeIndex >= 0 ? courseTypes[courseTypeIndex]?.name : '请选择课程类型' }}</text>
+            <text :class="{ 'placeholder': !form.courseTypeId }">{{ selectedCourseTypeName }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
+      </view>
+
+      <view class="form-item" v-if="form.participationRole === 'student'">
+        <text class="form-label">授课老师 *</text>
+        <input
+          class="form-input"
+          v-model="form.externalTeacherName"
+          placeholder="请输入老师姓名"
+        />
       </view>
       
       <view class="form-item">
@@ -37,7 +61,7 @@
         </view>
       </view>
 
-      <view class="form-item">
+      <view class="form-item" v-if="form.participationRole === 'teacher'">
         <text class="form-label">计划课时</text>
         <picker :value="plannedLessonIndex" :range="lessonCountOptions" @change="onPlannedLessonChange">
           <view class="form-picker">
@@ -49,9 +73,9 @@
       
       <view class="form-item">
         <text class="form-label">状态</text>
-        <picker :value="statusIndex" :range="statusOptions" @change="onStatusChange">
+        <picker :value="statusIndex" :range="currentStatusOptions" @change="onStatusChange">
           <view class="form-picker">
-            <text>{{ statusOptions[statusIndex] }}</text>
+            <text>{{ currentStatusOptions[statusIndex] }}</text>
             <text class="picker-arrow">▼</text>
           </view>
         </picker>
@@ -61,7 +85,7 @@
     <view class="course-list-section">
       <view class="section-header">
         <text class="section-title">课程列表</text>
-        <text class="course-count">共 {{ courseList.length }} 节</text>
+        <text class="course-count">共 {{ courseList.length }} {{ courseCountUnit }}</text>
       </view>
       
       <view class="course-list">
@@ -164,7 +188,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { get, post } from '@/utils/request'
 
 const students = ref([])
@@ -179,21 +203,65 @@ const durationValues = [30, 45, 50, 60, 70, 90, 120]
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 const plannedLessonIndex = ref(1)
-const statusOptions = ['未上课', '已完成', '已取消']
-const statusValues = ['normal', 'completed', 'cancelled']
+const teacherStatusOptions = ['未上课', '已完成', '已取消']
+const teacherStatusValues = ['normal', 'completed', 'cancelled']
+const learningStatusOptions = ['未上课', '已完成', '已取消']
+const learningStatusValues = ['normal', 'completed', 'cancelled']
 const statusIndex = ref(1)
 const loading = ref(false)
 const dayNames = ['日', '一', '二', '三', '四', '五', '六']
 const isDefaultDuration = ref(false)
 const isDateIncrementEnabled = ref(false)
 const dateIncrementDays = ref(7)
+const roleOptions = [
+  { label: '我授课', value: 'teacher' },
+  { label: '我上课', value: 'student' }
+]
+
+const getCourseTypeRole = (type) => {
+  return type?.participationRole === 'student' ? 'student' : 'teacher'
+}
 
 const form = reactive({
+  participationRole: 'teacher',
   studentId: '',
   courseTypeId: '',
+  externalTeacherName: '',
+  externalCourseName: '',
   duration: 60,
   plannedLessons: 1,
   status: 'completed'
+})
+
+const isLearningCourseForm = () => form.participationRole === 'student'
+
+const visibleCourseTypes = computed(() => {
+  return courseTypes.value.filter(type => getCourseTypeRole(type) === form.participationRole)
+})
+
+const selectedCourseType = computed(() => {
+  if (!form.courseTypeId) return null
+  return visibleCourseTypes.value.find(type => type._id === form.courseTypeId) || null
+})
+
+const selectedCourseTypeName = computed(() => {
+  if (selectedCourseType.value) {
+    return selectedCourseType.value.name
+  }
+
+  return isLearningCourseForm() ? '请选择我上课类型' : '请选择课程类型'
+})
+
+const currentStatusOptions = computed(() => {
+  return isLearningCourseForm() ? learningStatusOptions : teacherStatusOptions
+})
+
+const currentStatusValues = computed(() => {
+  return isLearningCourseForm() ? learningStatusValues : teacherStatusValues
+})
+
+const courseCountUnit = computed(() => {
+  return isLearningCourseForm() ? '项' : '节'
 })
 
 const courseList = ref([
@@ -234,19 +302,57 @@ const fetchStudents = async () => {
   }
 }
 
+const applyCourseTypeDuration = (courseType) => {
+  if (!courseType?.duration) return
+
+  const idx = durationValues.indexOf(Number(courseType.duration))
+  if (idx >= 0) {
+    durationIndex.value = idx
+    form.duration = durationValues[idx]
+  }
+}
+
+const applyDefaultCourseTypeForRole = () => {
+  const currentIdx = visibleCourseTypes.value.findIndex(type => type._id === form.courseTypeId)
+  if (currentIdx >= 0) {
+    courseTypeIndex.value = currentIdx
+    return
+  }
+
+  const defaultType = visibleCourseTypes.value.find(type => type.isDefault) || visibleCourseTypes.value[0]
+  if (!defaultType) {
+    courseTypeIndex.value = -1
+    form.courseTypeId = ''
+    return
+  }
+
+  courseTypeIndex.value = visibleCourseTypes.value.findIndex(type => type._id === defaultType._id)
+  form.courseTypeId = defaultType._id
+  applyCourseTypeDuration(defaultType)
+}
+
+const setParticipationRole = (role) => {
+  form.participationRole = role
+
+  if (role === 'student') {
+    form.studentId = ''
+    plannedLessonIndex.value = 1
+    form.plannedLessons = 1
+    statusIndex.value = 0
+    form.status = learningStatusValues[0]
+  } else {
+    statusIndex.value = 1
+    form.status = teacherStatusValues[1]
+  }
+
+  applyDefaultCourseTypeForRole()
+}
+
 const fetchCourseTypes = async () => {
   try {
-    const res = await get('/course-types')
+    const res = await get('/course-types', { includeAll: true })
     courseTypes.value = res.data || []
-    
-    if (courseTypeIndex.value < 0 && courseTypes.value.length > 0) {
-      const defaultType = courseTypes.value.find(t => t.isDefault)
-      if (defaultType) {
-        const idx = courseTypes.value.findIndex(t => t._id === defaultType._id)
-        courseTypeIndex.value = idx
-        form.courseTypeId = defaultType._id
-      }
-    }
+    applyDefaultCourseTypeForRole()
   } catch (error) {
     console.error('获取课程类型失败', error)
   }
@@ -278,14 +384,15 @@ const applyStudentCourseType = (student) => {
   if (!student) return
 
   const targetCourseTypeId = student.studentRelationType === 'practice'
-    ? courseTypes.value.find(t => t.name === '陪练课')?._id
+    ? courseTypes.value.find(t => t.name === '陪练课' && getCourseTypeRole(t) === 'teacher')?._id
     : (student.defaultCourseTypeId?._id || student.defaultCourseTypeId)
 
   if (targetCourseTypeId) {
-    const idx = courseTypes.value.findIndex(t => t._id === targetCourseTypeId)
+    const idx = visibleCourseTypes.value.findIndex(t => t._id === targetCourseTypeId)
     if (idx >= 0) {
       courseTypeIndex.value = idx
-      form.courseTypeId = courseTypes.value[idx]._id
+      form.courseTypeId = visibleCourseTypes.value[idx]._id
+      applyCourseTypeDuration(visibleCourseTypes.value[idx])
     }
   }
 }
@@ -299,7 +406,9 @@ const selectStudent = (student) => {
 
 const onCourseTypeChange = (e) => {
   courseTypeIndex.value = e.detail.value
-  form.courseTypeId = courseTypes.value[e.detail.value]?._id || ''
+  const courseType = visibleCourseTypes.value[e.detail.value]
+  form.courseTypeId = courseType?._id || ''
+  applyCourseTypeDuration(courseType)
 }
 
 const onDurationChange = (e) => {
@@ -326,7 +435,7 @@ const toggleDefaultDuration = () => {
 
 const onStatusChange = (e) => {
   statusIndex.value = e.detail.value
-  form.status = statusValues[e.detail.value]
+  form.status = currentStatusValues.value[e.detail.value]
 }
 
 const getTodayDateString = () => {
@@ -414,9 +523,42 @@ const handleCancel = () => {
   uni.navigateBack()
 }
 
+const buildCoursePayload = (startTime, endTime, groupId) => {
+  const payload = {
+    participationRole: form.participationRole,
+    courseTypeId: form.courseTypeId || undefined,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    plannedLessons: isLearningCourseForm() ? 1 : form.plannedLessons,
+    status: form.status,
+    notes: '批量添加',
+    groupId
+  }
+
+  if (isLearningCourseForm()) {
+    payload.studentId = null
+    payload.externalTeacherName = form.externalTeacherName.trim()
+    payload.externalCourseName = selectedCourseType.value?.name || ''
+    return payload
+  }
+
+  payload.studentId = form.studentId
+  return payload
+}
+
 const handleSubmit = async () => {
-  if (!form.studentId) {
+  if (!isLearningCourseForm() && !form.studentId) {
     uni.showToast({ title: '请选择学生', icon: 'none' })
+    return
+  }
+
+  if (isLearningCourseForm() && !form.courseTypeId) {
+    uni.showToast({ title: '请选择我上课的课程类型', icon: 'none' })
+    return
+  }
+
+  if (isLearningCourseForm() && !form.externalTeacherName.trim()) {
+    uni.showToast({ title: '请填写授课老师', icon: 'none' })
     return
   }
 
@@ -442,18 +584,9 @@ const handleSubmit = async () => {
       const startTime = new Date(`${item.date}T${item.startTime}:00`)
       const endTime = new Date(startTime.getTime() + form.duration * 60000)
       
-      const coursePromise = post('/courses', {
-        studentId: form.studentId,
-        courseTypeId: form.courseTypeId || undefined,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        plannedLessons: form.plannedLessons,
-        status: form.status,
-        notes: '批量添加',
-        groupId
-      })
+      const coursePromise = post('/courses', buildCoursePayload(startTime, endTime, groupId))
       
-      if (form.status === 'completed') {
+      if (!isLearningCourseForm() && form.status === 'completed') {
         return coursePromise.then(courseRes => {
           return post('/lesson-records', {
             studentId: form.studentId,
@@ -508,6 +641,41 @@ const handleSubmit = async () => {
   font-size: 28rpx;
   color: #3F352B;
   margin-bottom: 12rpx;
+}
+
+.role-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  padding: 8rpx;
+  background-color: #FBF6EE;
+  border-radius: 8rpx;
+}
+
+.role-option {
+  min-width: 0;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6rpx;
+  color: #6F6254;
+  font-size: 28rpx;
+}
+
+.role-option.active {
+  background-color: #5F724C;
+  color: #FFFDF8;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  box-sizing: border-box;
 }
 
 .form-picker {

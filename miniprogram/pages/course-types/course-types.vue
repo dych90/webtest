@@ -4,6 +4,18 @@
       <text>点击上下箭头调整顺序</text>
       <text class="sort-done" @click="finishSort">完成</text>
     </view>
+
+    <view v-if="!isSortMode" class="role-switch">
+      <view
+        v-for="item in roleOptions"
+        :key="item.value"
+        class="role-option"
+        :class="{ active: activeRole === item.value }"
+        @click="setActiveRole(item.value)"
+      >
+        <text>{{ item.label }}</text>
+      </view>
+    </view>
     
     <view v-if="displayList.length === 0" class="empty-tip">
       暂无课程类型
@@ -32,6 +44,7 @@
           <view class="type-header">
             <view class="type-name-row">
               <text class="type-name">{{ type.name }}</text>
+              <text class="role-tag">{{ getRoleLabel(type) }}</text>
               <text v-if="type.isDefault" class="default-tag">默认</text>
             </view>
             <text class="type-duration">{{ type.duration }}分钟</text>
@@ -56,6 +69,20 @@
           <text class="dialog-close" @click="dialogVisible = false">×</text>
         </view>
         <view class="dialog-body">
+          <view class="form-item">
+            <text class="form-label">类型归属 *</text>
+            <view class="role-switch dialog-role-switch">
+              <view
+                v-for="item in roleOptions"
+                :key="item.value"
+                class="role-option"
+                :class="{ active: form.participationRole === item.value }"
+                @click="form.participationRole = item.value"
+              >
+                <text>{{ item.label }}</text>
+              </view>
+            </view>
+          </view>
           <view class="form-item">
             <text class="form-label">名称 *</text>
             <input class="form-input" v-model="form.name" placeholder="请输入课程类型名称" />
@@ -86,30 +113,53 @@ const editingId = ref('')
 const isSortMode = ref(false)
 const sortList = ref([])
 const hasChanged = ref(false)
+const activeRole = ref('teacher')
+const roleOptions = [
+  { label: '我授课', value: 'teacher' },
+  { label: '我上课', value: 'student' }
+]
+
+const getCourseTypeRole = (type) => {
+  return type?.participationRole === 'student' ? 'student' : 'teacher'
+}
+
+const getRoleLabel = (type) => {
+  return getCourseTypeRole(type) === 'student' ? '我上课' : '我授课'
+}
+
+const roleFilteredTypes = computed(() => {
+  return courseTypes.value.filter(type => getCourseTypeRole(type) === activeRole.value)
+})
 
 const displayList = computed(() => {
   if (isSortMode.value) {
     return sortList.value
   }
-  return courseTypes.value
+  return roleFilteredTypes.value
 })
 
 const form = reactive({
   name: '',
-  duration: 45
+  duration: 45,
+  participationRole: 'teacher'
 })
 
 const fetchCourseTypes = async () => {
   try {
-    const res = await get('/course-types')
+    const res = await get('/course-types', { includeAll: true })
     courseTypes.value = res.data || []
   } catch (error) {
     console.error('获取课程类型失败', error)
   }
 }
 
+const setActiveRole = (role) => {
+  if (isSortMode.value) return
+  activeRole.value = role
+}
+
 const startSortMode = () => {
-  sortList.value = [...courseTypes.value]
+  sortList.value = [...roleFilteredTypes.value]
   isSortMode.value = true
   hasChanged.value = false
   uni.vibrateShort()
@@ -122,7 +172,7 @@ const finishSort = async () => {
     try {
       const courseTypeIds = sortList.value.map(t => t._id)
       await post('/course-types/sort', { courseTypeIds })
-      courseTypes.value = [...sortList.value]
+      await fetchCourseTypes()
       uni.showToast({ title: '排序已保存', icon: 'success' })
     } catch (error) {
       uni.showToast({ title: '保存排序失败', icon: 'none' })
@@ -161,6 +211,7 @@ const handleAdd = () => {
   editingId.value = ''
   form.name = ''
   form.duration = 45
+  form.participationRole = activeRole.value
   dialogVisible.value = true
 }
 
@@ -169,6 +220,7 @@ const handleEdit = (type) => {
   editingId.value = type._id
   form.name = type.name
   form.duration = type.duration
+  form.participationRole = getCourseTypeRole(type)
   dialogVisible.value = true
 }
 
@@ -214,7 +266,8 @@ const handleSave = async () => {
   try {
     const submitData = {
       name: form.name,
-      duration: Number(form.duration)
+      duration: Number(form.duration),
+      participationRole: form.participationRole
     }
     
     if (editingId.value) {
@@ -268,6 +321,36 @@ onShow(() => {
 
 .sort-done {
   font-weight: bold;
+}
+
+.role-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+  padding: 8rpx;
+  background-color: #FBF6EE;
+  border-radius: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+.role-option {
+  min-width: 0;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6rpx;
+  color: #6F6254;
+  font-size: 28rpx;
+}
+
+.role-option.active {
+  background-color: #5F724C;
+  color: #FFFDF8;
+}
+
+.dialog-role-switch {
+  margin-bottom: 0;
 }
 
 .empty-tip {
@@ -369,6 +452,14 @@ onShow(() => {
   font-size: 20rpx;
   color: #FFFDF8;
   background-color: #5F724C;
+  padding: 4rpx 12rpx;
+  border-radius: 4rpx;
+}
+
+.role-tag {
+  font-size: 20rpx;
+  color: #4C6F72;
+  background-color: #E4F0EE;
   padding: 4rpx 12rpx;
   border-radius: 4rpx;
 }

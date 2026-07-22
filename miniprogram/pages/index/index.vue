@@ -434,7 +434,7 @@ const getCoursePersonName = (course) => {
 
 const getCourseSubjectName = (course) => {
   if (isLearningCourse(course)) {
-    return course?.externalCourseName || '未设置课程'
+    return course?.courseTypeId?.name || course?.externalCourseName || '未设置课程'
   }
 
   return course?.courseTypeId?.name || '未设置'

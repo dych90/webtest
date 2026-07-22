@@ -1,8 +1,32 @@
 const CourseType = require('../models/CourseType')
 
+const COURSE_ROLE_TEACHER = 'teacher'
+const COURSE_ROLE_STUDENT = 'student'
+
+const normalizeParticipationRole = (value) => {
+  return value === COURSE_ROLE_STUDENT ? COURSE_ROLE_STUDENT : COURSE_ROLE_TEACHER
+}
+
+const buildRoleFilter = (role) => {
+  if (role === COURSE_ROLE_STUDENT) {
+    return { participationRole: COURSE_ROLE_STUDENT }
+  }
+
+  return { participationRole: { $ne: COURSE_ROLE_STUDENT } }
+}
+
+const shouldIncludeAllCourseTypes = (value) => {
+  return value === true || value === 'true' || value === '1'
+}
+
 const getCourseTypes = async (req, res) => {
   try {
-    const courseTypes = await CourseType.find().sort({ sortOrder: 1, createdAt: -1 })
+    const { participationRole } = req.query
+    const includeAll = shouldIncludeAllCourseTypes(req.query.includeAll)
+    const filter = includeAll && !participationRole
+      ? {}
+      : buildRoleFilter(normalizeParticipationRole(participationRole))
+    const courseTypes = await CourseType.find(filter).sort({ participationRole: 1, sortOrder: 1, createdAt: -1 })
     
     res.json({
       message: '获取成功',
@@ -16,7 +40,17 @@ const getCourseTypes = async (req, res) => {
 
 const createCourseType = async (req, res) => {
   try {
-    const courseType = await CourseType.create(req.body)
+    const courseType = await CourseType.create({
+      ...req.body,
+      participationRole: normalizeParticipationRole(req.body.participationRole)
+    })
+
+    if (courseType.isDefault) {
+      await CourseType.updateMany(
+        { ...buildRoleFilter(normalizeParticipationRole(courseType.participationRole)), _id: { $ne: courseType._id } },
+        { isDefault: false }
+      )
+    }
     
     res.json({
       message: '创建成功',
@@ -31,10 +65,22 @@ const createCourseType = async (req, res) => {
 const updateCourseType = async (req, res) => {
   try {
     const { id } = req.params
-    const courseType = await CourseType.findByIdAndUpdate(id, req.body, { new: true })
+    const updateData = { ...req.body }
+    if (Object.prototype.hasOwnProperty.call(updateData, 'participationRole')) {
+      updateData.participationRole = normalizeParticipationRole(updateData.participationRole)
+    }
+
+    const courseType = await CourseType.findByIdAndUpdate(id, updateData, { new: true })
     
     if (!courseType) {
       return res.status(404).json({ message: '课程类型不存在' })
+    }
+
+    if (courseType.isDefault) {
+      await CourseType.updateMany(
+        { ...buildRoleFilter(normalizeParticipationRole(courseType.participationRole)), _id: { $ne: courseType._id } },
+        { isDefault: false }
+      )
     }
     
     res.json({
@@ -83,8 +129,14 @@ const updateCourseTypesSort = async (req, res) => {
 const setDefaultCourseType = async (req, res) => {
   try {
     const { id } = req.params
+    const targetCourseType = await CourseType.findById(id)
     
-    await CourseType.updateMany({}, { isDefault: false })
+    if (!targetCourseType) {
+      return res.status(404).json({ message: '课程类型不存在' })
+    }
+
+    const role = normalizeParticipationRole(targetCourseType.participationRole)
+    await CourseType.updateMany(buildRoleFilter(role), { isDefault: false })
     
     const courseType = await CourseType.findByIdAndUpdate(id, { isDefault: true }, { new: true })
     

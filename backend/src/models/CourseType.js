@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 const courseTypeSchema = new mongoose.Schema({
   name: { type: String, required: true },
   duration: { type: Number, required: true },
+  participationRole: { type: String, default: 'teacher', enum: ['teacher', 'student'] },
   isDefault: { type: Boolean, default: false },
   sortOrder: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
