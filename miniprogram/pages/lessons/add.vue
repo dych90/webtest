@@ -80,21 +80,27 @@
       </view>
 
       <view class="reward-box">
-        <view class="form-item switch-item">
-          <view>
-            <text class="form-label">上课奖励</text>
-            <text class="form-hint">按课时倍数发放，基础为5星/5积分</text>
-          </view>
-          <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" color="#5F724C" />
+        <view class="form-item">
+          <text class="form-label">上课奖励（星）</text>
+          <input
+            class="form-input"
+            type="digit"
+            v-model="lessonRewardValue"
+            placeholder="例如 3 或 7.5"
+            @input="onLessonRewardInput"
+          />
+          <text class="form-hint">默认按满分预填，0 表示不发放</text>
         </view>
         <view class="form-item">
           <text class="form-label">本周练习星</text>
-          <picker :value="practiceRewardIndex" :range="practiceRewardOptions" @change="onPracticeRewardChange">
-            <view class="form-picker">
-              <text>{{ practiceRewardOptions[practiceRewardIndex] }}</text>
-              <text class="picker-arrow">▼</text>
-            </view>
-          </picker>
+          <input
+            class="form-input"
+            type="digit"
+            v-model="practiceRewardValue"
+            placeholder="例如 12"
+            @input="onPracticeRewardInput"
+          />
+          <text class="form-hint">每周上限35星</text>
         </view>
       </view>
       
@@ -114,6 +120,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { get, post } from '@/utils/request'
+import { formatRewardAmount } from '@/utils/reward'
 import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const students = ref([])
@@ -126,13 +133,12 @@ const courseTypes = ref([])
 const courseTypeIndex = ref(-1)
 const loading = ref(false)
 const lessonCountIndex = ref(1)
-const issueLessonReward = ref(true)
-const practiceRewardIndex = ref(0)
+const lessonRewardValue = ref('5')
+const lessonRewardTouched = ref(false)
+const practiceRewardValue = ref('0')
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-const practiceRewardOptions = Array.from({ length: 36 }, (_, index) => `${index}星`)
-const practiceRewardValues = Array.from({ length: 36 }, (_, index) => index)
 
 const form = reactive({
   studentId: '',
@@ -269,10 +275,18 @@ const onDeductedChange = (e) => {
 const onLessonCountChange = (e) => {
   lessonCountIndex.value = e.detail.value
   form.lessonsConsumed = lessonCountValues[e.detail.value]
+  if (!lessonRewardTouched.value) {
+    lessonRewardValue.value = formatRewardAmount(form.lessonsConsumed * 5)
+  }
 }
 
-const onPracticeRewardChange = (e) => {
-  practiceRewardIndex.value = Number(e.detail.value) || 0
+const onLessonRewardInput = (e) => {
+  lessonRewardTouched.value = true
+  lessonRewardValue.value = e.detail.value
+}
+
+const onPracticeRewardInput = (e) => {
+  practiceRewardValue.value = e.detail.value
 }
 
 const handleCancel = () => {
@@ -285,9 +299,20 @@ const settleLessonReward = async (lessonRecord) => {
   }
 
   try {
+    const lessonReward = Number(lessonRewardValue.value)
+    const practiceReward = Number(practiceRewardValue.value)
+
+    if (!Number.isFinite(lessonReward) || lessonReward < 0) {
+      throw new Error('请输入有效的上课奖励星数')
+    }
+
+    if (!Number.isFinite(practiceReward) || practiceReward < 0) {
+      throw new Error('请输入有效的练习星数')
+    }
+
     const res = await post(`/lesson-records/${lessonRecord._id}/reward-settlements`, {
-      issueLessonReward: issueLessonReward.value,
-      practiceRewardValue: practiceRewardValues[practiceRewardIndex.value] || 0,
+      lessonRewardValue: lessonReward,
+      practiceRewardValue: practiceReward,
       remark: '新增消课后结算'
     })
     const totalPoints = Number(res.data?.settlement?.totalPoints) || 0

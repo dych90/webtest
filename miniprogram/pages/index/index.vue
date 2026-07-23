@@ -240,25 +240,27 @@
             <switch :checked="notifyGuardian" @change="notifyGuardian = $event.detail.value" :color="themeColors.primary" />
           </view>
           <view class="reward-form">
-            <view class="form-item notify-row">
-              <view>
-                <text class="form-label">上课奖励</text>
-                <text class="notify-tip">按课时倍数发放，基础为5星/5积分</text>
-              </view>
-              <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" :color="themeColors.primary" />
+            <view class="form-item">
+              <text class="form-label">上课奖励（星）</text>
+              <input
+                class="form-input"
+                type="digit"
+                v-model="lessonRewardValue"
+                placeholder="例如 3 或 7.5"
+                @input="onLessonRewardInput"
+              />
             </view>
             <view class="form-item">
               <text class="form-label">本周练习星</text>
-              <picker :value="practiceRewardIndex" :range="practiceRewardOptions" @change="onPracticeRewardChange">
-                <view class="form-picker">
-                  <text>{{ practiceRewardOptions[practiceRewardIndex] }}</text>
-                  <text class="picker-arrow">▼</text>
-                </view>
-              </picker>
+              <input
+                class="form-input"
+                type="digit"
+                v-model="practiceRewardValue"
+                placeholder="例如 12"
+                @input="onPracticeRewardInput"
+              />
             </view>
-            <text class="reward-summary-tip">
-              练习星每周上限35星
-            </text>
+            <text class="reward-summary-tip">练习星每周上限35星</text>
           </view>
         </view>
         <view class="dialog-footer">
@@ -277,6 +279,7 @@ import { useUserStore } from '@/stores/user'
 import { get, post, put, del, uploadFile, uploadFileData } from '@/utils/request'
 import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
 import { createAudioPlayback } from '@/utils/audioPlayback'
+import { formatRewardAmount } from '@/utils/reward'
 import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const userStore = useUserStore()
@@ -306,8 +309,9 @@ const lessonContent = ref('')
 const photoFiles = ref([])
 const voiceFiles = ref([])
 const notifyGuardian = ref(false)
-const issueLessonReward = ref(true)
-const practiceRewardIndex = ref(0)
+const lessonRewardValue = ref('5')
+const lessonRewardTouched = ref(false)
+const practiceRewardValue = ref('0')
 const savingAttend = ref(false)
 const recording = ref(false)
 const recordDuration = ref(0)
@@ -327,8 +331,6 @@ const audioPlayer = createAudioPlayback({
 
 const lessonCountOptions = ['0.5节', '1节', '1.5节', '2节', '2.5节', '3节', '3.5节', '4节', '4.5节', '5节']
 const lessonCountValues = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
-const practiceRewardOptions = Array.from({ length: 36 }, (_, index) => `${index}星`)
-const practiceRewardValues = Array.from({ length: 36 }, (_, index) => index)
 const DEFAULT_PLANNED_LESSONS = 1
 
 const getCoursePlannedLessons = (course) => {
@@ -472,8 +474,9 @@ const resetAttendForm = (plannedLessons = DEFAULT_PLANNED_LESSONS) => {
   photoFiles.value = []
   voiceFiles.value = []
   notifyGuardian.value = false
-  issueLessonReward.value = true
-  practiceRewardIndex.value = 0
+  lessonRewardTouched.value = false
+  lessonRewardValue.value = formatRewardAmount(lessonCountValues[lessonCountIndex.value] * 5)
+  practiceRewardValue.value = '0'
   recording.value = false
   recordDuration.value = 0
   clearRecordTimer()
@@ -662,10 +665,18 @@ const handleAttendCourse = async (course) => {
 
 const onLessonCountChange = (e) => {
   lessonCountIndex.value = e.detail.value
+  if (!lessonRewardTouched.value) {
+    lessonRewardValue.value = formatRewardAmount(lessonCountValues[lessonCountIndex.value] * 5)
+  }
 }
 
-const onPracticeRewardChange = (e) => {
-  practiceRewardIndex.value = Number(e.detail.value) || 0
+const onLessonRewardInput = (e) => {
+  lessonRewardTouched.value = true
+  lessonRewardValue.value = e.detail.value
+}
+
+const onPracticeRewardInput = (e) => {
+  practiceRewardValue.value = e.detail.value
 }
 
 const choosePhotos = async () => {
@@ -887,9 +898,20 @@ const settleLessonReward = async (lessonRecord) => {
   }
 
   try {
+    const lessonReward = Number(lessonRewardValue.value)
+    const practiceReward = Number(practiceRewardValue.value)
+
+    if (!Number.isFinite(lessonReward) || lessonReward < 0) {
+      throw new Error('请输入有效的上课奖励星数')
+    }
+
+    if (!Number.isFinite(practiceReward) || practiceReward < 0) {
+      throw new Error('请输入有效的练习星数')
+    }
+
     const res = await post(`/lesson-records/${lessonRecord._id}/reward-settlements`, {
-      issueLessonReward: issueLessonReward.value,
-      practiceRewardValue: practiceRewardValues[practiceRewardIndex.value] || 0,
+      lessonRewardValue: lessonReward,
+      practiceRewardValue: practiceReward,
       remark: '首页确认上课后结算'
     })
     const settlement = res.data?.settlement || {}
@@ -1588,6 +1610,17 @@ onUnmounted(() => {
   border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 28rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 80rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid var(--theme-border);
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  background-color: var(--theme-card);
 }
 
 .picker-arrow {

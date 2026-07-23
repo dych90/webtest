@@ -171,7 +171,7 @@
               >
                 <view v-if="isPendingOverdueCourse(course)" class="week-calendar-overdue-mark">!</view>
                 <text class="week-calendar-time">{{ formatTime(course.startTime) }}</text>
-                <text class="week-calendar-role">{{ getCourseRoleText(course) }}</text>
+                <text class="week-calendar-subject">{{ getCourseSubjectName(course) }}</text>
                 <text class="week-calendar-name">{{ getCoursePersonName(course) }}</text>
               </view>
             </view>
@@ -1573,11 +1573,12 @@ onShow(() => {
   white-space: nowrap;
 }
 
-.week-calendar-role {
+.week-calendar-subject {
   min-width: 0;
-  font-size: 15rpx;
-  line-height: 19rpx;
-  color: rgba(255, 255, 255, 0.72);
+  font-size: 18rpx;
+  line-height: 22rpx;
+  color: #FFFDF8;
+  font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1585,10 +1586,10 @@ onShow(() => {
 
 .week-calendar-name {
   min-width: 0;
-  font-size: 20rpx;
-  line-height: 24rpx;
-  color: #FFFDF8;
-  font-weight: bold;
+  font-size: 16rpx;
+  line-height: 20rpx;
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

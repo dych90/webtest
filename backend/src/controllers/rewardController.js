@@ -767,7 +767,8 @@ const createLessonRewardSettlement = async (req, res) => {
     const result = await rewardSettlementService.settleLessonReward({
       lessonRecordId: req.params.id,
       issueLessonReward: parseBooleanValue(req.body.issueLessonReward, true),
-      practiceRewardValue: req.body.practiceRewardValue || 0,
+      lessonRewardValue: req.body.lessonRewardValue,
+      practiceRewardValue: req.body.practiceRewardValue ?? 0,
       remark: req.body.remark || null,
       settledBy: user._id,
       settledAt: req.body.settledAt || new Date()

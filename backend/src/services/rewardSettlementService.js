@@ -1,6 +1,6 @@
 const LessonRecord = require('../models/LessonRecord')
 const LessonRewardSettlement = require('../models/LessonRewardSettlement')
-const { toObjectId, toInteger, normalizeAmount, toDate } = require('./rewardCommon')
+const { toObjectId, toInteger, toAmount, normalizeAmount, toDate } = require('./rewardCommon')
 const { getActivePointRuleConfig } = require('./rewardRuleService')
 const growthService = require('./growthService')
 const pointService = require('./pointService')
@@ -26,6 +26,7 @@ const resolveLessonCountSnapshot = lessonRecord => {
 const settleLessonReward = async ({
   lessonRecordId,
   issueLessonReward = true,
+  lessonRewardValue = null,
   practiceRewardValue = 0,
   remark = null,
   settledBy,
@@ -34,7 +35,7 @@ const settleLessonReward = async ({
   const normalizedLessonRecordId = toObjectId(lessonRecordId, 'lessonRecordId')
   const normalizedSettledBy = toObjectId(settledBy, 'settledBy')
   const activeRuleConfig = await getActivePointRuleConfig()
-  const normalizedPracticeRewardValue = toInteger(practiceRewardValue, 'practiceRewardValue', {
+  const normalizedPracticeRewardValue = toAmount(practiceRewardValue, 'practiceRewardValue', {
     min: 0,
     max: activeRuleConfig.practiceRewardWeeklyMax
   })
@@ -59,12 +60,25 @@ const settleLessonReward = async ({
   const studentId = lessonRecord.studentId
   const teacherId = lessonRecord.teacherId || normalizedSettledBy
   const lessonCountSnapshot = resolveLessonCountSnapshot(lessonRecord)
-  const lessonGrowthStars = issueLessonReward
-    ? normalizeAmount(activeRuleConfig.lessonGrowthStars * lessonCountSnapshot)
-    : 0
-  const lessonPoints = issueLessonReward
-    ? normalizeAmount(activeRuleConfig.lessonPoints * lessonCountSnapshot)
-    : 0
+  const maxLessonRewardValue = normalizeAmount(activeRuleConfig.lessonGrowthStars * lessonCountSnapshot)
+  const lessonPointRatio = activeRuleConfig.lessonGrowthStars > 0
+    ? activeRuleConfig.lessonPoints / activeRuleConfig.lessonGrowthStars
+    : 1
+  const hasManualLessonRewardValue = lessonRewardValue !== undefined && lessonRewardValue !== null && lessonRewardValue !== ''
+  let lessonGrowthStars = 0
+  let lessonPoints = 0
+
+  if (hasManualLessonRewardValue) {
+    lessonGrowthStars = toAmount(lessonRewardValue, 'lessonRewardValue', {
+      min: 0,
+      max: maxLessonRewardValue
+    })
+    lessonPoints = normalizeAmount(lessonGrowthStars * lessonPointRatio)
+  } else if (issueLessonReward) {
+    lessonGrowthStars = normalizeAmount(activeRuleConfig.lessonGrowthStars * lessonCountSnapshot)
+    lessonPoints = normalizeAmount(activeRuleConfig.lessonPoints * lessonCountSnapshot)
+  }
+
   const practiceGrowthStars = normalizedPracticeRewardValue
   const practicePoints = activeRuleConfig.practicePointsMirrorGrowth
     ? normalizedPracticeRewardValue
@@ -77,7 +91,7 @@ const settleLessonReward = async ({
     lessonRecordId: normalizedLessonRecordId,
     studentId,
     teacherId,
-    issueLessonReward,
+    issueLessonReward: lessonGrowthStars > 0,
     lessonCountSnapshot,
     lessonGrowthStars,
     lessonPoints,

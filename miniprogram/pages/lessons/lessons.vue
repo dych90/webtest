@@ -139,21 +139,27 @@
             <text class="attend-student">{{ rewardTargetName }}</text>
             <text class="attend-course">{{ rewardTargetTime }}</text>
           </view>
-          <view class="form-item notify-row">
-            <view>
-              <text class="form-label">上课奖励</text>
-              <text class="notify-tip">按课时倍数发放，基础为5星/5积分</text>
-            </view>
-            <switch :checked="issueLessonReward" @change="issueLessonReward = $event.detail.value" :color="themeColors.primary" />
+          <view class="form-item">
+            <text class="form-label">上课奖励（星）</text>
+            <input
+              class="form-input"
+              type="digit"
+              v-model="lessonRewardValue"
+              placeholder="例如 3 或 7.5"
+              @input="onLessonRewardInput"
+            />
+            <text class="notify-tip">默认按满分预填，0 表示不发放</text>
           </view>
           <view class="form-item">
             <text class="form-label">本周练习星</text>
-            <picker :value="practiceRewardIndex" :range="practiceRewardOptions" @change="onPracticeRewardChange">
-              <view class="form-picker">
-                <text>{{ practiceRewardOptions[practiceRewardIndex] }}</text>
-                <text class="picker-arrow">▼</text>
-              </view>
-            </picker>
+            <input
+              class="form-input"
+              type="digit"
+              v-model="practiceRewardValue"
+              placeholder="例如 12"
+              @input="onPracticeRewardInput"
+            />
+            <text class="notify-tip">每周上限35星</text>
           </view>
         </view>
         <view class="dialog-footer">
@@ -171,6 +177,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { get, post, put, del } from '@/utils/request'
 import { getPaymentTypeText } from '@/utils/paymentType'
 import { applyTheme, getCurrentTheme, getThemeClass } from '@/utils/theme'
+import { formatRewardAmount } from '@/utils/reward'
 import { emitRewardStateChanged } from '@/utils/rewardEvents'
 
 const activeTab = ref('records')
@@ -187,10 +194,9 @@ const rewardDialogVisible = ref(false)
 const rewardSaving = ref(false)
 const pendingRewardCourse = ref(null)
 const rewardTargetRecord = ref(null)
-const issueLessonReward = ref(true)
-const practiceRewardIndex = ref(0)
-const practiceRewardOptions = Array.from({ length: 36 }, (_, index) => `${index}星`)
-const practiceRewardValues = Array.from({ length: 36 }, (_, index) => index)
+const lessonRewardValue = ref('5')
+const lessonRewardTouched = ref(false)
+const practiceRewardValue = ref('0')
 
 const getCoursePlannedLessons = (course) => {
   const plannedLessons = Number(course?.plannedLessons)
@@ -199,6 +205,15 @@ const getCoursePlannedLessons = (course) => {
   }
 
   return Math.round((plannedLessons + Number.EPSILON) * 100) / 100
+}
+
+const getRewardLessonCount = (item) => {
+  const lessonCount = Number(item?.lessonCountSnapshot ?? item?.lessonsConsumed ?? item?.plannedLessons ?? 1)
+  if (!Number.isFinite(lessonCount) || lessonCount <= 0) {
+    return DEFAULT_PLANNED_LESSONS
+  }
+
+  return Math.round((lessonCount + Number.EPSILON) * 100) / 100
 }
 
 const formatDate = (dateStr) => {
@@ -351,14 +366,15 @@ const handleAttend = async (course) => {
     return
   }
 
-  resetRewardDialog()
+  resetRewardDialog(getRewardLessonCount(course))
   pendingRewardCourse.value = course
   rewardDialogVisible.value = true
 }
 
-const resetRewardDialog = () => {
-  issueLessonReward.value = true
-  practiceRewardIndex.value = 0
+const resetRewardDialog = (plannedLessons = DEFAULT_PLANNED_LESSONS) => {
+  lessonRewardTouched.value = false
+  lessonRewardValue.value = formatRewardAmount(plannedLessons * 5)
+  practiceRewardValue.value = '0'
   pendingRewardCourse.value = null
   rewardTargetRecord.value = null
 }
@@ -368,8 +384,13 @@ const closeRewardDialog = () => {
   rewardDialogVisible.value = false
 }
 
-const onPracticeRewardChange = (event) => {
-  practiceRewardIndex.value = Number(event.detail.value) || 0
+const onLessonRewardInput = (event) => {
+  lessonRewardTouched.value = true
+  lessonRewardValue.value = event.detail.value
+}
+
+const onPracticeRewardInput = (event) => {
+  practiceRewardValue.value = event.detail.value
 }
 
 const openRewardSettlement = (record) => {
@@ -378,16 +399,29 @@ const openRewardSettlement = (record) => {
     return
   }
 
-  resetRewardDialog()
+  resetRewardDialog(getRewardLessonCount(record))
   rewardTargetRecord.value = record
   rewardDialogVisible.value = true
 }
 
-const buildRewardPayload = () => ({
-  issueLessonReward: issueLessonReward.value,
-  practiceRewardValue: practiceRewardValues[practiceRewardIndex.value] || 0,
-  remark: '消课管理奖励结算'
-})
+const buildRewardPayload = () => {
+  const lessonReward = Number(lessonRewardValue.value)
+  const practiceReward = Number(practiceRewardValue.value)
+
+  if (!Number.isFinite(lessonReward) || lessonReward < 0) {
+    throw new Error('请输入有效的上课奖励星数')
+  }
+
+  if (!Number.isFinite(practiceReward) || practiceReward < 0) {
+    throw new Error('请输入有效的练习星数')
+  }
+
+  return {
+    lessonRewardValue: lessonReward,
+    practiceRewardValue: practiceReward,
+    remark: '消课管理奖励结算'
+  }
+}
 
 const settleLessonRecordReward = async (lessonRecord) => {
   if (!lessonRecord?._id) {
@@ -811,6 +845,17 @@ const refreshTheme = () => {
   border: 2rpx solid var(--theme-border);
   border-radius: 8rpx;
   font-size: 26rpx;
+}
+
+.form-input {
+  width: 100%;
+  height: 76rpx;
+  padding: 0 18rpx;
+  border: 2rpx solid var(--theme-border);
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  font-size: 26rpx;
+  background-color: var(--theme-card);
 }
 
 .picker-arrow {
